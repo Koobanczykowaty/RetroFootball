@@ -8,6 +8,7 @@ This file guides Claude Code (claude.ai/code) when working in this repository.
 - **Ideas and suggestions:** list them in your final message as proposals ("I could also…"). If an idea seems necessary to finish the task properly, ask the user and get approval before implementing it (AskUserQuestion), not after.
 - Fixing a reported bug means fixing its actual cause with the smallest change that does it. Don't remove or redesign working mechanics around it without asking.
 - The user writes in Polish; reply in Polish. Code, comments and this file stay in English.
+- **The local PC version (`release/RetroFootball.html`, built with `npm run build:single`) is rebuilt only when the user explicitly asks.** Don't regenerate it as part of other tasks; the file the user has shared with testers must stay as it is until they request a new one.
 
 ## Project
 
