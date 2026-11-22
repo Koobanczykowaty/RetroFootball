@@ -1,0 +1,319 @@
+// ============================================================
+// RetroFootball — Gameplay Configuration
+// All tunable gameplay parameters live here for easy balancing.
+// Speeds are in px/s, durations in ms unless stated otherwise.
+// ============================================================
+
+export const GAME_WIDTH = 960;
+export const GAME_HEIGHT = 540;
+export const GAME_VERSION = '0.2.0';
+
+// ---- Pitch ----
+export const PITCH = {
+  x: 80,
+  y: 40,
+  width: 800,
+  height: 460,
+  lineColor: 0xffffff,
+  lineAlpha: 0.9,
+  lineWidth: 2,
+  grassColor1: 0x2d8a4e,
+  grassColor2: 0x34a058,
+  stripeWidth: 40,
+  goalWidth: 120,
+  goalDepth: 24,
+  goalColor: 0xffffff,
+  goalNetColor: 0xcccccc,
+  penaltyAreaWidth: 220,
+  penaltyAreaHeight: 140,
+  goalAreaWidth: 130,
+  goalAreaHeight: 70,
+  centerCircleRadius: 55,
+  cornerArcRadius: 12,
+  /** Ball higher than this (px) passes over the goal. */
+  crossbarHeight: 22,
+};
+
+// ---- Player ----
+export const PLAYER = {
+  radius: 10,
+  walkSpeed: 135,
+  sprintSpeed: 205,
+  /** Speed multiplier while dribbling. */
+  dribbleSpeedFactor: 0.9,
+  /** How fast velocity approaches the desired velocity (px/s²). */
+  acceleration: 1000,
+  deceleration: 1200,
+  /** Stamina is 0..1. Drain/regen are per second. */
+  sprintStaminaDrain: 0.3,
+  staminaRegen: 0.18,
+  minSprintStamina: 0.05,
+  /** Players closer than this are pushed apart. */
+  separationDistance: 15,
+  /**
+   * On contact, this fraction of the speed going into the other player is
+   * turned into sideways movement, so players slide around each other.
+   */
+  contactSlide: 0.8,
+  ballPickupRadius: 14,
+  /** Distance of a carried ball in front of the player. */
+  ballCarryOffset: 11,
+  kickCooldown: 300,
+  /** Short immunity from tackles right after winning the ball. */
+  possessionProtect: 350,
+  tackleRange: 20,
+  tackleDuration: 220,
+  tackleCooldown: 800,
+  tackleDashSpeed: 270,
+  tackleSuccess: 0.65,
+  /** On a successful tackle: chance the tackler keeps the ball (otherwise it pops loose). */
+  tackleWinBallChance: 0.55,
+  stunDuration: 450,
+  missStunDuration: 300,
+  /** After a failed first touch the player cannot touch the ball for this long. */
+  deflectBlock: 250,
+  /**
+   * After the human passes, the passer keeps joining the attack (runs ahead of
+   * the ball) while his team has the ball, for at most this long (ms).
+   */
+  supportRunMax: 6000,
+  /** How far ahead of the ball the supporting runner aims (px). */
+  supportRunLead: 70,
+};
+
+// ---- Ball ----
+export const BALL = {
+  radius: 5,
+  /** Ground friction multiplier per 1/60 s. */
+  friction: 0.985,
+  airFriction: 0.995,
+  minSpeed: 3,
+  maxSpeed: 580,
+  bounceRestitution: 0.6,
+  gravity: 520,
+  groundBounce: 0.35,
+  passBaseSpeed: 240,
+  passDistanceFactor: 0.9,
+  passSpeedMin: 300,
+  passSpeedMax: 480,
+  /**
+   * Charged pass (human, hold S): power 0..1 scales the pass speed between
+   * (1 - range) and (1 + range) of the normal speed; 0.5 = normal.
+   */
+  passPowerRange: 0.3,
+  shootSpeedMin: 340,
+  shootSpeedMax: 560,
+  /** Holding a charged action key (pass / shoot / lob) this long fires at full power. */
+  maxChargeMs: 350,
+  /** Shots at or above this power are "power shots" (trail + shake). */
+  powerShotThreshold: 0.8,
+  lobLift: 200,
+  lobSpeedMin: 170,
+  lobSpeedMax: 360,
+  /**
+   * Human lob (hold A): no auto-target. It flies in the arrow (or facing)
+   * direction and power 0..1 sets where it first lands, between these distances (px).
+   */
+  lobMinDistance: 90,
+  lobMaxDistance: 380,
+  /** A teammate within this distance of the landing spot becomes the receiver. */
+  lobReceiveRadius: 110,
+  /** Above this speed a first touch can fail. */
+  controlSpeed: 330,
+  controlChance: 0.45,
+  receiverControlChance: 0.85,
+  /** Field players can only touch the ball below this height. */
+  playerReachHeight: 9,
+  trailSpeed: 380,
+};
+
+// ---- Goalkeeper ----
+export const GOALKEEPER = {
+  reach: 22,
+  reachHeight: 24,
+  /** Shots slower than this are always caught. */
+  catchSpeed: 330,
+  /** How far in front of the goal line the keeper may go. */
+  boxDepth: 70,
+  /** How far above/below the goal mouth the keeper may go. */
+  boxMarginY: 40,
+  /** AI keeper holds the ball this long before distributing (ms). */
+  holdTime: 700,
+  /** Human-controlled keeper auto-kicks after holding the ball this long (ms). */
+  humanHoldMax: 3500,
+  diveDuration: 450,
+  rushDistance: 75,
+};
+
+// ---- Match ----
+export const MATCH = {
+  /** Selectable real-time match lengths in minutes. */
+  durationOptions: [2, 4, 6],
+  defaultDuration: 4,
+  /** The match clock runs from 0 to this many game minutes. */
+  fullTimeMinutes: 90,
+  goalCelebrationDuration: 2200,
+  kickoffDelay: 1200,
+  halftimeDelay: 2500,
+};
+
+// ---- AI ----
+export type Difficulty = 'easy' | 'normal' | 'hard';
+export const DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard'];
+
+export interface AIProfile {
+  /** How often off-ball players re-think their position (ms). */
+  decisionInterval: number;
+  /** Delay before a player who just got the ball makes a decision (ms). */
+  reactionTime: number;
+  /** Tackle attempts per second while in range. */
+  tackleRate: number;
+  /** Chance to pass when under pressure. */
+  passChance: number;
+  shootRange: number;
+  /** 0..1, higher = more accurate shots. */
+  shotAccuracy: number;
+  gkSaveChance: number;
+  /** Delay before the keeper starts reacting to a new kick toward his goal (ms). */
+  gkReactionMs: number;
+  /** Chance that a tackle by this team wins the ball. */
+  tackleSuccess: number;
+  speedFactor: number;
+}
+
+export const AI_PROFILES: Record<Difficulty, AIProfile> = {
+  // Slow to react, rarely tackles, wild shots, leaky keeper
+  easy: {
+    decisionInterval: 800,
+    reactionTime: 650,
+    tackleRate: 0.5,
+    passChance: 0.35,
+    shootRange: 170,
+    shotAccuracy: 0.4,
+    gkSaveChance: 0.45,
+    gkReactionMs: 280,
+    tackleSuccess: 0.45,
+    speedFactor: 0.8,
+  },
+  normal: {
+    decisionInterval: 500,
+    reactionTime: 300,
+    tackleRate: 1.6,
+    passChance: 0.6,
+    shootRange: 215,
+    shotAccuracy: 0.72,
+    gkSaveChance: 0.7,
+    gkReactionMs: 170,
+    tackleSuccess: 0.65,
+    speedFactor: 0.95,
+  },
+  // Quick, aggressive pressing, accurate finishing, strong keeper
+  hard: {
+    decisionInterval: 320,
+    reactionTime: 140,
+    tackleRate: 3.2,
+    passChance: 0.75,
+    shootRange: 250,
+    shotAccuracy: 0.9,
+    gkSaveChance: 0.85,
+    gkReactionMs: 90,
+    tackleSuccess: 0.8,
+    speedFactor: 1.06,
+  },
+};
+
+/**
+ * AI players never pick a shape position closer than this to a teammate's
+ * position or chosen target (px), so they don't bunch up.
+ */
+export const AI_SPACING = 70;
+
+/** Profile for the AI-driven teammates of the human player. */
+export const TEAMMATE_PROFILE: AIProfile = {
+  ...AI_PROFILES.normal,
+  tackleRate: 1.2,
+  speedFactor: 1.0,
+};
+
+// ---- Teams ----
+export interface TeamConfig {
+  name: string;
+  shortName: string;
+  primaryColor: number;
+  secondaryColor: number;
+  shortsColor: number;
+  skinColor: number;
+  goalkeeperColor: number;
+  /** Lighter shade of the team colour, readable on dark UI. */
+  textColor: number;
+}
+
+export const TEAMS: TeamConfig[] = [
+  {
+    name: 'Red Eagles',
+    shortName: 'REG',
+    primaryColor: 0xdd2222,
+    secondaryColor: 0xffffff,
+    shortsColor: 0xf2f2f2,
+    skinColor: 0xf5c5a3,
+    goalkeeperColor: 0xffcc00,
+    textColor: 0xff6655,
+  },
+  {
+    name: 'Blue Sharks',
+    shortName: 'BSH',
+    primaryColor: 0x2255dd,
+    secondaryColor: 0xffffff,
+    shortsColor: 0x14215a,
+    skinColor: 0xd4a574,
+    goalkeeperColor: 0x00cc44,
+    textColor: 0x7799ff,
+  },
+];
+
+// ---- Formations (5v5: 1 GK + 4 field) ----
+export type PlayerRole = 'goalkeeper' | 'defender' | 'midfielder' | 'forward';
+
+export interface FormationPosition {
+  role: PlayerRole;
+  x: number; // 0 = center line, 1 = own goal line
+  y: number; // -1 = top, 1 = bottom
+}
+
+export const FORMATION: FormationPosition[] = [
+  { role: 'goalkeeper', x: 0.95, y: 0 },
+  { role: 'defender', x: 0.62, y: -0.45 },
+  { role: 'defender', x: 0.62, y: 0.45 },
+  { role: 'midfielder', x: 0.35, y: 0 },
+  { role: 'forward', x: 0.12, y: 0 },
+];
+
+/** How far (fraction of half-pitch) each role pushes up when its team attacks. */
+export const ATTACK_PUSH: Record<PlayerRole, number> = {
+  goalkeeper: 0,
+  defender: 0.2,
+  midfielder: 0.4,
+  forward: 0.55,
+};
+
+// ---- Input ----
+// Movement is on the arrow keys; A/S/D are the action buttons.
+export const INPUT_MAP = {
+  up: ['UP'],
+  down: ['DOWN'],
+  left: ['LEFT'],
+  right: ['RIGHT'],
+  sprint: ['SHIFT'],
+  /** Short pass (without the ball: switch to the player nearest the ball). */
+  pass: ['S'],
+  /** Shoot, hold to charge (without the ball: tackle). */
+  shoot: ['D'],
+  /** Lob / long pass. */
+  lob: ['A'],
+  switchPlayer: ['SPACE'],
+};
+
+// ---- Audio ----
+export const AUDIO = {
+  defaultVolume: 0.5,
+};
