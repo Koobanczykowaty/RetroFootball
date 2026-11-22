@@ -1,8 +1,9 @@
 # Dependencies (restored with `npm install`)
 node_modules/
 
-# Build output (recreated with `npm run build`)
+# Build output (recreated with `npm run build` / `npm run build:single`)
 dist/
+release/
 
 # User's local file, not part of the project
 README.zip

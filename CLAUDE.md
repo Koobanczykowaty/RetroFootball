@@ -20,7 +20,15 @@ npm run dev                 # Vite dev server, http://localhost:3000
 npm run build               # tsc type-check (noEmit) + vite build -> dist/
 npm test                    # Vitest unit tests in tests/
 npm run test:sim -- 2 1     # needs a build first: headless Chrome/Edge plays 2 matches of 1 min, AI-vs-AI and bot-as-human
+npm run build:single        # release/RetroFootball.html: the whole game in one file, runs by double-click (file://)
 ```
+
+**Distribution:**
+- `vite.config.ts` uses `base: './'` (relative paths) so the build works under a GitHub Pages sub-path and from disk.
+- `--mode single` adds `vite-plugin-singlefile` plus an inline-favicon plugin and writes to `release/` (git-ignored). `scripts/rename-single.mjs` renames the output to RetroFootball.html.
+- `.github/workflows/deploy-pages.yml` runs unit tests, builds and deploys `dist/` to GitHub Pages on every push to `main`. The repo needs Pages → Source: GitHub Actions.
+- The repo has no remote yet; the user creates the GitHub repo and pushes.
+- Both builds were verified to run a full sim match: the single file from `file://`, and `dist/` served under `/RetroFootball/`.
 
 On this machine Node lives in `C:\Program Files\nodejs`, which may not be on the PowerShell PATH. Prefix commands with `$env:Path = "C:\Program Files\nodejs;$env:Path";`. Edge is at `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`.
 

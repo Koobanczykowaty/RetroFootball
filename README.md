@@ -45,6 +45,33 @@ Zawartość `dist/` to gotowa statyczna strona (index.html + jeden plik JS).
 | `npm run preview` | Serwuje `dist/` lokalnie |
 | `npm test` | Testy jednostkowe (Vitest) |
 | `npm run test:sim -- [mecze] [minuty]` | Test integracyjny: rozgrywa mecze w headless Chrome/Edge (wymaga wcześniejszego `npm run build`) |
+| `npm run build:single` | Wersja na PC: cała gra w jednym pliku `release/RetroFootball.html` |
+
+## Udostępnianie gry testerom
+
+### Wersja lokalna na PC (jeden plik)
+
+```bash
+npm run build:single
+```
+
+Powstaje plik **`release/RetroFootball.html`** (~1,5 MB, ~370 KB po spakowaniu do ZIP). Wystarczy go wysłać – tester otwiera go **dwuklikiem** w Chrome, Edge lub Firefoxie. Nie trzeba nic instalować ani mieć internetu. Każdą nową wersję trzeba wysłać od nowa.
+
+### GitHub Pages (link w przeglądarce)
+
+Gra publikuje się automatycznie przy każdym `git push` na gałąź `main` (workflow `.github/workflows/deploy-pages.yml`: testy jednostkowe → build → publikacja). Jednorazowa konfiguracja:
+
+1. Załóż konto na [github.com](https://github.com) i nowe repozytorium, np. `RetroFootball` (**publiczne** – GitHub Pages w darmowym planie działa tylko dla repozytoriów publicznych). Nie dodawaj README ani .gitignore przy zakładaniu.
+2. W folderze gry (git jest w `C:\Program Files\Git\cmd`):
+   ```bash
+   git remote add origin https://github.com/<twoja-nazwa>/RetroFootball.git
+   git push -u origin main
+   ```
+   Przy pierwszym pushu otworzy się okno logowania do GitHuba.
+3. Na GitHubie: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+4. W zakładce **Actions** poczekaj na zielony znaczek (1–2 min). Gra będzie pod adresem **`https://<twoja-nazwa>.github.io/RetroFootball/`**.
+
+Od tej pory wystarczy `git push`, a testerzy po odświeżeniu strony mają najnowszą wersję.
 
 ## Sterowanie
 
