@@ -8,6 +8,7 @@ import { AssetGenerator } from '../assets/AssetGenerator';
 import { DIFFICULTIES, Difficulty } from '../config/GameplayConfig';
 import { settings } from '../config/Settings';
 import { initSimGlobal } from '../debug/SimReport';
+import { runUiFlowTest } from '../debug/UiFlowTest';
 import type { MatchSceneData } from './MatchScene';
 
 export class BootScene extends Phaser.Scene {
@@ -19,6 +20,13 @@ export class BootScene extends Phaser.Scene {
     AssetGenerator.generateAll(this);
 
     const params = new URLSearchParams(window.location.search);
+
+    // Automated menu walk-through (crash test), see debug/UiFlowTest
+    if (params.has('uitest')) {
+      initSimGlobal(0);
+      runUiFlowTest(this.game);
+      return;
+    }
     const sim = params.get('sim');
     if (sim !== null) {
       const matches = Math.max(1, Number.parseInt(sim, 10) || 1);

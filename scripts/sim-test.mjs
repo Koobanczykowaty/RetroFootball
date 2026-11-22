@@ -162,7 +162,23 @@ async function runSim(label, human, twoPlayer = false) {
   }
 }
 
+/** Walk through the menus and screens (?uitest=1) and fail on any runtime error. */
+async function runUiFlow() {
+  console.log('[UI flow] menus ↔ setup screens ↔ matches');
+  const dom = await runBrowser(browser, `${url}?uitest=1`, 15000);
+  const m = dom.match(/<pre id="sim-result"[^>]*>([\s\S]*?)<\/pre>/);
+  if (!m) {
+    failures.push('[UI flow] no result found in the page');
+    return;
+  }
+  const result = JSON.parse(decode(m[1]));
+  console.log(`  ${result.uiSteps ?? 0} screen switches, ${result.errors.length} error(s)`);
+  if (result.errors.length) failures.push(`[UI flow] runtime errors: ${result.errors.join(' | ')}`);
+  if (!result.done) failures.push('[UI flow] did not finish all steps');
+}
+
 console.log(`Browser: ${browser}`);
+await runUiFlow();
 await runSim('AI vs AI', false);
 await runSim('bot as human', true);
 await runSim('2 players (two bots)', false, true);

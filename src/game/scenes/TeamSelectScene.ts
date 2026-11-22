@@ -174,6 +174,12 @@ export class TeamSelectScene extends Phaser.Scene {
       };
       refresh();
       this.events.on(Phaser.Scenes.Events.UPDATE, refresh);
+      // Scene event listeners survive leaving the scene: without this, the
+      // next visit (e.g. pressing PLAY) ran refresh() on the destroyed text
+      // and crashed the game.
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        this.events.off(Phaser.Scenes.Events.UPDATE, refresh);
+      });
     } else {
       const difficulty = new OptionSelector<Difficulty>(
         this, GAME_WIDTH / 2, 328, 'DIFFICULTY',

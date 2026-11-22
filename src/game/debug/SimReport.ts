@@ -22,6 +22,8 @@ interface SimGlobal {
   errors: string[];
   expected: number;
   done: boolean;
+  /** UI flow test: number of screen switches performed. */
+  uiSteps?: number;
 }
 
 declare global {

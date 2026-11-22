@@ -29,7 +29,10 @@ const config: Phaser.Types.Core.GameConfig = {
   },
   scene: [BootScene, MenuScene, TeamSelectScene, MatchScene, ControlsScene, SettingsScene],
   // The ?sim test mode runs in headless browsers where requestAnimationFrame may not tick
-  fps: { target: 60, forceSetTimeOut: new URLSearchParams(window.location.search).has('sim') },
+  fps: {
+    target: 60,
+    forceSetTimeOut: ['sim', 'uitest'].some((p) => new URLSearchParams(window.location.search).has(p)),
+  },
   input: {
     keyboard: true,
     mouse: true,
