@@ -7,16 +7,18 @@
 
 import Phaser from 'phaser';
 import {
-  AI_PROFILES, AIProfile, BALL, FORMATION, GOALKEEPER, MATCH, PLAYER, TEAMMATE_PROFILE, TEAMS,
+  AI_PROFILES, AIProfile, BALL, FORMATION_IDS, FORMATIONS, FormationId, GOALKEEPER, MATCH, PLAYER,
+  TEAMMATE_PROFILE, TEAMS,
 } from '../config/GameplayConfig';
 import { pickPlayerForBall, pickPlayerInDirection } from '../logic/PlayerSelection';
-import { settings } from '../config/Settings';
+import { saveSettings, settings } from '../config/Settings';
 import { Ball } from '../entities/Ball';
 import { Pitch } from '../entities/Pitch';
 import { Player } from '../entities/Player';
 import { ballOwner, createStats, MatchWorld } from '../logic/MatchWorld';
 import {
-  PITCH_CX, PITCH_CY, attackDir, formationPosition, kickoffPositions, setSidesSwapped, teamDefendingSide,
+  PITCH_CX, PITCH_CY, attackDir, formationPosition, kickoffPositions, kickoffTakerIndex, setSidesSwapped,
+  teamDefendingSide,
 } from '../logic/PitchGeometry';
 import { ActionSystem } from '../systems/ActionSystem';
 import { AISystem } from '../systems/AISystem';
@@ -26,6 +28,7 @@ import { MatchState, MatchSystem } from '../systems/MatchSystem';
 import { soundManager } from '../systems/SoundManager';
 import { HUD } from '../ui/HUD';
 import { FulltimeInfo, MatchOverlay } from '../ui/MatchOverlay';
+import { createEventDeduper } from '../ui/MenuNavigator';
 import { PauseMenu } from '../ui/PauseMenu';
 import { textStyle } from '../ui/Theme';
 import { BotInput } from '../debug/BotInput';
@@ -80,6 +83,8 @@ export class MatchScene extends Phaser.Scene {
   private heldDir = { x: 0, y: 0 };
   private sim: SimReport | null = null;
   private bot: BotInput | null = null;
+  /** Formation of each team in this match. */
+  private formations: [FormationId, FormationId] = ['2-3', '2-3'];
 
   constructor() {
     super({ key: 'MatchScene' });
@@ -104,9 +109,16 @@ export class MatchScene extends Phaser.Scene {
     new Pitch(this);
     this.ball = new Ball(this, PITCH_CX, PITCH_CY);
 
+    // The human uses his chosen formation; the CPU picks one at random each match
+    const randomFormation = () => FORMATION_IDS[Math.floor(Math.random() * FORMATION_IDS.length)];
+    this.formations = [
+      this.humanTeam === 0 ? settings.formation : randomFormation(),
+      this.humanTeam === 1 ? settings.formation : randomFormation(),
+    ];
+
     const teams: [Player[], Player[]] = [[], []];
     for (let t = 0; t < 2; t++) {
-      FORMATION.forEach((pos, i) => {
+      FORMATIONS[this.formations[t]].forEach((pos, i) => {
         const home = formationPosition(t, pos);
         teams[t].push(new Player(this, t * 10 + i, t, pos, home.x, home.y));
       });
@@ -157,6 +169,13 @@ export class MatchScene extends Phaser.Scene {
       onResume: () => this.resume(),
       onRestart: () => this.restartMatch(),
       onMainMenu: () => this.scene.start('MenuScene'),
+      formation: this.humanTeam !== null ? this.formations[this.humanTeam] : '2-3',
+      onFormationChange: (id) => {
+        if (this.humanTeam === null) return;
+        this.changeFormation(this.humanTeam, id);
+        settings.formation = id; // also used for the next matches
+        saveSettings();
+      },
     });
     this.fx = this.add.graphics().setDepth(60);
     this.keeperTimer = this.add.text(0, 0, '', {
@@ -167,7 +186,7 @@ export class MatchScene extends Phaser.Scene {
 
     const kb = this.input.keyboard;
     kb?.on('keydown-ESC', this.onEscKey, this);
-    kb?.on('keydown-P', this.togglePause, this);
+    kb?.on('keydown-P', this.onPauseKey, this);
     kb?.on('keydown-M', this.onMuteKey, this);
     this.game.events.on(Phaser.Core.Events.BLUR, this.onBlur, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.onShutdown, this);
@@ -181,10 +200,22 @@ export class MatchScene extends Phaser.Scene {
           pressKey('Escape', 27);
           this.time.delayedCall(500, () => {
             if (this.match.isPaused()) this.sim?.event('paused');
-            pressKey('Escape', 27);
-            this.time.delayedCall(300, () => {
-              if (!this.match.isPaused()) this.sim?.event('resumed');
-              else this.resume();
+            // Change formation through the pause menu: ↓ to FORMATION, → to switch
+            const team = this.humanTeam ?? 0;
+            const before = this.formations[team];
+            pressKey('ArrowDown', 40);
+            pressKey('ArrowRight', 39);
+            // Phaser handles queued key events on the next frame
+            this.time.delayedCall(150, () => {
+              const after = this.formations[team];
+              const slots = FORMATIONS[after];
+              const rolesOk = this.world.teams[team].every((p, i) => p.role === slots[i].role);
+              this.sim?.event(after !== before && rolesOk ? 'formationChangeOk' : 'formationChangeWrong');
+              pressKey('Escape', 27);
+              this.time.delayedCall(300, () => {
+                if (!this.match.isPaused()) this.sim?.event('resumed');
+                else this.resume();
+              });
             });
           });
         });
@@ -657,15 +688,28 @@ export class MatchScene extends Phaser.Scene {
     this.sim?.event('sidesSwapped');
   }
 
+  /**
+   * Switch a team to another formation mid-match: each player keeps his index
+   * and takes over that slot's role and home position.
+   */
+  private changeFormation(team: number, id: FormationId): void {
+    if (this.formations[team] === id) return;
+    this.formations[team] = id;
+    const slots = FORMATIONS[id];
+    this.world.teams[team].forEach((p, i) => p.setFormationSlot(slots[i], formationPosition(team, slots[i])));
+    this.ai.reset(); // re-think shape positions right away
+    this.sim?.event('formationChanged');
+  }
+
   private resetPositions(): void {
     const kickoffTeam = this.match.data.kickoffTeam;
     for (let t = 0; t < 2; t++) {
-      const positions = kickoffPositions(t, t === kickoffTeam);
+      const positions = kickoffPositions(t, t === kickoffTeam, FORMATIONS[this.formations[t]]);
       this.world.teams[t].forEach((p, i) => p.placeAt(positions[i].x, positions[i].y));
     }
 
     this.ball.reset(PITCH_CX, PITCH_CY);
-    const taker = this.world.teams[kickoffTeam].find((p) => p.role === 'forward');
+    const taker = this.world.teams[kickoffTeam][kickoffTakerIndex(FORMATIONS[this.formations[kickoffTeam]])];
     if (taker) {
       taker.gainPossession(800);
       this.ball.setOwner(taker.id, kickoffTeam);
@@ -674,8 +718,9 @@ export class MatchScene extends Phaser.Scene {
     this.ai.reset();
 
     if (this.humanTeam !== null) {
-      const fwd = this.world.teams[this.humanTeam].find((p) => p.role === 'forward');
-      if (fwd) this.setControlled(fwd);
+      // Start on the kickoff taker (or our most central forward when the CPU kicks off)
+      const idx = kickoffTakerIndex(FORMATIONS[this.formations[this.humanTeam]]);
+      this.setControlled(this.world.teams[this.humanTeam][idx]);
     }
     this.playerInput.sync();
     this.chargeKind = null;
@@ -683,12 +728,24 @@ export class MatchScene extends Phaser.Scene {
 
   // ================================================================ pause
 
+  // Each shortcut handles a given key event only once (see createEventDeduper)
+  private readonly escOnce = createEventDeduper();
+  private readonly pauseKeyOnce = createEventDeduper();
+  private readonly muteOnce = createEventDeduper();
+
   private onEscKey(event?: KeyboardEvent): void {
+    if (event && !this.escOnce(event)) return;
     // While paused the pause menu handles ESC itself
     if (!this.match.isPaused()) this.pause(event);
   }
 
-  private onMuteKey(): void {
+  private onPauseKey(event?: KeyboardEvent): void {
+    if (event && !this.pauseKeyOnce(event)) return;
+    this.togglePause(event);
+  }
+
+  private onMuteKey(event?: KeyboardEvent): void {
+    if (event && !this.muteOnce(event)) return;
     soundManager.toggle();
   }
 
@@ -808,7 +865,7 @@ export class MatchScene extends Phaser.Scene {
   private onShutdown(): void {
     const kb = this.input.keyboard;
     kb?.off('keydown-ESC', this.onEscKey, this);
-    kb?.off('keydown-P', this.togglePause, this);
+    kb?.off('keydown-P', this.onPauseKey, this);
     kb?.off('keydown-M', this.onMuteKey, this);
     this.game.events.off(Phaser.Core.Events.BLUR, this.onBlur, this);
     this.playerInput.destroy();

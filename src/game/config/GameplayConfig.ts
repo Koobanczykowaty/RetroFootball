@@ -272,7 +272,7 @@ export const TEAMS: TeamConfig[] = [
   },
 ];
 
-// ---- Formations (5v5: 1 GK + 4 field) ----
+// ---- Formations (6v6: 1 GK + 5 field) ----
 export type PlayerRole = 'goalkeeper' | 'defender' | 'midfielder' | 'forward';
 
 export interface FormationPosition {
@@ -281,13 +281,36 @@ export interface FormationPosition {
   y: number; // -1 = top, 1 = bottom
 }
 
-export const FORMATION: FormationPosition[] = [
-  { role: 'goalkeeper', x: 0.95, y: 0 },
-  { role: 'defender', x: 0.62, y: -0.45 },
-  { role: 'defender', x: 0.62, y: 0.45 },
-  { role: 'midfielder', x: 0.35, y: 0 },
-  { role: 'forward', x: 0.12, y: 0 },
-];
+export type FormationId = '2-3' | '3-2';
+export const FORMATION_IDS: FormationId[] = ['2-3', '3-2'];
+
+/** Number of players per team (all formations have the same size). */
+export const TEAM_SIZE = 6;
+
+/**
+ * Index 0 is always the goalkeeper. A formation change during the match keeps
+ * each player's index and gives him the role of the new formation's slot.
+ */
+export const FORMATIONS: Record<FormationId, FormationPosition[]> = {
+  // Attacking: 2 defenders + 3 forwards
+  '2-3': [
+    { role: 'goalkeeper', x: 0.95, y: 0 },
+    { role: 'defender', x: 0.62, y: -0.45 },
+    { role: 'defender', x: 0.62, y: 0.45 },
+    { role: 'forward', x: 0.16, y: -0.6 },
+    { role: 'forward', x: 0.1, y: 0 },
+    { role: 'forward', x: 0.16, y: 0.6 },
+  ],
+  // Defensive: 3 defenders + 2 forwards
+  '3-2': [
+    { role: 'goalkeeper', x: 0.95, y: 0 },
+    { role: 'defender', x: 0.62, y: -0.6 },
+    { role: 'defender', x: 0.7, y: 0 },
+    { role: 'defender', x: 0.62, y: 0.6 },
+    { role: 'forward', x: 0.14, y: -0.35 },
+    { role: 'forward', x: 0.14, y: 0.35 },
+  ],
+};
 
 /** How far (fraction of half-pitch) each role pushes up when its team attacks. */
 export const ATTACK_PUSH: Record<PlayerRole, number> = {

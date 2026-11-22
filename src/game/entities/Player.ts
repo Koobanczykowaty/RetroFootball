@@ -29,8 +29,9 @@ export const PLAYER_FRAME = {
 export class Player {
   public readonly id: number;
   public readonly teamIndex: number;
-  public readonly role: PlayerRole;
-  public readonly formation: FormationPosition;
+  /** Can change when the team switches formation mid-match (setFormationSlot). */
+  public role: PlayerRole;
+  public formation: FormationPosition;
   public readonly sprite: Phaser.GameObjects.Sprite;
 
   public x: number;
@@ -96,6 +97,17 @@ export class Player {
     this.sprite = scene.add.sprite(x, y, textureKey, PLAYER_FRAME.idle);
     this.sprite.setFlipX(this.facingX < 0);
     this.syncSprite();
+  }
+
+  /**
+   * Take over a slot of a (new) formation: role and formation home change.
+   * Goalkeeper slots stay goalkeeper slots (index 0 in every formation).
+   */
+  setFormationSlot(pos: FormationPosition, home: { x: number; y: number }): void {
+    this.formation = pos;
+    this.role = pos.role;
+    this.homeX = home.x;
+    this.homeY = home.y;
   }
 
   // ---------------------------------------------------------------- control

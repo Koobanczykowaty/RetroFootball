@@ -3,7 +3,7 @@
 // Persisted to localStorage when available (falls back to memory).
 // ============================================================
 
-import { AUDIO, Difficulty, DIFFICULTIES, MATCH } from './GameplayConfig';
+import { AUDIO, Difficulty, DIFFICULTIES, FORMATION_IDS, FormationId, MATCH } from './GameplayConfig';
 
 export interface GameSettings {
   soundEnabled: boolean;
@@ -14,6 +14,8 @@ export interface GameSettings {
   difficulty: Difficulty;
   /** Index of the team the human controls in Quick Match. */
   playerTeam: number;
+  /** The human team's formation. */
+  formation: FormationId;
 }
 
 const STORAGE_KEY = 'retrofootball.settings.v1';
@@ -24,6 +26,7 @@ const DEFAULTS: GameSettings = {
   matchMinutes: MATCH.defaultDuration,
   difficulty: 'normal',
   playerTeam: 0,
+  formation: '2-3',
 };
 
 function load(): GameSettings {
@@ -39,6 +42,7 @@ function load(): GameSettings {
     }
     if (parsed.difficulty && DIFFICULTIES.includes(parsed.difficulty)) s.difficulty = parsed.difficulty;
     if (parsed.playerTeam === 0 || parsed.playerTeam === 1) s.playerTeam = parsed.playerTeam;
+    if (parsed.formation && FORMATION_IDS.includes(parsed.formation)) s.formation = parsed.formation;
   } catch {
     // Storage unavailable or corrupt — use defaults.
   }

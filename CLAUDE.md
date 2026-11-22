@@ -11,7 +11,7 @@ This file guides Claude Code (claude.ai/code) when working in this repository.
 
 ## Project
 
-RetroFootball is a 2D pixel-art arcade football (soccer) game: 5v5 (1 GK + 4 outfield), one human against AI, running in the browser. Stack: **Phaser 3.80 (Canvas renderer), TypeScript (strict, noUnused*), Vite 5, Vitest**. There are no image or audio files: sprites are drawn at runtime with Canvas 2D in `AssetGenerator`, and sounds are synthesized with Web Audio in `SoundManager`. User-facing docs: README.md (Polish) and ROADMAP.md.
+RetroFootball is a 2D pixel-art arcade football (soccer) game: 6v6 (1 GK + 5 outfield), one human against AI, running in the browser. Stack: **Phaser 3.80 (Canvas renderer), TypeScript (strict, noUnused*), Vite 5, Vitest**. There are no image or audio files: sprites are drawn at runtime with Canvas 2D in `AssetGenerator`, and sounds are synthesized with Web Audio in `SoundManager`. User-facing docs: README.md (Polish) and ROADMAP.md.
 
 ## Commands
 
@@ -64,6 +64,13 @@ Scenes: `BootScene` (generates textures and animations) → `MenuScene` → `Tea
 
 ## Conventions and gotchas
 
+- **Formations:** `FORMATIONS` in GameplayConfig has two shapes, `'2-3'` (2 defenders + 3 forwards) and `'3-2'` (3 defenders + 2 forwards). There are no midfielders, by the user's choice. Index 0 is always the keeper and `TEAM_SIZE` = 6.
+  - The human's formation is `settings.formation`, chosen on QUICK MATCH and changeable in the pause menu. A pause-menu change also updates the setting.
+  - The CPU picks one at random every match. `MatchScene.formations` holds each team's current shape.
+  - `changeFormation` keeps player indices and calls `Player.setFormationSlot`, so role and home can change mid-match.
+  - At kickoff only `kickoffTakerIndex` (the most central forward) stands on the centre spot. `kickoffPositions(team, kicking, formation)` needs the formation.
+  - The bot-as-human sim changes formation through the pause menu with real arrow keys (`formationChangeOk`).
+- **Phaser key events can be delivered twice.** `KeyboardPlugin` re-processes the whole frame queue on each new DOM key event, and its duplicate check only catches an immediate repeat. So two different keys within one frame re-emit the earlier event object. Every key listener must dedupe with its own `createEventDeduper()` (see `MenuNavigator`, and `MatchScene` for ESC/P/M). Don't share one deduper between listeners, or one listener swallows the event for the others.
 - **Desktop browser only.** There are no touch or mobile controls (the user decided this); don't add them.
 - **Controls:** arrows move, Shift sprints, S passes (hold to charge; without the ball it switches player), A lobs (hold to charge), D shoots (hold to charge; without the ball it tackles), Space switches player, Esc/P pause, M mutes. All charged actions reach full power after `BALL.maxChargeMs` (350 ms). These are defined in `INPUT_MAP`. Menus use arrows, Enter/Space and Esc only, because A/S/D are gameplay keys.
 - **Key-event ordering:** Phaser emits `keydown-<KEY>` before the generic `keydown` for the same DOM event. A listener added while handling the first (e.g. the pause menu opened by ESC) still receives the second. `MenuNavigator.activate(i, openedBy)` ignores that exact event object; pass it whenever a key opens a menu.

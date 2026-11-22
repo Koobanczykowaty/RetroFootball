@@ -112,7 +112,7 @@ async function runSim(label, human) {
     if (s.shots[0] + s.shots[1] === 0) failures.push(`${tag}: no shots were taken`);
     if (human) {
       // Scripted every match: pause/resume via ESC and the keeper held-key scenario
-      for (const e of ['paused', 'resumed', 'keeperHeldKeyOk']) {
+      for (const e of ['paused', 'resumed', 'keeperHeldKeyOk', 'formationChangeOk']) {
         if (!r.events[e]) failures.push(`${tag}: scripted check "${e}" did not happen`);
       }
       // Forced: the keeper takes the ball while D is still held from a charging

@@ -1,19 +1,24 @@
 // ============================================================
-// PauseMenu — RESUME / RESTART MATCH / CONTROLS / MAIN MENU,
-// with an in-place controls reference view.
+// PauseMenu — RESUME / FORMATION / RESTART MATCH / CONTROLS /
+// MAIN MENU, with an in-place controls reference view.
 // ============================================================
 
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config/GameplayConfig';
+import { FORMATION_IDS, FormationId, GAME_WIDTH, GAME_HEIGHT } from '../config/GameplayConfig';
 import { Button } from './Button';
 import { CONTROLS_PANEL_HEIGHT, createControlsPanel } from './ControlsPanel';
 import { MenuNavigator } from './MenuNavigator';
+import { OptionSelector } from './OptionSelector';
 import { drawPanel, titleStyle } from './Theme';
 
 export interface PauseHandlers {
   onResume: () => void;
   onRestart: () => void;
   onMainMenu: () => void;
+  /** Change the human team's formation mid-match. */
+  onFormationChange: (id: FormationId) => void;
+  /** Formation selected when the menu is created. */
+  formation: FormationId;
 }
 
 const CX = GAME_WIDTH / 2;
@@ -35,19 +40,22 @@ export class PauseMenu {
     // --- Main pause panel
     this.main = scene.add.container(0, 0);
     const g = scene.add.graphics();
-    drawPanel(g, CX - 150, CY - 150, 300, 300);
+    drawPanel(g, CX - 170, CY - 170, 340, 340);
     this.main.add(g);
-    this.main.add(scene.add.text(CX, CY - 116, 'PAUSED', titleStyle(30)).setOrigin(0.5));
+    this.main.add(scene.add.text(CX, CY - 136, 'PAUSED', titleStyle(30)).setOrigin(0.5));
 
     const opts = { width: 220, height: 38, fontSize: 16 };
-    const buttons = [
-      new Button(scene, CX, CY - 56, 'RESUME', handlers.onResume, opts),
-      new Button(scene, CX, CY - 6, 'RESTART MATCH', handlers.onRestart, opts),
-      new Button(scene, CX, CY + 44, 'CONTROLS', () => this.showControls(true), opts),
-      new Button(scene, CX, CY + 94, 'MAIN MENU', handlers.onMainMenu, opts),
-    ];
-    this.main.add(buttons);
-    this.mainNav = new MenuNavigator(scene, buttons, handlers.onResume);
+    const resume = new Button(scene, CX, CY - 80, 'RESUME', handlers.onResume, opts);
+    const formation = new OptionSelector<FormationId>(
+      scene, CX, CY - 32, 'FORMATION', FORMATION_IDS, Math.max(0, FORMATION_IDS.indexOf(handlers.formation)),
+      (v) => v, handlers.onFormationChange, 300,
+    );
+    const restart = new Button(scene, CX, CY + 16, 'RESTART MATCH', handlers.onRestart, opts);
+    const controls = new Button(scene, CX, CY + 64, 'CONTROLS', () => this.showControls(true), opts);
+    const menu = new Button(scene, CX, CY + 112, 'MAIN MENU', handlers.onMainMenu, opts);
+    const items = [resume, formation, restart, controls, menu];
+    this.main.add(items);
+    this.mainNav = new MenuNavigator(scene, items, handlers.onResume);
 
     // --- Controls view
     this.controls = scene.add.container(0, 0).setVisible(false);

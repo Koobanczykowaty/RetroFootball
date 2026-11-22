@@ -1,6 +1,6 @@
 # RetroFootball
 
-Dynamiczna, zręcznościowa gra piłkarska 2D w stylu pixel art, działająca w przeglądarce. Szybkie mecze 5 na 5 (bramkarz + 4 zawodników pola) przeciwko komputerowi, z prostym sterowaniem i klimatem mobilnych gier piłkarskich z lat 2000–2008.
+Dynamiczna, zręcznościowa gra piłkarska 2D w stylu pixel art, działająca w przeglądarce. Szybkie mecze 6 na 6 (bramkarz + 5 zawodników pola) przeciwko komputerowi, z prostym sterowaniem i klimatem mobilnych gier piłkarskich z lat 2000–2008.
 
 Wszystkie grafiki są rysowane programowo (Canvas 2D), a wszystkie dźwięki syntezowane w locie (Web Audio API). Projekt nie zawiera żadnych zewnętrznych assetów.
 
@@ -82,7 +82,8 @@ Menu obsługuje mysz i klawiaturę (↑↓ wybór, ←→ zmiana opcji, Enter/Sp
   - **NORMAL**: wyrównana gra;
   - **HARD**: szybki, agresywny pressing, skuteczne odbiory, celne strzały, mocny bramkarz.
   Wszystkie parametry są w `AI_PROFILES` w `GameplayConfig.ts`.
-- **Rozgrywka 5v5**:
+- **Formacje**: **2-3** (ofensywna: 2 obrońców + 3 napastników) albo **3-2** (defensywna: 3 obrońców + 2 napastników). Swoją wybierasz na ekranie QUICK MATCH i możesz ją zmienić w trakcie meczu w menu pauzy. Komputer losuje formację przed każdym meczem.
+- **Rozgrywka 6v6**:
   - ruch w 8 kierunkach z bezwładnością, sprint i stamina;
   - podania z wyborem odbiorcy w kierunku ruchu, wyprzedzające podania do biegnącego partnera;
   - ładowany strzał z celowaniem w róg i smugą przy mocnym strzale;

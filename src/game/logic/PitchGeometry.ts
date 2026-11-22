@@ -3,7 +3,7 @@
 // No Phaser dependency so it can be unit-tested in Node.
 // ============================================================
 
-import { BALL, PITCH, FORMATION, FormationPosition } from '../config/GameplayConfig';
+import { BALL, PITCH, FormationPosition } from '../config/GameplayConfig';
 
 export const PITCH_LEFT = PITCH.x;
 export const PITCH_RIGHT = PITCH.x + PITCH.width;
@@ -153,18 +153,33 @@ export function formationPosition(team: number, pos: FormationPosition): { x: nu
   };
 }
 
+/** Index of the player who takes the kickoff: the most central forward. */
+export function kickoffTakerIndex(formation: readonly FormationPosition[]): number {
+  let best = -1;
+  for (let i = 0; i < formation.length; i++) {
+    const pos = formation[i];
+    if (pos.role !== 'forward') continue;
+    if (best < 0 || Math.abs(pos.y) < Math.abs(formation[best].y)) best = i;
+  }
+  return best >= 0 ? best : formation.length - 1;
+}
+
 /** Starting positions for all of a team's players at kickoff. */
-export function kickoffPositions(team: number, isKickingOff: boolean): Array<{ x: number; y: number }> {
-  return FORMATION.map((pos) => {
+export function kickoffPositions(
+  team: number, isKickingOff: boolean, formation: readonly FormationPosition[],
+): Array<{ x: number; y: number }> {
+  const taker = kickoffTakerIndex(formation);
+  const dir = attackDir(team);
+  const r = PITCH.centerCircleRadius;
+  return formation.map((pos, i) => {
     const p = formationPosition(team, pos);
-    if (pos.role === 'forward') {
-      if (isKickingOff) {
-        p.x = PITCH_CX - attackDir(team) * 14;
-        p.y = PITCH_CY;
-      } else {
-        // Defending team waits outside the centre circle
-        p.x = PITCH_CX - attackDir(team) * (PITCH.centerCircleRadius + 14);
-      }
+    if (isKickingOff && i === taker) {
+      // The taker stands on the ball at the centre spot
+      p.x = PITCH_CX - dir * 14;
+      p.y = PITCH_CY;
+    } else if (!isKickingOff && pos.role === 'forward' && Math.abs(p.y - PITCH_CY) < r + 10) {
+      // Defending team waits outside the centre circle
+      p.x = PITCH_CX - dir * (r + 14);
     }
     return p;
   });

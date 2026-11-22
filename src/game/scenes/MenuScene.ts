@@ -48,7 +48,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.add.text(GAME_WIDTH / 2, y0 + gap * 2 + 46, '↑↓ choose   ENTER select', textStyle(11, UI.textMuted)).setOrigin(0.5);
     this.add.text(GAME_WIDTH - 10, GAME_HEIGHT - 14, `v${GAME_VERSION}`, textStyle(10, '#7788aa')).setOrigin(1, 0.5);
-    this.add.text(10, GAME_HEIGHT - 14, 'QUICK MATCH  •  5 v 5', textStyle(10, '#7788aa')).setOrigin(0, 0.5);
+    this.add.text(10, GAME_HEIGHT - 14, 'QUICK MATCH  •  6 v 6', textStyle(10, '#7788aa')).setOrigin(0, 0.5);
   }
 
   private drawBackground(): void {

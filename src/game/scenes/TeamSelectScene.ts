@@ -5,7 +5,7 @@
 
 import Phaser from 'phaser';
 import {
-  DIFFICULTIES, Difficulty, GAME_WIDTH, GAME_HEIGHT, MATCH, TEAMS,
+  DIFFICULTIES, Difficulty, FORMATION_IDS, FormationId, GAME_WIDTH, GAME_HEIGHT, MATCH, TEAMS,
 } from '../config/GameplayConfig';
 import { saveSettings, settings } from '../config/Settings';
 import { soundManager } from '../systems/SoundManager';
@@ -102,7 +102,7 @@ export class TeamSelectScene extends Phaser.Scene {
     });
 
     const length = new OptionSelector<number>(
-      this, GAME_WIDTH / 2, 300, 'MATCH LENGTH',
+      this, GAME_WIDTH / 2, 288, 'MATCH LENGTH',
       MATCH.durationOptions, Math.max(0, MATCH.durationOptions.indexOf(settings.matchMinutes)),
       (v) => `${v} MIN`,
       (v) => {
@@ -111,7 +111,7 @@ export class TeamSelectScene extends Phaser.Scene {
       },
     );
     const difficulty = new OptionSelector<Difficulty>(
-      this, GAME_WIDTH / 2, 342, 'DIFFICULTY',
+      this, GAME_WIDTH / 2, 328, 'DIFFICULTY',
       DIFFICULTIES, Math.max(0, DIFFICULTIES.indexOf(settings.difficulty)),
       (v) => v.toUpperCase(),
       (v) => {
@@ -119,15 +119,25 @@ export class TeamSelectScene extends Phaser.Scene {
         saveSettings();
       },
     );
+    const formation = new OptionSelector<FormationId>(
+      this, GAME_WIDTH / 2, 368, 'FORMATION',
+      FORMATION_IDS, Math.max(0, FORMATION_IDS.indexOf(settings.formation)),
+      (v) => (v === '2-3' ? '2-3 ATT' : '3-2 DEF'),
+      (v) => {
+        settings.formation = v;
+        saveSettings();
+      },
+    );
 
-    const start = new Button(this, GAME_WIDTH / 2, 410, 'KICK OFF!', () => this.startMatch(), {
+    const start = new Button(this, GAME_WIDTH / 2, 425, 'KICK OFF!', () => this.startMatch(), {
       width: 240, height: 44, fontSize: 20, color: 0x2a8a4a, focusColor: 0x3fb066,
     });
-    const back = new Button(this, GAME_WIDTH / 2, 470, 'BACK', () => this.scene.start('MenuScene'), {
+    const back = new Button(this, GAME_WIDTH / 2, 478, 'BACK', () => this.scene.start('MenuScene'), {
       width: 140, height: 30, fontSize: 14,
     });
 
-    new MenuNavigator(this, [picker, length, difficulty, start, back], () => this.scene.start('MenuScene')).activate(3);
+    new MenuNavigator(this, [picker, length, difficulty, formation, start, back], () => this.scene.start('MenuScene'))
+      .activate(4);
 
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, '←→ change   ↑↓ move   ENTER confirm   ESC back', textStyle(11, UI.textMuted))
       .setOrigin(0.5);

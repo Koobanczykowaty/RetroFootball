@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { FORMATION, PITCH } from '../src/game/config/GameplayConfig';
+import { FORMATION_IDS, FORMATIONS, FormationId, PITCH, TEAM_SIZE } from '../src/game/config/GameplayConfig';
 import {
   GOAL_BOTTOM, GOAL_TOP, PITCH_CX, PITCH_CY, PITCH_LEFT, PITCH_RIGHT,
   attackDir, distToSegment, kickoffPositions, laneClearance, opponentGoalX, ownGoalX, predictLineCrossing,
-  setSidesSwapped, teamDefendingSide, predictBallCrossing, PITCH_TOP,
+  setSidesSwapped, teamDefendingSide, predictBallCrossing, PITCH_TOP, kickoffTakerIndex,
 } from '../src/game/logic/PitchGeometry';
 
 describe('PitchGeometry', () => {
@@ -89,23 +89,61 @@ describe('PitchGeometry', () => {
 
     it('lines teams up in their new halves', () => {
       setSidesSwapped(true);
-      for (const p of kickoffPositions(0, true)) expect(p.x).toBeGreaterThanOrEqual(PITCH_CX);
-      for (const p of kickoffPositions(1, false)) expect(p.x).toBeLessThanOrEqual(PITCH_CX);
+      for (const id of FORMATION_IDS) {
+        for (const p of kickoffPositions(0, true, FORMATIONS[id])) expect(p.x).toBeGreaterThanOrEqual(PITCH_CX);
+        for (const p of kickoffPositions(1, false, FORMATIONS[id])) expect(p.x).toBeLessThanOrEqual(PITCH_CX);
+      }
     });
   });
 
-  it('places both teams in their own half with the kicker at the centre', () => {
-    for (const team of [0, 1]) {
-      const kicking = kickoffPositions(team, true);
-      const defending = kickoffPositions(team, false);
-      expect(kicking).toHaveLength(FORMATION.length);
-      for (const p of [...kicking, ...defending]) {
-        expect((p.x - PITCH_CX) * attackDir(team)).toBeLessThanOrEqual(0);
+  describe('formations', () => {
+    const count = (id: FormationId, role: string) => FORMATIONS[id].filter((f) => f.role === role).length;
+
+    it('2-3 = keeper + 2 defenders + 3 forwards; 3-2 = keeper + 3 defenders + 2 forwards', () => {
+      for (const id of FORMATION_IDS) {
+        expect(FORMATIONS[id]).toHaveLength(TEAM_SIZE);
+        expect(FORMATIONS[id][0].role).toBe('goalkeeper');
+        expect(count(id, 'goalkeeper')).toBe(1);
       }
-      const fwd = FORMATION.findIndex((f) => f.role === 'forward');
-      expect(Math.abs(kicking[fwd].x - PITCH_CX)).toBeLessThan(20);
-      // The defending forward waits outside the centre circle
-      expect(Math.abs(defending[fwd].x - PITCH_CX)).toBeGreaterThan(PITCH.centerCircleRadius);
+      expect(count('2-3', 'defender')).toBe(2);
+      expect(count('2-3', 'forward')).toBe(3);
+      expect(count('3-2', 'defender')).toBe(3);
+      expect(count('3-2', 'forward')).toBe(2);
+    });
+
+    it('the attacking formation stands further forward than the defensive one', () => {
+      const avgDepth = (id: FormationId) =>
+        FORMATIONS[id].slice(1).reduce((s, f) => s + f.x, 0) / (TEAM_SIZE - 1);
+      expect(avgDepth('2-3')).toBeLessThan(avgDepth('3-2')); // smaller x = closer to halfway line
+    });
+
+    it('the kickoff taker is a forward', () => {
+      for (const id of FORMATION_IDS) {
+        expect(FORMATIONS[id][kickoffTakerIndex(FORMATIONS[id])].role).toBe('forward');
+      }
+    });
+  });
+
+  it('places both teams in their own half with only the taker at the centre', () => {
+    for (const id of FORMATION_IDS) {
+      const formation = FORMATIONS[id];
+      const taker = kickoffTakerIndex(formation);
+      for (const team of [0, 1]) {
+        const kicking = kickoffPositions(team, true, formation);
+        const defending = kickoffPositions(team, false, formation);
+        expect(kicking).toHaveLength(TEAM_SIZE);
+        for (const p of [...kicking, ...defending]) {
+          expect((p.x - PITCH_CX) * attackDir(team)).toBeLessThanOrEqual(0);
+        }
+        // Exactly one player on the centre spot
+        const atCentre = kicking.filter((p) => Math.hypot(p.x - PITCH_CX, p.y - PITCH_CY) < 20);
+        expect(atCentre).toHaveLength(1);
+        expect(Math.abs(kicking[taker].x - PITCH_CX)).toBeLessThan(20);
+        // Nobody of the defending team stands inside the centre circle
+        for (const p of defending) {
+          expect(Math.hypot(p.x - PITCH_CX, p.y - PITCH_CY)).toBeGreaterThan(PITCH.centerCircleRadius);
+        }
+      }
     }
   });
 });
