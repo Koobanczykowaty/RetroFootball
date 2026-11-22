@@ -4,6 +4,9 @@ node_modules/
 # Build output (recreated with `npm run build`)
 dist/
 
+# User's local file, not part of the project
+README.zip
+
 # Logs and caches
 *.log
 .vite/
