@@ -87,6 +87,7 @@ export class CollisionSystem {
     if (p.isTackling || p.isStunned) return;
     const into = p.vx * nx + p.vy * ny;
     if (into <= 0) return;
+    const speedBefore = Math.hypot(p.vx, p.vy);
     // Remove the component going into the other player...
     p.vx -= nx * into;
     p.vy -= ny * into;
@@ -100,6 +101,15 @@ export class CollisionSystem {
     }
     p.vx += tx * into * PLAYER.contactSlide;
     p.vy += ty * into * PLAYER.contactSlide;
+    // Sliding only redirects movement: never faster than before the contact.
+    // (Without this, sideways speed stacked up frame after frame during a long
+    // contact and players shot off toward the corners.)
+    const speedAfter = Math.hypot(p.vx, p.vy);
+    if (speedAfter > speedBefore && speedAfter > 0) {
+      const k = speedBefore / speedAfter;
+      p.vx *= k;
+      p.vy *= k;
+    }
   }
 
   // ---------------------------------------------------------------- tackles

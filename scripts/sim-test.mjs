@@ -106,6 +106,9 @@ async function runSim(label, human) {
     if (!r.events.swapOk || r.events.swapWrong) failures.push(`${tag}: teams did not change ends correctly at half time`);
     if (r.states[r.states.length - 1] !== 'fulltime') failures.push(`${tag}: did not end at full time`);
     if (s.passes[0] + s.passes[1] === 0) failures.push(`${tag}: no passes were made`);
+    if (r.events.overspeed) {
+      failures.push(`${tag}: players exceeded sprint speed in ${r.events.overspeed} frames (max ${r.events.maxSpeed} px/s)`);
+    }
     if (s.shots[0] + s.shots[1] === 0) failures.push(`${tag}: no shots were taken`);
     if (human) {
       // Scripted every match: pause/resume via ESC and the keeper held-key scenario

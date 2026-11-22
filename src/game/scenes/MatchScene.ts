@@ -253,7 +253,19 @@ export class MatchScene extends Phaser.Scene {
     // The team defending that goal concedes (sides change at half time)
     if (side >= 0) this.onGoal(1 - teamDefendingSide(side));
 
-    if (this.sim) this.sampleSimMetrics(dt);
+    if (this.sim) {
+      this.sampleSimMetrics(dt);
+      // Test check: nobody may move faster than his sprint speed outside a tackle
+      // dash (stunned players may still carry a decaying dash from a missed tackle)
+      for (const p of this.world.players) {
+        if (p.isTackling || p.isStunned) continue;
+        const limit = PLAYER.sprintSpeed * Math.max(1, p.speedFactor) * 1.1 + 5;
+        if (p.getSpeed() > limit) {
+          this.sim.event('overspeed');
+          this.sim.events.maxSpeed = Math.max(this.sim.events.maxSpeed ?? 0, Math.round(p.getSpeed()));
+        }
+      }
+    }
   }
 
   private simSampleMs = 0;
