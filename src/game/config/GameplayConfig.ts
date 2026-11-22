@@ -37,8 +37,9 @@ export const PITCH = {
 // ---- Player ----
 export const PLAYER = {
   radius: 10,
-  walkSpeed: 135,
-  sprintSpeed: 205,
+  // Player movement speeds were reduced by 20% (was 135 / 205 / 270) at the user's request
+  walkSpeed: 108,
+  sprintSpeed: 164,
   /** Speed multiplier while dribbling. */
   dribbleSpeedFactor: 0.9,
   /** How fast velocity approaches the desired velocity (px/s²). */
@@ -64,7 +65,7 @@ export const PLAYER = {
   tackleRange: 20,
   tackleDuration: 220,
   tackleCooldown: 800,
-  tackleDashSpeed: 270,
+  tackleDashSpeed: 216,
   tackleSuccess: 0.65,
   /** On a successful tackle: chance the tackler keeps the ball (otherwise it pops loose). */
   tackleWinBallChance: 0.55,
