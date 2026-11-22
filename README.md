@@ -61,6 +61,21 @@ Zawartość `dist/` to gotowa statyczna strona (index.html + jeden plik JS).
 
 Menu obsługuje mysz i klawiaturę (↑↓ wybór, ←→ zmiana opcji, Enter/Spacja zatwierdź, Esc wstecz).
 
+**Pad Xbox** (podłącz przez USB lub Bluetooth i naciśnij dowolny przycisk, żeby przeglądarka go wykryła):
+
+| Pad | Z piłką | Bez piłki |
+|---|---|---|
+| Lewa gałka / D-pad | Ruch | Ruch |
+| RT | Sprint | Sprint |
+| A (przytrzymaj) | Podanie (jak S) | Zmiana na najlepiej ustawionego zawodnika |
+| B (przytrzymaj) | Strzał (jak D) | Wślizg |
+| X (przytrzymaj) | Lob (jak A na klawiaturze) | – |
+| LB (+gałka) | Zmiana zawodnika (w kierunku gałki) | Zmiana zawodnika |
+| Menu (≡) | Pauza | Pauza |
+| View (⧉) | Wycisz dźwięk | Wycisz dźwięk |
+
+W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura działają jednocześnie, a obie kolumny są też na ekranie CONTROLS.
+
 **Zmiana zawodnika strzałkami:** przytrzymaj strzałkę i naciśnij Spację (albo S bez piłki), żeby wybrać zawodnika w tym kierunku: strzałka w górę wybiera zawodnika wyżej, w lewo zawodnika po lewej, działają też skosy. Niebieska strzałka nad zawodnikiem pokazuje, na kogo przełączy Spacja.
 
 **Kontynuowanie akcji:** zawodnik, który podał piłkę (S lub A), nie wraca od razu na pozycję. Tak samo grają zawodnicy komputera. Dopóki Twoja drużyna ma piłkę (najdłużej 6 s), biegnie dalej do przodu przed piłką w swoim korytarzu i można mu ją oddać. Po stracie piłki wraca do zwykłego ustawienia. Czas i dystans wybiegnięcia ustawisz w `supportRunMax` i `supportRunLead` w `GameplayConfig.ts`.

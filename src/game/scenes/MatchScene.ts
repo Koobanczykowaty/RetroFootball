@@ -28,6 +28,7 @@ import { MatchState, MatchSystem } from '../systems/MatchSystem';
 import { soundManager } from '../systems/SoundManager';
 import { HUD } from '../ui/HUD';
 import { FulltimeInfo, MatchOverlay } from '../ui/MatchOverlay';
+import { GamepadInput, PAD, PadEdges, PadState } from '../systems/Gamepad';
 import { createEventDeduper } from '../ui/MenuNavigator';
 import { PauseMenu } from '../ui/PauseMenu';
 import { textStyle } from '../ui/Theme';
@@ -83,6 +84,8 @@ export class MatchScene extends Phaser.Scene {
   private heldDir = { x: 0, y: 0 };
   private sim: SimReport | null = null;
   private bot: BotInput | null = null;
+  /** Controller Menu/View presses (pause, mute). */
+  private readonly padEdges = new PadEdges();
   /** Formation of each team in this match. */
   private formations: [FormationId, FormationId] = ['2-3', '2-3'];
 
@@ -157,6 +160,8 @@ export class MatchScene extends Phaser.Scene {
     // Input
     this.playerInput = new InputSystem();
     this.playerInput.addSource(new KeyboardInput(this));
+    this.playerInput.addSource(new GamepadInput());
+    this.padEdges.sync();
     if (this.sceneData.simHuman) {
       this.bot = new BotInput(() => this.world, () => this.sim?.event('keeperHeldShoot'));
       this.playerInput.addSource(this.bot);
@@ -220,6 +225,7 @@ export class MatchScene extends Phaser.Scene {
           });
         });
         this.time.delayedCall(6000, () => this.keeperHeldKeyTest(0));
+        this.time.delayedCall(15000, () => this.padPauseTest(0));
       }
     }
 
@@ -232,6 +238,13 @@ export class MatchScene extends Phaser.Scene {
   // ================================================================ frame
 
   update(_time: number, delta: number): void {
+    // Controller Menu / View buttons (pause, mute). While paused, the pause
+    // menu itself handles A/B and the stick; Menu toggles back to the game.
+    for (const cmd of this.padEdges.poll()) {
+      if (cmd === 'pause') this.togglePause();
+      else if (cmd === 'mute') soundManager.toggle();
+    }
+
     const dt = Math.min(delta, 50) / 1000;
     const state = this.match.update(dt * 1000);
     if (state !== this.lastState) {
@@ -675,6 +688,39 @@ export class MatchScene extends Phaser.Scene {
         });
       });
     });
+  }
+
+  /**
+   * Scripted test (bot-as-human sim only): a fake Xbox controller presses Menu
+   * (the game must pause), then B (the pause menu's "back" must resume).
+   */
+  private padPauseTest(attempt: number): void {
+    if (attempt > 6) return;
+    if (this.match.state !== 'playing') {
+      this.time.delayedCall(1000, () => this.padPauseTest(attempt + 1));
+      return;
+    }
+    const w = window as unknown as { __RF_FAKE_PAD__?: PadState };
+    const fakePad = (held: number[]): PadState => ({
+      buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: held.includes(i), value: held.includes(i) ? 1 : 0 })),
+      axes: [0, 0, 0, 0],
+    });
+    const press = (button: number, then: () => void) => {
+      w.__RF_FAKE_PAD__ = fakePad([button]);
+      this.time.delayedCall(100, () => {
+        w.__RF_FAKE_PAD__ = fakePad([]);
+        this.time.delayedCall(100, then);
+      });
+    };
+    w.__RF_FAKE_PAD__ = fakePad([]);
+    this.time.delayedCall(50, () => press(PAD.MENU, () => {
+      if (this.match.isPaused()) this.sim?.event('padPaused');
+      press(PAD.B, () => {
+        if (!this.match.isPaused()) this.sim?.event('padResumed');
+        else this.resume();
+        delete w.__RF_FAKE_PAD__;
+      });
+    }));
   }
 
   /** Second half: teams swap ends; formation homes are mirrored accordingly. */

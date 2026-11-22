@@ -71,6 +71,12 @@ Scenes: `BootScene` (generates textures and animations) → `MenuScene` → `Tea
   - At kickoff only `kickoffTakerIndex` (the most central forward) stands on the centre spot. `kickoffPositions(team, kicking, formation)` needs the formation.
   - The bot-as-human sim changes formation through the pause menu with real arrow keys (`formationChangeOk`).
 - **Phaser key events can be delivered twice.** `KeyboardPlugin` re-processes the whole frame queue on each new DOM key event, and its duplicate check only catches an immediate repeat. So two different keys within one frame re-emit the earlier event object. Every key listener must dedupe with its own `createEventDeduper()` (see `MenuNavigator`, and `MatchScene` for ESC/P/M). Don't share one deduper between listeners, or one listener swallows the event for the others.
+- **Xbox controller** (`systems/Gamepad.ts`, browser Gamepad API, "standard" layout):
+  - Gameplay mapping: stick/D-pad move, RT sprint, A pass, B shoot/tackle, X lob, LB switch. `GamepadInput` is just another `InputSource` (alongside `KeyboardInput`), so charging and every mechanic work unchanged.
+  - `PadEdges` turns held buttons into one-shot commands (up/down/left/right/confirm/back/pause/mute). `MenuNavigator` polls one on the scene `UPDATE` event while active, syncing on activate so a held A doesn't re-trigger. `MatchScene.update` polls one for Menu (pause) and View (mute).
+  - Mapping and edges are pure and unit-tested (`tests/Gamepad.test.ts`). The input types live in `systems/InputTypes.ts` (no Phaser import).
+  - The bot sim uses the `window.__RF_FAKE_PAD__` hook to press Menu and B (`padPaused`/`padResumed`).
+  - Not tested with a physical controller by Claude.
 - **Desktop browser only.** There are no touch or mobile controls (the user decided this); don't add them.
 - **Controls:** arrows move, Shift sprints, S passes (hold to charge; without the ball it switches player), A lobs (hold to charge), D shoots (hold to charge; without the ball it tackles), Space switches player, Esc/P pause, M mutes. All charged actions reach full power after `BALL.maxChargeMs` (350 ms). These are defined in `INPUT_MAP`. Menus use arrows, Enter/Space and Esc only, because A/S/D are gameplay keys.
 - **Key-event ordering:** Phaser emits `keydown-<KEY>` before the generic `keydown` for the same DOM event. A listener added while handling the first (e.g. the pause menu opened by ESC) still receives the second. `MenuNavigator.activate(i, openedBy)` ignores that exact event object; pass it whenever a key opens a menu.

@@ -6,6 +6,7 @@
 // ============================================================
 
 import Phaser from 'phaser';
+import { PadEdges } from '../systems/Gamepad';
 import type { Focusable } from './Button';
 
 /**
@@ -30,6 +31,7 @@ export class MenuNavigator {
   private active = false;
   private ignoreEvent: KeyboardEvent | null = null;
   private readonly firstTime = createEventDeduper();
+  private readonly pad = new PadEdges();
   private readonly handler: (e: KeyboardEvent) => void;
 
   constructor(
@@ -57,8 +59,11 @@ export class MenuNavigator {
     this.ignoreEvent = openedBy ?? null;
     if (!this.active) {
       this.scene.input.keyboard?.on('keydown', this.handler);
+      this.scene.events.on(Phaser.Scenes.Events.UPDATE, this.padUpdate, this);
       this.active = true;
     }
+    // Buttons still held from the previous screen (e.g. A that opened this menu) don't count
+    this.pad.sync();
     this.focus(initialIndex);
     return this;
   }
@@ -66,7 +71,25 @@ export class MenuNavigator {
   deactivate(): void {
     if (!this.active) return;
     this.scene.input.keyboard?.off('keydown', this.handler);
+    this.scene.events.off(Phaser.Scenes.Events.UPDATE, this.padUpdate, this);
     this.active = false;
+  }
+
+  /** Xbox controller: stick / D-pad navigate, A confirm, B back. */
+  private padUpdate(): void {
+    for (const cmd of this.pad.poll()) {
+      if (!this.active) return; // an action may have closed this menu
+      const current = this.index >= 0 ? this.items[this.index] : undefined;
+      switch (cmd) {
+        case 'up': this.focus(this.index - 1); break;
+        case 'down': this.focus(this.index + 1); break;
+        case 'left': current?.left?.(); break;
+        case 'right': current?.right?.(); break;
+        case 'confirm': current?.activate?.(); break;
+        case 'back': this.onBack?.(); break;
+        default: break;
+      }
+    }
   }
 
   focus(i: number): void {

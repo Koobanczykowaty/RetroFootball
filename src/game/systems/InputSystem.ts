@@ -1,28 +1,15 @@
 // ============================================================
-// InputSystem — Merges raw input sources (keyboard, test bot, later
-// gamepad) into one per-frame InputState with edge detection and
-// shot charging.
+// InputSystem — Merges raw input sources (keyboard, gamepad, test
+// bot) into one per-frame InputState with edge detection and
+// charging of pass / shot / lob.
 // ============================================================
 
 import Phaser from 'phaser';
 import { INPUT_MAP } from '../config/GameplayConfig';
+import { EMPTY_RAW, InputSource, RawInput } from './InputTypes';
 
-/** Level (held) state reported by an input device. */
-export interface RawInput {
-  moveX: number; // -1..1
-  moveY: number; // -1..1
-  sprint: boolean;
-  pass: boolean;
-  shoot: boolean;
-  lob: boolean;
-  switchPlayer: boolean;
-}
-
-/** Any device that can report RawInput (keyboard, gamepad...). */
-export interface InputSource {
-  read(): RawInput;
-  destroy?(): void;
-}
+export { EMPTY_RAW };
+export type { InputSource, RawInput };
 
 export interface InputState {
   moveX: number;
@@ -78,9 +65,6 @@ class ChargeButton {
   }
 }
 
-export const EMPTY_RAW: RawInput = {
-  moveX: 0, moveY: 0, sprint: false, pass: false, shoot: false, lob: false, switchPlayer: false,
-};
 
 export class KeyboardInput implements InputSource {
   private keys = new Map<string, Phaser.Input.Keyboard.Key>();
