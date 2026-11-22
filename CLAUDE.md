@@ -93,4 +93,4 @@ Scenes: `BootScene` (generates textures and animations) → `MenuScene` → `Tea
 - Depth layers: pitch 0, ball shadow 3, selection ring 4, players and low ball 5 + y·0.001, ball trail 9, high ball 10, fx bars 60, HUD 100, banners 190–201, panels 300, pause 400.
 - Scene teardown: `MatchScene.onShutdown` (bound to the `SHUTDOWN` event) removes keyboard and game listeners. `MenuNavigator` unbinds itself on shutdown.
 - **Encoding:** source files are UTF-8 and some contain non-ASCII characters (—, ◀, ↑). Edit them with the Edit/Write tools. PowerShell 5.1 `Get-Content`/`Set-Content` round-trips corrupt them.
-- The project is not a git repository yet.
+- **Git:** local repository on branch `main` (no remote). Git is installed at `C:\Program Files\Git\cmd` and may not be on the PATH: prefix with `$env:Path = "C:\Program Files\Git\cmd;$env:Path";`. The commit author is configured locally as "RetroFootball Dev <dev@retrofootball.local>". Pass multi-line commit messages with `git commit -F <file>`; a PowerShell here-string piped to `-F -` doesn't work. `README.zip` in the root is the user's file and is intentionally not committed.
