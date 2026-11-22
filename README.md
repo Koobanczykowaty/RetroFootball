@@ -97,7 +97,11 @@ W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura dzia
   - **NORMAL**: wyrównana gra;
   - **HARD**: szybki, agresywny pressing, skuteczne odbiory, celne strzały, mocny bramkarz.
   Wszystkie parametry są w `AI_PROFILES` w `GameplayConfig.ts`.
-- **2 PLAYERS (lokalnie)**: przycisk w menu głównym. Gracz 1 gra na klawiaturze i wybiera drużynę, gracz 2 gra padem Xbox drugą drużyną. Każdy wybiera swoją formację, w pauzie oba wiersze formacji da się zmienić. Sterowany zawodnik P1 ma żółty znacznik, P2 zielony (tak samo oznaczenia w HUD). Pauzować może każdy (Esc/P albo Menu na padzie). Na ekranie wyboru widać, czy pad jest podłączony.
+- **2 PLAYERS (lokalnie)**: przycisk w menu głównym. Gracz 1 wybiera drużynę, gracz 2 gra drugą. Urządzenia:
+  - jeden pad: P1 = klawiatura, P2 = pad;
+  - dwa pady: P1 = klawiatura **albo** pad 1, P2 = pad 2.
+
+  Ekran 2 PLAYERS pokazuje bieżący przydział. Pady można podłączyć też w trakcie meczu. Każdy wybiera swoją formację, w pauzie oba wiersze formacji da się zmienić. Sterowany zawodnik P1 ma żółty znacznik, P2 zielony (tak samo oznaczenia w HUD). Pauzować może każdy (Esc/P albo Menu na padzie). Na ekranie wyboru widać, czy pad jest podłączony.
 - **Formacje**: **2-3** (ofensywna: 2 obrońców + 3 napastników) albo **3-2** (defensywna: 3 obrońców + 2 napastników). Swoją wybierasz na ekranie QUICK MATCH i możesz ją zmienić w trakcie meczu w menu pauzy. Komputer losuje formację przed każdym meczem.
 - **Rozgrywka 6v6**:
   - ruch w 8 kierunkach z bezwładnością, sprint i stamina;

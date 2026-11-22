@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { GamepadInput, PAD, PadEdges, PadState, STICK_DEADZONE, mapPadToRaw, padMove } from '../src/game/systems/Gamepad';
+import {
+  GamepadInput, PAD, PadEdges, PadState, STICK_DEADZONE, mapPadToRaw, padForPlayer, padMove,
+} from '../src/game/systems/Gamepad';
 
 /** A standard-layout controller state with the given buttons held and stick axes. */
 function pad(held: number[] = [], lx = 0, ly = 0): PadState {
@@ -47,10 +49,45 @@ describe('Xbox controller mapping', () => {
   });
 });
 
+describe('2 PLAYERS controller assignment (padForPlayer)', () => {
+  const pad1 = pad([PAD.A]);
+  const pad2 = pad([PAD.B]);
+
+  it('no controller: nobody gets one (P1 keeps the keyboard)', () => {
+    expect(padForPlayer([], 1)).toBeNull();
+    expect(padForPlayer([], 2)).toBeNull();
+  });
+
+  it('one controller: P2 gets it, P1 plays on the keyboard only', () => {
+    expect(padForPlayer([pad1], 1)).toBeNull();
+    expect(padForPlayer([pad1], 2)).toBe(pad1);
+  });
+
+  it('two controllers: P1 gets pad 1, P2 gets pad 2', () => {
+    expect(padForPlayer([pad1, pad2], 1)).toBe(pad1);
+    expect(padForPlayer([pad1, pad2], 2)).toBe(pad2);
+  });
+
+  it("one player's buttons never reach the other player's input", () => {
+    const p1 = new GamepadInput(() => padForPlayer([pad1, pad2], 1)).read();
+    const p2 = new GamepadInput(() => padForPlayer([pad1, pad2], 2)).read();
+    expect([p1.pass, p1.shoot]).toEqual([true, false]); // pad 1 holds A
+    expect([p2.pass, p2.shoot]).toEqual([false, true]); // pad 2 holds B
+  });
+});
+
 describe('menu edges (PadEdges)', () => {
+  it('reacts to any connected controller', () => {
+    let pads = [pad(), pad()];
+    const edges = new PadEdges(() => pads);
+    edges.poll();
+    pads = [pad(), pad([PAD.MENU])]; // second pad presses Menu
+    expect(edges.poll()).toEqual(['pause']);
+  });
+
   it('reports a press once, not every frame it is held', () => {
     let state = pad();
-    const edges = new PadEdges(() => state);
+    const edges = new PadEdges(() => [state]);
     expect(edges.poll()).toEqual([]);
     state = pad([PAD.A]);
     expect(edges.poll()).toEqual(['confirm']);
@@ -63,7 +100,7 @@ describe('menu edges (PadEdges)', () => {
 
   it('maps stick, D-pad, B, Menu and View to commands', () => {
     let state = pad();
-    const edges = new PadEdges(() => state);
+    const edges = new PadEdges(() => [state]);
     edges.poll();
     state = pad([PAD.B, PAD.MENU, PAD.VIEW, PAD.DOWN]);
     expect(edges.poll().sort()).toEqual(['back', 'down', 'mute', 'pause']);
@@ -73,7 +110,7 @@ describe('menu edges (PadEdges)', () => {
 
   it('sync() swallows buttons already held when a menu opens', () => {
     const state = pad([PAD.A]);
-    const edges = new PadEdges(() => state);
+    const edges = new PadEdges(() => [state]);
     edges.sync();
     expect(edges.poll()).toEqual([]);
   });

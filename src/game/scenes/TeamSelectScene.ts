@@ -12,7 +12,7 @@ import { soundManager } from '../systems/SoundManager';
 import { Button, Focusable } from '../ui/Button';
 import { MenuNavigator } from '../ui/MenuNavigator';
 import { OptionSelector } from '../ui/OptionSelector';
-import { readPad } from '../systems/Gamepad';
+import { connectedPads } from '../systems/Gamepad';
 import type { GameMode, MatchSceneData } from './MatchScene';
 import { UI, drawPanel, textStyle, titleStyle } from '../ui/Theme';
 
@@ -90,11 +90,11 @@ class TeamPicker implements Focusable {
       if (sel) {
         g.fillStyle(this.focused ? 0xffe14d : 0xffcc00, 1);
         g.fillRect(x - 55, 170 - 90, 110, 18);
-        this.tags[i].setText(this.twoPlayer ? 'P1 KEYBOARD' : 'YOUR TEAM');
+        this.tags[i].setText(this.twoPlayer ? 'PLAYER 1' : 'YOUR TEAM');
       } else if (this.twoPlayer) {
         g.fillStyle(0x6dff7a, 1); // P2 colour
         g.fillRect(x - 55, 170 - 90, 110, 18);
-        this.tags[i].setText('P2 PAD');
+        this.tags[i].setText('PLAYER 2');
       }
       this.tags[i].setVisible(sel || this.twoPlayer);
     });
@@ -162,13 +162,15 @@ export class TeamSelectScene extends Phaser.Scene {
       );
       rows = [p1, p2];
 
-      // Controller status for player 2
+      // Which device each player uses with the controllers connected right now
       const status = this.add.text(GAME_WIDTH / 2, 258, '', textStyle(11, UI.textMuted, true)).setOrigin(0.5);
       const refresh = () => {
-        const connected = readPad() !== null;
-        status
-          .setText(connected ? 'P2 CONTROLLER CONNECTED' : 'P2: CONNECT AN XBOX CONTROLLER AND PRESS ANY BUTTON')
-          .setColor(connected ? '#6dff7a' : '#ff9977');
+        const pads = connectedPads().length;
+        let text: string;
+        if (pads >= 2) text = 'P1: KEYBOARD + PAD 1   •   P2: PAD 2';
+        else if (pads === 1) text = 'P1: KEYBOARD   •   P2: PAD 1';
+        else text = 'P1: KEYBOARD   •   P2: CONNECT AN XBOX CONTROLLER AND PRESS ANY BUTTON';
+        status.setText(text).setColor(pads > 0 ? '#6dff7a' : '#ff9977');
       };
       refresh();
       this.events.on(Phaser.Scenes.Events.UPDATE, refresh);

@@ -22,7 +22,7 @@ import {
 import { ActionSystem } from '../systems/ActionSystem';
 import { AISystem } from '../systems/AISystem';
 import { CollisionSystem } from '../systems/CollisionSystem';
-import { GamepadInput, PAD, PadEdges, PadState } from '../systems/Gamepad';
+import { GamepadInput, PAD, PadEdges, PadState, connectedPads, padForPlayer } from '../systems/Gamepad';
 import { InputSystem, KeyboardInput } from '../systems/InputSystem';
 import type { InputSource } from '../systems/InputTypes';
 import { MatchState, MatchSystem } from '../systems/MatchSystem';
@@ -181,8 +181,12 @@ export class MatchScene extends Phaser.Scene {
         // Test: one bot per team, each through its own HumanController
         input = inputFrom(new BotInput(() => this.world, undefined, team));
       } else if (this.mode === '2p') {
-        // P1 = keyboard only, P2 = controller only
-        input = i === 0 ? inputFrom(new KeyboardInput(this)) : inputFrom(new GamepadInput());
+        // P1 = keyboard (+ pad 1 when two pads are connected), P2 = pad 2 (or pad 1
+        // when only one is connected). Re-evaluated every frame, so plugging a pad
+        // in mid-match works.
+        input = i === 0
+          ? inputFrom(new KeyboardInput(this), new GamepadInput(() => padForPlayer(connectedPads(), 1)))
+          : inputFrom(new GamepadInput(() => padForPlayer(connectedPads(), 2)));
       } else {
         input = inputFrom(new KeyboardInput(this), new GamepadInput());
         if (this.sceneData.simHuman) {

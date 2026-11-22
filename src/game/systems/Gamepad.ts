@@ -8,7 +8,8 @@
 //   B  shoot (hold = power; no ball: tackle)
 //   X  lob (hold = power)              LB  switch player
 //   Menu  pause                        View  mute
-// Menus: stick / D-pad navigate, A confirm, B back.
+// Menus: stick / D-pad navigate, A confirm, B back (any controller).
+// 2 PLAYERS: see padForPlayer() for which controller each player uses.
 //
 // Mapping and edge detection are pure functions over a PadState so
 // they can be unit-tested without a browser.
@@ -35,15 +36,35 @@ export const STICK_DEADZONE = 0.25;
 /** Stick deflection that counts as a menu "press". */
 const MENU_STICK_THRESHOLD = 0.6;
 
-/** First connected controller, if any. A test hook (window.__RF_FAKE_PAD__) can replace it. */
-export function readPad(): PadState | null {
-  const fake = (window as unknown as { __RF_FAKE_PAD__?: PadState }).__RF_FAKE_PAD__;
-  if (fake) return fake;
-  if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') return null;
+/**
+ * All connected controllers, in the browser's order (pad 1, pad 2, ...).
+ * Test hooks: window.__RF_FAKE_PADS__ (list) or __RF_FAKE_PAD__ (one pad).
+ */
+export function connectedPads(): PadState[] {
+  const w = window as unknown as { __RF_FAKE_PADS__?: PadState[]; __RF_FAKE_PAD__?: PadState };
+  if (w.__RF_FAKE_PADS__) return w.__RF_FAKE_PADS__;
+  if (w.__RF_FAKE_PAD__) return [w.__RF_FAKE_PAD__];
+  if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') return [];
+  const pads: PadState[] = [];
   for (const p of navigator.getGamepads()) {
-    if (p && p.connected) return p;
+    if (p && p.connected) pads.push(p);
   }
-  return null;
+  return pads;
+}
+
+/** First connected controller, if any. */
+export function readPad(): PadState | null {
+  return connectedPads()[0] ?? null;
+}
+
+/**
+ * Which controller each player uses in 2-player mode:
+ * - one pad:  P1 = keyboard only, P2 = pad 1
+ * - two pads: P1 = keyboard + pad 1, P2 = pad 2
+ */
+export function padForPlayer(pads: readonly PadState[], player: 1 | 2): PadState | null {
+  if (player === 1) return pads.length >= 2 ? pads[0] : null;
+  return pads.length >= 2 ? pads[1] : (pads[0] ?? null);
 }
 
 export function isDown(pad: PadState, button: number): boolean {
@@ -111,21 +132,26 @@ function commandsDown(pad: PadState): Set<PadCommand> {
  * Edge detector for menu-style commands. Each consumer (a menu, the match
  * scene) owns one, polls it once per frame and gets the commands that were
  * pressed since the previous poll. A held stick/button fires only once.
+ * Any connected controller counts (both players can drive menus and pause).
  */
 export class PadEdges {
   private prev = new Set<PadCommand>();
 
-  constructor(private readonly reader: () => PadState | null = readPad) {}
+  constructor(private readonly reader: () => readonly PadState[] = connectedPads) {}
+
+  private current(): Set<PadCommand> {
+    const all = new Set<PadCommand>();
+    for (const pad of this.reader()) for (const c of commandsDown(pad)) all.add(c);
+    return all;
+  }
 
   /** Treat everything currently held as already handled (e.g. when a menu opens). */
   sync(): void {
-    const pad = this.reader();
-    this.prev = pad ? commandsDown(pad) : new Set();
+    this.prev = this.current();
   }
 
   poll(): PadCommand[] {
-    const pad = this.reader();
-    const now = pad ? commandsDown(pad) : new Set<PadCommand>();
+    const now = this.current();
     const pressed = [...now].filter((c) => !this.prev.has(c));
     this.prev = now;
     return pressed;
