@@ -110,12 +110,13 @@ export class HumanController {
       }
     } else {
       this.chargeKind = null;
-      if (input.shootPressed) {
+      // Without the ball the lob button tackles (keyboard A, pad X)
+      if (input.lobPressed) {
         if (actions.tackle(p)) this.ctx.sim()?.event('humanTackle');
-        this.input.consumeShoot();
+        this.input.consumeLob();
       }
-      // Lob without the ball does nothing; don't let the hold carry over into possession
-      if (input.lobPressed) this.input.consumeLob();
+      // Shoot without the ball does nothing; don't let the hold carry over into possession
+      if (input.shootPressed) this.input.consumeShoot();
       if (input.passPressed) {
         this.input.consumePass(); // pass key here means "switch", not a pass to charge later
         this.switchPlayer(true, dirX, dirY);
@@ -215,7 +216,7 @@ export class HumanController {
       // Includes our goalkeeper: the human decides where he plays the ball
       this.setControlled(p);
       if (p.role === 'goalkeeper') {
-        // Keys still held from defending (e.g. shoot used for a tackle) must
+        // Keys still held from defending (e.g. lob used for a tackle) must
         // not immediately fire a keeper action: require a fresh press.
         this.input.sync();
         this.ctx.sim()?.event('humanKeeper');

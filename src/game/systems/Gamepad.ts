@@ -5,8 +5,8 @@
 // Gameplay mapping (football-game style):
 //   left stick / D-pad  move           RT  sprint
 //   A  pass (hold = power; no ball: switch player)
-//   B  shoot (hold = power; no ball: tackle)
-//   X  lob (hold = power)              LB  switch player
+//   B  shoot (hold = power)
+//   X  lob (hold = power; no ball: tackle)   LB  switch player
 //   Menu  pause                        View  mute
 // Menus: stick / D-pad navigate, A confirm, B back (any controller).
 // 2 PLAYERS: see padForPlayer() for which controller each player uses.

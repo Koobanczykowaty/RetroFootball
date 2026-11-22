@@ -33,7 +33,7 @@ const SECTIONS: Array<{ title: string; rows: Row[] }> = [
   {
     title: 'WITHOUT THE BALL',
     rows: [
-      { keys: 'D', pad: 'B', action: 'Tackle' },
+      { keys: 'A', pad: 'X', action: 'Tackle' },
       { keys: 'S', pad: 'A', action: 'Switch to best-placed player' },
     ],
   },

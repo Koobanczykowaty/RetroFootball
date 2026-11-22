@@ -98,7 +98,7 @@ export class BotInput implements InputSource {
     r.moveY = toBall.y;
     r.sprint = toBall.len > 60;
     const opponentHasBall = ball.ownerTeam !== null && ball.ownerTeam !== p.teamIndex;
-    if (opponentHasBall && toBall.len < 24) r.shoot = this.frame % 10 < 5; // tap shoot = tackle
+    if (opponentHasBall && toBall.len < 24) r.lob = this.frame % 10 < 5; // tap lob = tackle
     if (this.frame % 150 === 0) r.switchPlayer = true;
     return r;
   }

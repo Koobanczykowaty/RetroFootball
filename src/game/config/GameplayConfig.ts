@@ -330,9 +330,9 @@ export const INPUT_MAP = {
   sprint: ['SHIFT'],
   /** Short pass (without the ball: switch to the player nearest the ball). */
   pass: ['S'],
-  /** Shoot, hold to charge (without the ball: tackle). */
+  /** Shoot, hold to charge (without the ball: nothing). */
   shoot: ['D'],
-  /** Lob / long pass. */
+  /** Lob / long pass, hold to charge (without the ball: tackle). */
   lob: ['A'],
   switchPlayer: ['SPACE'],
 };

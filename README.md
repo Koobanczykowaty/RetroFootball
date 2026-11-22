@@ -53,8 +53,8 @@ Zawartość `dist/` to gotowa statyczna strona (index.html + jeden plik JS).
 | Strzałki | Ruch (8 kierunków) | Ruch |
 | Shift | Sprint (zużywa staminę) | Sprint |
 | S (przytrzymaj) | Podanie po ziemi do partnera w kierunku ruchu. Siła (pełna po 0,35 s) ustala prędkość: od 70% (krótkie wciśnięcie) do 130% normalnej (300–480 px/s) | Przełącz na najlepiej ustawionego zawodnika |
-| A (przytrzymaj) | Lob nad obrońcami w kierunku strzałki (bez auto-celu). Siła (pełna po 0,35 s) ustala, jak daleko spadnie piłka: ok. 90–380 px. Odbiorcą jest partner najbliżej miejsca lądowania | – |
-| D (przytrzymaj) | Strzał (pełna siła po 0,35 s): im dłużej trzymasz, tym mocniej. ↑/↓ celuje w górny/dolny róg. Ze strzałką w stronę własnej bramki piłka leci wzdłuż strzałki (wybicie, możliwy samobój) | Wślizg / odbiór |
+| A (przytrzymaj) | Lob nad obrońcami w kierunku strzałki (bez auto-celu). Siła (pełna po 0,35 s) ustala, jak daleko spadnie piłka: ok. 90–380 px. Odbiorcą jest partner najbliżej miejsca lądowania | Wślizg / odbiór |
+| D (przytrzymaj) | Strzał (pełna siła po 0,35 s): im dłużej trzymasz, tym mocniej. ↑/↓ celuje w górny/dolny róg. Ze strzałką w stronę własnej bramki piłka leci wzdłuż strzałki (wybicie, możliwy samobój) | – |
 | Spacja | Zmiana zawodnika | Zmiana na najlepiej ustawionego zawodnika |
 | Esc / P | Pauza (Esc w menu pauzy wznawia grę) | Pauza |
 | M | Wycisz dźwięk | Wycisz dźwięk |
@@ -68,8 +68,8 @@ Menu obsługuje mysz i klawiaturę (↑↓ wybór, ←→ zmiana opcji, Enter/Sp
 | Lewa gałka / D-pad | Ruch | Ruch |
 | RT | Sprint | Sprint |
 | A (przytrzymaj) | Podanie (jak S) | Zmiana na najlepiej ustawionego zawodnika |
-| B (przytrzymaj) | Strzał (jak D) | Wślizg |
-| X (przytrzymaj) | Lob (jak A na klawiaturze) | – |
+| B (przytrzymaj) | Strzał (jak D) | – |
+| X (przytrzymaj) | Lob (jak A na klawiaturze) | Wślizg |
 | LB (+gałka) | Zmiana zawodnika (w kierunku gałki) | Zmiana zawodnika |
 | Menu (≡) | Pauza | Pauza |
 | View (⧉) | Wycisz dźwięk | Wycisz dźwięk |
