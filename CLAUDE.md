@@ -12,7 +12,7 @@ This file guides Claude Code (claude.ai/code) when working in this repository.
 
 ## Project
 
-RetroFootball is a 2D pixel-art arcade football (soccer) game: 6v6 (1 GK + 5 outfield), one human against AI, running in the browser. Stack: **Phaser 3.80 (Canvas renderer), TypeScript (strict, noUnused*), Vite 5, Vitest**. There are no image or audio files: sprites are drawn at runtime with Canvas 2D in `AssetGenerator`, and sounds are synthesized with Web Audio in `SoundManager`. User-facing docs: README.md (Polish) and ROADMAP.md.
+RetroFootball is a 2D pixel-art arcade football (soccer) game: 6v6 (1 GK + 5 outfield), one human against AI, running in the browser. Stack: **Phaser 3.80 (Canvas renderer), TypeScript (strict, noUnused*), Vite 8 (Rolldown bundler: use `build.rolldownOptions`, not `rollupOptions`), Vitest 5; Node 22.12+ required**. There are no image or audio files: sprites are drawn at runtime with Canvas 2D in `AssetGenerator`, and sounds are synthesized with Web Audio in `SoundManager`. User-facing docs: README.md (Polish) and ROADMAP.md.
 
 ## Commands
 

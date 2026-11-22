@@ -1,7 +1,11 @@
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, Plugin } from 'vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
+
+/** Project root (this config is an ES module, so there is no __dirname). */
+const root = dirname(fileURLToPath(import.meta.url));
 
 /**
  * Single-file build only: replace the /favicon.svg link with an inline data
@@ -11,7 +15,7 @@ function inlineFavicon(): Plugin {
   return {
     name: 'inline-favicon',
     transformIndexHtml(html) {
-      const svg = readFileSync(resolve(__dirname, 'public/favicon.svg'), 'utf8');
+      const svg = readFileSync(resolve(root, 'public/favicon.svg'), 'utf8');
       const dataUri = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
       return html.replace(/href="[^"]*favicon\.svg"/, `href="${dataUri}"`);
     },
@@ -28,7 +32,7 @@ export default defineConfig(({ mode }) => {
     base: './',
     resolve: {
       alias: {
-        '@': resolve(__dirname, 'src'),
+        '@': resolve(root, 'src'),
       },
     },
     plugins: single ? [viteSingleFile(), inlineFavicon()] : [],
@@ -39,7 +43,7 @@ export default defineConfig(({ mode }) => {
       assetsDir: 'assets',
       sourcemap: !single,
       emptyOutDir: true,
-      rollupOptions: single ? { output: { entryFileNames: 'RetroFootball.js' } } : undefined,
+      rolldownOptions: single ? { output: { entryFileNames: 'RetroFootball.js' } } : undefined,
     },
     server: {
       port: 3000,

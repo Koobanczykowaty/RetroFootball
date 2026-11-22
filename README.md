@@ -8,13 +8,13 @@ Wszystkie grafiki są rysowane programowo (Canvas 2D), a wszystkie dźwięki syn
 
 - **TypeScript** (tryb `strict`)
 - **Phaser 3.80**: silnik gry, renderer Canvas
-- **Vite 5**: serwer deweloperski i build
+- **Vite 8**: serwer deweloperski i build
 - **Vitest**: testy jednostkowe logiki
 - Bez backendu. Build to statyczna strona, którą można wrzucić na dowolny hosting plików.
 
 ## Wymagania
 
-- Node.js 18+ (testowane na Node 26) i npm
+- Node.js 22.12+ (testowane na Node 26) i npm – tylko do budowania i testów; testerzy grający w gotową wersję nie potrzebują Node.js
 - Nowoczesna przeglądarka (Chrome, Edge, Firefox, Safari)
 - Do testu symulacyjnego (`npm run test:sim`): zainstalowany Chrome albo Edge
 
