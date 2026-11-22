@@ -18,12 +18,13 @@ Gra celowo nie ma autów, rzutów rożnych, spalonych ani fauli (piłka odbija s
 
 1. **Więcej drużyn i edytor kolorów strojów**: `TEAMS` w konfiguracji, sprite'y generują się same z kolorów.
 2. **Więcej formacji i taktyki** (pressing wysoki / niski) jako dane w konfiguracji.
-3. **Statystyki zawodników i umiejętności** (szybkość, strzał, podanie) wpływające na `ActionSystem`.
-4. **Turniej / puchar** (drabinka kilku meczów) i **liga** z tabelą.
-5. **Zapisy postępów** (localStorage, później konto).
-6. **Nowe stadiony i pogoda** (deszcz spowalnia piłkę, śnieg zmienia kolor murawy; parametry tarcia per stadion).
-7. **Muzyka w menu** (syntezowana chiptune lub legalne assety).
-8. **Ustawienia rozgrywki**: czas, prędkość gry, asysty (auto-celowanie podań).
+3. **2 graczy w jednej drużynie** (co-op przeciwko komputerowi). Fundament już jest: każdy gracz ma własny `HumanController`; trzeba pozwolić, by dwóch steruje tą samą drużyną (np. różni sterowani zawodnicy, oddzielne znaczniki P1/P2).
+4. **Statystyki zawodników i umiejętności** (szybkość, strzał, podanie) wpływające na `ActionSystem`.
+5. **Turniej / puchar** (drabinka kilku meczów) i **liga** z tabelą.
+6. **Zapisy postępów** (localStorage, później konto).
+7. **Nowe stadiony i pogoda** (deszcz spowalnia piłkę, śnieg zmienia kolor murawy; parametry tarcia per stadion).
+8. **Muzyka w menu** (syntezowana chiptune lub legalne assety).
+9. **Ustawienia rozgrywki**: czas, prędkość gry, asysty (auto-celowanie podań).
 
 ## P3 — Online i duże systemy (v1.x)
 
