@@ -15,7 +15,11 @@ export class HUD {
   private muteText: Phaser.GameObjects.Text;
   private lastScore = '';
 
-  constructor(scene: Phaser.Scene, humanTeam: number | null, difficulty?: string) {
+  /**
+   * @param playerTags which team each human plays ('P1', 'P2'); empty in AI-only sims
+   * @param difficulty CPU level, shown in single-player matches
+   */
+  constructor(scene: Phaser.Scene, playerTags: Array<{ team: number; label: string }>, difficulty?: string) {
     this.container = scene.add.container(0, 0).setDepth(100);
     const cx = GAME_WIDTH / 2;
 
@@ -37,10 +41,11 @@ export class HUD {
       .setOrigin(1, 0);
     this.container.add([t0, t1]);
 
-    if (humanTeam !== null) {
-      const tagX = humanTeam === 0 ? cx - 148 : cx + 148;
-      const tag = scene.add.text(tagX, 26, 'P1', textStyle(8, UI.textHighlight, true))
-        .setOrigin(humanTeam === 0 ? 0 : 1, 0);
+    for (const { team, label } of playerTags) {
+      const tagX = team === 0 ? cx - 148 : cx + 148;
+      // P1 yellow, P2 green: same colours as their selection markers on the pitch
+      const color = label === 'P2' ? '#6dff7a' : UI.textHighlight;
+      const tag = scene.add.text(tagX, 26, label, textStyle(8, color, true)).setOrigin(team === 0 ? 0 : 1, 0);
       this.container.add(tag);
     }
 

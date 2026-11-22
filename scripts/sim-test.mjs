@@ -78,11 +78,11 @@ if (!url) {
 
 const failures = [];
 
-async function runSim(label, human) {
+async function runSim(label, human, twoPlayer = false) {
   // Each match: real minutes + kickoff/halftime/goal pauses (each goal adds ~3.5 s)
   const budget = Math.ceil(matches * (minutes * 60 + 60) * 1000);
   console.log(`[${label}] ${matches} match(es) of ${minutes} min`);
-  const query = `?sim=${matches}&minutes=${minutes}${human ? '&human=1' : ''}`;
+  const query = `?sim=${matches}&minutes=${minutes}${human ? '&human=1' : ''}${twoPlayer ? '&p2=1' : ''}`;
   const dom = await runBrowser(browser, url + query, budget);
 
   const m = dom.match(/<pre id="sim-result"[^>]*>([\s\S]*?)<\/pre>/);
@@ -135,6 +135,12 @@ async function runSim(label, human) {
       failures.push(`[${label}] human passer dropped back more often than he went forward`);
     }
   }
+  if (twoPlayer) {
+    // Both humans (P1 on team 0, P2 on team 1) must actually play
+    for (const e of ['humanPassTeam0', 'humanPassTeam1', 'humanShotTeam0', 'humanShotTeam1']) {
+      if (!total(e)) failures.push(`[${label}] "${e}" never happened`);
+    }
+  }
   // Same for AI passers (support run)
   const aiN = total('aiPasserForward') + total('aiPasserBack');
   if (aiN && total('aiPasserBack') > total('aiPasserForward')) {
@@ -159,6 +165,7 @@ async function runSim(label, human) {
 console.log(`Browser: ${browser}`);
 await runSim('AI vs AI', false);
 await runSim('bot as human', true);
+await runSim('2 players (two bots)', false, true);
 await server.close();
 
 if (failures.length) {

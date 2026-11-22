@@ -1,21 +1,20 @@
 // ============================================================
 // MatchScene — Orchestrates a match: builds the world, runs the
-// per-frame pipeline (input → AI → movement → collisions → ball →
-// goal check) and reacts to match-state transitions.
-// Gameplay rules live in the systems; this scene only wires them.
+// per-frame pipeline (human input → AI → movement → collisions →
+// ball → goal check) and reacts to match-state transitions.
+// Gameplay rules live in the systems; human control lives in
+// HumanController (one per human: Quick Match = 1, 2 PLAYERS = 2).
 // ============================================================
 
 import Phaser from 'phaser';
 import {
-  AI_PROFILES, AIProfile, BALL, FORMATION_IDS, FORMATIONS, FormationId, GOALKEEPER, MATCH, PLAYER,
-  TEAMMATE_PROFILE, TEAMS,
+  AI_PROFILES, AIProfile, FORMATION_IDS, FORMATIONS, FormationId, MATCH, PLAYER, TEAMMATE_PROFILE, TEAMS,
 } from '../config/GameplayConfig';
-import { pickPlayerForBall, pickPlayerInDirection } from '../logic/PlayerSelection';
 import { saveSettings, settings } from '../config/Settings';
 import { Ball } from '../entities/Ball';
 import { Pitch } from '../entities/Pitch';
 import { Player } from '../entities/Player';
-import { ballOwner, createStats, MatchWorld } from '../logic/MatchWorld';
+import { createStats, MatchWorld } from '../logic/MatchWorld';
 import {
   PITCH_CX, PITCH_CY, attackDir, formationPosition, kickoffPositions, kickoffTakerIndex, setSidesSwapped,
   teamDefendingSide,
@@ -23,20 +22,25 @@ import {
 import { ActionSystem } from '../systems/ActionSystem';
 import { AISystem } from '../systems/AISystem';
 import { CollisionSystem } from '../systems/CollisionSystem';
+import { GamepadInput, PAD, PadEdges, PadState } from '../systems/Gamepad';
 import { InputSystem, KeyboardInput } from '../systems/InputSystem';
+import type { InputSource } from '../systems/InputTypes';
 import { MatchState, MatchSystem } from '../systems/MatchSystem';
 import { soundManager } from '../systems/SoundManager';
 import { HUD } from '../ui/HUD';
 import { FulltimeInfo, MatchOverlay } from '../ui/MatchOverlay';
-import { GamepadInput, PAD, PadEdges, PadState } from '../systems/Gamepad';
 import { createEventDeduper } from '../ui/MenuNavigator';
 import { PauseMenu } from '../ui/PauseMenu';
-import { textStyle } from '../ui/Theme';
 import { BotInput } from '../debug/BotInput';
 import { SimReport, recordSimMatch } from '../debug/SimReport';
+import { HumanContext, HumanController } from './HumanController';
+
+export type GameMode = '1p' | '2p';
 
 export interface MatchSceneData {
+  /** 1p: the human's team. 2p: the KEYBOARD player's team (the pad player gets the other). */
   playerTeam?: number;
+  mode?: GameMode;
   /** Simulation mode: both teams AI-controlled (automated testing). */
   sim?: boolean;
   simMatches?: number;
@@ -44,6 +48,8 @@ export interface MatchSceneData {
   simMinutes?: number;
   /** In simulation, team 0 is driven by a scripted bot through the human input path. */
   simHuman?: boolean;
+  /** In simulation, 2-player mode with a bot playing each team as P1 and P2. */
+  simTwoPlayer?: boolean;
 }
 
 /** Dispatch a synthetic key press on window (used by the simulation test). */
@@ -63,28 +69,23 @@ export class MatchScene extends Phaser.Scene {
   private actions!: ActionSystem;
   private collisions!: CollisionSystem;
   private ai!: AISystem;
-  private playerInput!: InputSystem;
   private hud!: HUD;
   private overlay!: MatchOverlay;
   private pauseMenu!: PauseMenu;
   private fx!: Phaser.GameObjects.Graphics;
-  /** Countdown above the human's keeper while he holds the ball. */
-  private keeperTimer!: Phaser.GameObjects.Text;
 
   private sceneData: MatchSceneData = {};
-  private humanTeam: number | null = 0;
+  private mode: GameMode = '1p';
+  /** Teams controlled by humans, in player order (P1 first). */
+  private humanTeams: number[] = [];
+  private humans: HumanController[] = [];
   private profiles!: [AIProfile, AIProfile];
   private lastState: MatchState = 'kickoff';
-  /** What the human is currently charging (hold S = pass, D = shot, A = lob). */
-  private chargeKind: 'pass' | 'shoot' | 'lob' | null = null;
-  private chargeMs = 0;
   private resumedAt = 0;
   private wasPowerShot = false;
-  /** Arrow direction held this frame (for the switch-target hint). */
-  private heldDir = { x: 0, y: 0 };
   private sim: SimReport | null = null;
   private bot: BotInput | null = null;
-  /** Controller Menu/View presses (pause, mute). */
+  /** Controller Menu/View presses (pause, mute) — any controller. */
   private readonly padEdges = new PadEdges();
   /** Formation of each team in this match. */
   private formations: [FormationId, FormationId] = ['2-3', '2-3'];
@@ -95,11 +96,14 @@ export class MatchScene extends Phaser.Scene {
 
   init(data: MatchSceneData): void {
     this.sceneData = { ...data };
-    if (data.sim) this.humanTeam = data.simHuman ? 0 : null;
-    else this.humanTeam = data.playerTeam ?? settings.playerTeam;
+    this.mode = data.sim ? (data.simTwoPlayer ? '2p' : '1p') : (data.mode ?? '1p');
+    const keyboardTeam = data.playerTeam ?? settings.playerTeam;
+    if (data.sim && data.simTwoPlayer) this.humanTeams = [0, 1];
+    else if (data.sim) this.humanTeams = data.simHuman ? [0] : [];
+    else if (this.mode === '2p') this.humanTeams = [keyboardTeam, 1 - keyboardTeam];
+    else this.humanTeams = [keyboardTeam];
+    this.humans = [];
     this.lastState = 'kickoff';
-    this.chargeKind = null;
-    this.chargeMs = 0;
     this.wasPowerShot = false;
     this.bot = null;
   }
@@ -112,12 +116,15 @@ export class MatchScene extends Phaser.Scene {
     new Pitch(this);
     this.ball = new Ball(this, PITCH_CX, PITCH_CY);
 
-    // The human uses his chosen formation; the CPU picks one at random each match
+    // Humans use their chosen formations; a CPU team picks one at random each match
     const randomFormation = () => FORMATION_IDS[Math.floor(Math.random() * FORMATION_IDS.length)];
-    this.formations = [
-      this.humanTeam === 0 ? settings.formation : randomFormation(),
-      this.humanTeam === 1 ? settings.formation : randomFormation(),
-    ];
+    const formationFor = (team: number): FormationId => {
+      const playerIndex = this.humanTeams.indexOf(team);
+      if (playerIndex === 0) return settings.formation;
+      if (playerIndex === 1) return settings.formationP2;
+      return randomFormation();
+    };
+    this.formations = [formationFor(0), formationFor(1)];
 
     const teams: [Player[], Player[]] = [[], []];
     for (let t = 0; t < 2; t++) {
@@ -130,16 +137,13 @@ export class MatchScene extends Phaser.Scene {
       ball: this.ball,
       players: [...teams[0], ...teams[1]],
       teams,
-      humanTeam: this.humanTeam,
-      controlled: null,
+      controlled: [null, null],
       stats: createStats(),
     };
 
     const difficulty = AI_PROFILES[settings.difficulty];
-    this.profiles = [
-      this.humanTeam === 0 ? TEAMMATE_PROFILE : difficulty,
-      this.humanTeam === 1 ? TEAMMATE_PROFILE : difficulty,
-    ];
+    const profileFor = (team: number) => (this.humanTeams.includes(team) ? TEAMMATE_PROFILE : difficulty);
+    this.profiles = [profileFor(0), profileFor(1)];
 
     const minutes = this.sceneData.sim ? (this.sceneData.simMinutes ?? 1) : settings.matchMinutes;
     this.match = new MatchSystem(minutes, Math.random() < 0.5 ? 0 : 1);
@@ -157,37 +161,60 @@ export class MatchScene extends Phaser.Scene {
     this.collisions.gkSaveChance = [this.profiles[0].gkSaveChance, this.profiles[1].gkSaveChance];
     this.collisions.tackleSuccess = [this.profiles[0].tackleSuccess, this.profiles[1].tackleSuccess];
 
-    // Input
-    this.playerInput = new InputSystem();
-    this.playerInput.addSource(new KeyboardInput(this));
-    this.playerInput.addSource(new GamepadInput());
+    // Humans and their input devices
+    const ctx: HumanContext = {
+      scene: this,
+      world: this.world,
+      actions: this.actions,
+      matchState: () => this.match.state,
+      sim: () => this.sim,
+      startSupportRun: (p) => this.startSupportRun(p, 'human'),
+    };
+    const inputFrom = (...sources: InputSource[]) => {
+      const input = new InputSystem();
+      for (const s of sources) input.addSource(s);
+      return input;
+    };
+    this.humans = this.humanTeams.map((team, i) => {
+      let input: InputSystem;
+      if (this.sceneData.simTwoPlayer) {
+        // Test: one bot per team, each through its own HumanController
+        input = inputFrom(new BotInput(() => this.world, undefined, team));
+      } else if (this.mode === '2p') {
+        // P1 = keyboard only, P2 = controller only
+        input = i === 0 ? inputFrom(new KeyboardInput(this)) : inputFrom(new GamepadInput());
+      } else {
+        input = inputFrom(new KeyboardInput(this), new GamepadInput());
+        if (this.sceneData.simHuman) {
+          this.bot = new BotInput(() => this.world, () => this.sim?.event('keeperHeldShoot'));
+          input.addSource(this.bot);
+        }
+      }
+      return new HumanController(ctx, team, input, i === 1 ? 'p2' : 'p1');
+    });
     this.padEdges.sync();
-    if (this.sceneData.simHuman) {
-      this.bot = new BotInput(() => this.world, () => this.sim?.event('keeperHeldShoot'));
-      this.playerInput.addSource(this.bot);
-    }
 
     // UI
-    this.hud = new HUD(this, this.humanTeam, this.humanTeam !== null ? settings.difficulty : undefined);
+    const tags = this.humans.map((h, i) => ({ team: h.team, label: `P${i + 1}` }));
+    this.hud = new HUD(this, tags, this.mode === '1p' && this.humans.length > 0 ? settings.difficulty : undefined);
     this.overlay = new MatchOverlay(this);
     this.pauseMenu = new PauseMenu(this, {
       onResume: () => this.resume(),
       onRestart: () => this.restartMatch(),
       onMainMenu: () => this.scene.start('MenuScene'),
-      formation: this.humanTeam !== null ? this.formations[this.humanTeam] : '2-3',
-      onFormationChange: (id) => {
-        if (this.humanTeam === null) return;
-        this.changeFormation(this.humanTeam, id);
-        settings.formation = id; // also used for the next matches
-        saveSettings();
-      },
+      formations: this.humans.map((h, i) => ({
+        label: this.mode === '2p' ? `P${i + 1} FORMATION` : 'FORMATION',
+        value: this.formations[h.team],
+        onChange: (id: FormationId) => {
+          this.changeFormation(h.team, id);
+          // Also used for the next matches
+          if (i === 0) settings.formation = id;
+          else settings.formationP2 = id;
+          saveSettings();
+        },
+      })),
     });
     this.fx = this.add.graphics().setDepth(60);
-    this.keeperTimer = this.add.text(0, 0, '', {
-      ...textStyle(11, '#ffffff', true),
-      stroke: '#000000',
-      strokeThickness: 3,
-    }).setOrigin(0.5, 1).setDepth(61).setVisible(false);
 
     const kb = this.input.keyboard;
     kb?.on('keydown-ESC', this.onEscKey, this);
@@ -198,35 +225,7 @@ export class MatchScene extends Phaser.Scene {
 
     if (this.sceneData.sim) {
       this.sim = new SimReport(this.sceneData.simIndex ?? 0);
-      if (this.sceneData.simHuman) {
-        // Exercise pausing with real ESC key events: press ESC, check the game
-        // stays paused, press ESC again, check it resumed.
-        this.time.delayedCall(4000, () => {
-          pressKey('Escape', 27);
-          this.time.delayedCall(500, () => {
-            if (this.match.isPaused()) this.sim?.event('paused');
-            // Change formation through the pause menu: ↓ to FORMATION, → to switch
-            const team = this.humanTeam ?? 0;
-            const before = this.formations[team];
-            pressKey('ArrowDown', 40);
-            pressKey('ArrowRight', 39);
-            // Phaser handles queued key events on the next frame
-            this.time.delayedCall(150, () => {
-              const after = this.formations[team];
-              const slots = FORMATIONS[after];
-              const rolesOk = this.world.teams[team].every((p, i) => p.role === slots[i].role);
-              this.sim?.event(after !== before && rolesOk ? 'formationChangeOk' : 'formationChangeWrong');
-              pressKey('Escape', 27);
-              this.time.delayedCall(300, () => {
-                if (!this.match.isPaused()) this.sim?.event('resumed');
-                else this.resume();
-              });
-            });
-          });
-        });
-        this.time.delayedCall(6000, () => this.keeperHeldKeyTest(0));
-        this.time.delayedCall(15000, () => this.padPauseTest(0));
-      }
+      if (this.sceneData.simHuman) this.scheduleScriptedTests();
     }
 
     this.resetPositions();
@@ -273,15 +272,15 @@ export class MatchScene extends Phaser.Scene {
     }
 
     this.hud.update(this.match.data, this.match.getFormattedTime(), !soundManager.enabled);
-    this.drawFx();
+    this.fx.clear();
+    for (const h of this.humans) h.drawFx(this.fx);
   }
 
   private simulate(dt: number): void {
-    if (this.humanTeam !== null) this.handleHumanInput(dt);
+    for (const h of this.humans) h.update(dt);
 
     for (let t = 0; t < 2; t++) {
-      const controlled = t === this.humanTeam ? this.world.controlled : null;
-      this.ai.updateTeam(t, dt, this.profiles[t], controlled);
+      this.ai.updateTeam(t, dt, this.profiles[t], this.world.controlled[t]);
     }
     for (const p of this.world.players) p.update(dt);
     this.collisions.update(dt);
@@ -338,108 +337,11 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
-  // ========================================================= human control
-
-  private handleHumanInput(dt: number): void {
-    const input = this.playerInput.update(dt * 1000);
-    this.heldDir = { x: input.moveX, y: input.moveY };
-    if (input.switchPressed) this.switchPlayer(false, input.moveX, input.moveY);
-
-    // The human only controls the keeper while he holds the ball
-    if (this.world.controlled?.role === 'goalkeeper' && !this.world.controlled.hasBall) {
-      this.switchPlayer(false);
-    }
-
-    const p = this.world.controlled;
-    if (!p) return;
-
-    // Don't let the game stall if the player never releases the keeper's ball
-    if (p.role === 'goalkeeper' && p.hasBall && p.possessionTime > GOALKEEPER.humanHoldMax && p.canKick()) {
-      this.playerInput.consumeShoot();
-      const receiver = this.actions.lob(p, attackDir(p.teamIndex), 0);
-      if (receiver) this.setControlled(receiver);
-      else this.switchPlayer(false);
-      return;
-    }
-
-    p.steer(input.moveX, input.moveY, input.sprint, dt);
-    const hasDir = input.moveX !== 0 || input.moveY !== 0;
-    const dirX = hasDir ? input.moveX : 0;
-    const dirY = hasDir ? input.moveY : 0;
-
-    if (p.hasBall) {
-      // Pass (S), shot (D) and lob (A) are all "hold to charge, release to play".
-      // Only one charges at a time; the first key held wins.
-      const held = { pass: input.passHeld, shoot: input.shootHeld, lob: input.lobHeld };
-      const heldMs = { pass: input.passHeldMs, shoot: input.shootHeldMs, lob: input.lobHeldMs };
-      const released = { pass: input.passReleased, shoot: input.shootReleased, lob: input.lobReleased };
-      if (this.chargeKind === null) {
-        this.chargeKind = held.pass ? 'pass' : held.shoot ? 'shoot' : held.lob ? 'lob' : null;
-      }
-      const kind = this.chargeKind;
-      if (kind && held[kind]) {
-        this.chargeMs = heldMs[kind];
-        if (this.chargeMs >= BALL.maxChargeMs) {
-          this.fireCharged(p, kind, 1, input.moveY, dirX, dirY);
-          this.consumeCharge(kind);
-        }
-      } else if (kind && released[kind]) {
-        this.fireCharged(p, kind, this.chargeMs / BALL.maxChargeMs, input.moveY, dirX, dirY);
-      } else {
-        this.chargeKind = null;
-      }
-    } else {
-      this.chargeKind = null;
-      if (input.shootPressed) {
-        if (this.actions.tackle(p)) this.sim?.event('humanTackle');
-        this.playerInput.consumeShoot();
-      }
-      // A without the ball does nothing; don't let the hold carry over into possession
-      if (input.lobPressed) this.playerInput.consumeLob();
-      if (input.passPressed) {
-        this.playerInput.consumePass(); // S here means "switch", not a pass to charge later
-        this.switchPlayer(true, dirX, dirY);
-      }
-    }
-  }
-
-  private fireCharged(
-    p: Player, kind: 'pass' | 'shoot' | 'lob', charge: number, aimY: number, dirX: number, dirY: number,
-  ): void {
-    if (kind === 'pass') this.firePass(p, charge, dirX, dirY);
-    else if (kind === 'shoot') this.fireShot(p, charge, aimY, dirX, dirY);
-    else this.fireLob(p, charge, dirX, dirY);
-  }
-
-  private consumeCharge(kind: 'pass' | 'shoot' | 'lob'): void {
-    if (kind === 'pass') this.playerInput.consumePass();
-    else if (kind === 'shoot') this.playerInput.consumeShoot();
-    else this.playerInput.consumeLob();
-  }
-
-  private firePass(p: Player, charge: number, dirX: number, dirY: number): void {
-    this.chargeKind = null;
-    const receiver = this.actions.pass(p, dirX, dirY, Phaser.Math.Clamp(charge, 0, 1));
-    this.sim?.event('humanPass');
-    this.startSupportRun(p);
-    if (receiver) this.setControlled(receiver);
-  }
-
-  private fireLob(p: Player, charge: number, dirX: number, dirY: number): void {
-    this.chargeKind = null;
-    const power = Phaser.Math.Clamp(charge, 0, 1);
-    const receiver = this.actions.lobToSpot(p, dirX, dirY, power);
-    this.sim?.event('humanLob');
-    this.sim?.event(power >= 0.99 ? 'humanLobFull' : power < 0.33 ? 'humanLobWeak' : 'humanLobMid');
-    this.startSupportRun(p);
-    if (receiver) this.setControlled(receiver);
-  }
-
   /**
    * After a pass, the passer keeps joining the attack (see AISystem.supportRun).
-   * Used for the human's passes and for AI passes (via AISystem.onFieldPass).
+   * Used for human passes and for AI passes (via AISystem.onFieldPass).
    */
-  private startSupportRun(passer: Player, by: 'human' | 'ai' = 'human'): void {
+  private startSupportRun(passer: Player, by: 'human' | 'ai'): void {
     if (passer.hasBall || passer.role === 'goalkeeper') return; // pass didn't happen / keeper
     passer.supportRunTimer = PLAYER.supportRunMax;
     if (this.sim) {
@@ -458,74 +360,9 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
-  private fireShot(p: Player, charge: number, aimY: number, dirX: number, dirY: number): void {
-    this.chargeKind = null;
-    const power = 0.2 + 0.8 * Phaser.Math.Clamp(charge, 0, 1);
-    this.actions.shoot(p, power, aimY, dirX, dirY, 0.85);
-    this.sim?.event('humanShot');
-  }
-
-  /**
-   * Switch player. With a direction held (dirX/dirY from the arrows) it picks
-   * the teammate in that direction from the current player; otherwise the best
-   * player for the situation (pass receiver, goal-side defender, or whoever
-   * reaches a loose ball first). See logic/PlayerSelection.ts.
-   */
-  private switchPlayer(includeCurrent: boolean, dirX = 0, dirY = 0): void {
-    if (this.humanTeam === null) return;
-    this.sim?.event(dirX !== 0 || dirY !== 0 ? 'switchDirectional' : 'switch');
-    const target = this.switchTarget(includeCurrent, dirX, dirY);
-    if (target) this.setControlled(target);
-  }
-
-  /** Who switchPlayer() would select right now (no side effects). */
-  private switchTarget(includeCurrent: boolean, dirX = 0, dirY = 0): Player | null {
-    if (this.humanTeam === null) return null;
-    const ball = this.ball;
-    const current = this.world.controlled;
-    const mates = this.world.teams[this.humanTeam];
-
-    // Explicit direction from the arrows wins
-    if (current && (dirX !== 0 || dirY !== 0)) {
-      const inDirection = pickPlayerInDirection(mates, current, dirX, dirY, current);
-      if (inDirection) return inDirection;
-    }
-
-    const receiver = ball.isFree ? mates.find((p) => p.id === ball.passTargetId) : undefined;
-    if (receiver && receiver !== current) return receiver;
-
-    const carrier = ballOwner(this.world);
-    const opponentCarrier = carrier && carrier.teamIndex !== this.humanTeam ? carrier : null;
-    // Never stay on a goalkeeper who no longer has the ball
-    const exclude = includeCurrent && current?.role !== 'goalkeeper' ? null : current;
-    return pickPlayerForBall(mates, this.humanTeam, ball, opponentCarrier, exclude);
-  }
-
-  private setControlled(p: Player): void {
-    const current = this.world.controlled;
-    if (current === p) return;
-    current?.setSelected(this, false);
-    p.setSelected(this, true);
-    this.world.controlled = p;
-    this.chargeKind = null;
-  }
-
   private onPossession(p: Player, previousTeam: number | null): void {
     this.sim?.event('possession');
-    if (this.humanTeam === null) return;
-    if (p.teamIndex === this.humanTeam) {
-      // Includes our goalkeeper: the human decides where he plays the ball
-      this.setControlled(p);
-      if (p.role === 'goalkeeper') {
-        // Keys still held from defending (e.g. D for a tackle) must not
-        // immediately fire a keeper action: require a fresh press.
-        this.playerInput.sync();
-        this.sim?.event('humanKeeper');
-      }
-    } else if (previousTeam === this.humanTeam || this.world.controlled?.role === 'goalkeeper') {
-      // We lost the ball: take the defender best placed to stop the carrier
-      this.switchPlayer(true);
-    }
+    for (const h of this.humans) h.onPossession(p, previousTeam);
   }
 
   // ========================================================== match flow
@@ -572,7 +409,7 @@ export class MatchScene extends Phaser.Scene {
     this.lastState = 'goal_scored';
     this.sim?.goal(scoringTeam, this.match.data.time);
     if (!ownGoal) this.world.stats.onTarget[scoringTeam]++;
-    else if (1 - scoringTeam === this.humanTeam) {
+    else if (this.humanTeams.includes(1 - scoringTeam)) {
       const kicker = this.world.players.find((q) => q.id === this.ball.lastKickerId);
       if (kicker?.role === 'goalkeeper') this.sim?.event('humanKeeperOwnGoal');
     }
@@ -582,7 +419,7 @@ export class MatchScene extends Phaser.Scene {
     this.overlay.showGoal(ownGoal ? `OWN GOAL — ${TEAMS[scoringTeam].name}` : TEAMS[scoringTeam].name);
     this.cameras.main.shake(300, 0.008);
     this.cameras.main.flash(180, 255, 255, 255);
-    this.chargeKind = null;
+    for (const h of this.humans) h.chargeKind = null;
 
     for (const p of this.world.teams[scoringTeam]) p.setPose('celebrate', MATCH.goalCelebrationDuration);
     this.burstConfetti(this.ball.x, this.ball.y, TEAMS[scoringTeam].primaryColor);
@@ -605,16 +442,22 @@ export class MatchScene extends Phaser.Scene {
 
   private onFulltime(): void {
     soundManager.whistleLong();
-    this.chargeKind = null;
+    for (const h of this.humans) h.chargeKind = null;
     const d = this.match.data;
     const s = this.world.stats;
     const winner = this.match.getWinner();
 
     let resultText: string;
     let resultColor = '#ffffff';
-    if (this.humanTeam !== null) {
+    if (this.mode === '2p') {
       if (winner === -1) resultText = 'DRAW';
-      else if (winner === this.humanTeam) {
+      else {
+        resultText = `P${this.humanTeams.indexOf(winner) + 1} WINS — ${TEAMS[winner].name.toUpperCase()}`;
+        resultColor = '#66ff88';
+      }
+    } else if (this.humans.length > 0) {
+      if (winner === -1) resultText = 'DRAW';
+      else if (winner === this.humans[0].team) {
         resultText = 'YOU WIN!';
         resultColor = '#66ff88';
       } else {
@@ -650,77 +493,6 @@ export class MatchScene extends Phaser.Scene {
         this.time.delayedCall(300, () => this.scene.restart({ ...this.sceneData, simIndex: next }));
       }
     }
-  }
-
-  /**
-   * Scripted test (bot-as-human sim only): our forward gets the ball and starts
-   * charging a shot (D held); mid-charge our keeper takes the ball. Because D is
-   * still held from the forward's charge, the keeper must NOT kick (the hold is
-   * swallowed by InputSystem.sync when control passes to the keeper).
-   */
-  private keeperHeldKeyTest(attempt: number): void {
-    const bot = this.bot;
-    if (!bot || this.humanTeam === null || attempt > 6) return;
-    const retry = () => {
-      bot.override = null;
-      this.time.delayedCall(1000, () => this.keeperHeldKeyTest(attempt + 1));
-    };
-    if (this.match.state !== 'playing') return retry();
-
-    const team = this.world.teams[this.humanTeam];
-    const forward = team.find((q) => q.role === 'forward');
-    const keeper = team.find((q) => q.role === 'goalkeeper');
-    if (!forward || !keeper) return;
-
-    bot.override = 'release'; // make sure the next D press is a fresh one
-    this.time.delayedCall(100, () => {
-      if (this.match.state !== 'playing') return retry();
-      this.collisions.givePossession(forward);
-      bot.override = 'holdShoot';
-      this.time.delayedCall(250, () => {
-        const charging = this.chargeKind === 'shoot' && forward.hasBall;
-        if (!charging || this.match.state !== 'playing') return retry();
-        this.collisions.givePossession(keeper);
-        this.time.delayedCall(1000, () => {
-          // Still holding the ball = the held key was ignored; otherwise he kicked it
-          this.sim?.event(keeper.hasBall ? 'keeperHeldKeyOk' : 'keeperHeldKeyFired');
-          bot.override = null;
-        });
-      });
-    });
-  }
-
-  /**
-   * Scripted test (bot-as-human sim only): a fake Xbox controller presses Menu
-   * (the game must pause), then B (the pause menu's "back" must resume).
-   */
-  private padPauseTest(attempt: number): void {
-    if (attempt > 6) return;
-    if (this.match.state !== 'playing') {
-      this.time.delayedCall(1000, () => this.padPauseTest(attempt + 1));
-      return;
-    }
-    const w = window as unknown as { __RF_FAKE_PAD__?: PadState };
-    const fakePad = (held: number[]): PadState => ({
-      buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: held.includes(i), value: held.includes(i) ? 1 : 0 })),
-      axes: [0, 0, 0, 0],
-    });
-    const press = (button: number, then: () => void) => {
-      w.__RF_FAKE_PAD__ = fakePad([button]);
-      this.time.delayedCall(100, () => {
-        w.__RF_FAKE_PAD__ = fakePad([]);
-        this.time.delayedCall(100, then);
-      });
-    };
-    w.__RF_FAKE_PAD__ = fakePad([]);
-    this.time.delayedCall(50, () => press(PAD.MENU, () => {
-      if (this.match.isPaused()) this.sim?.event('padPaused');
-      press(PAD.B, () => {
-        if (!this.match.isPaused()) this.sim?.event('padResumed');
-        else this.resume();
-        delete w.__RF_FAKE_PAD__;
-      });
-    }));
   }
 
   /** Second half: teams swap ends; formation homes are mirrored accordingly. */
@@ -763,13 +535,11 @@ export class MatchScene extends Phaser.Scene {
     }
     this.ai.reset();
 
-    if (this.humanTeam !== null) {
-      // Start on the kickoff taker (or our most central forward when the CPU kicks off)
-      const idx = kickoffTakerIndex(FORMATIONS[this.formations[this.humanTeam]]);
-      this.setControlled(this.world.teams[this.humanTeam][idx]);
+    // Each human starts on his team's kickoff taker / most central forward
+    for (const h of this.humans) {
+      const idx = kickoffTakerIndex(FORMATIONS[this.formations[h.team]]);
+      h.resetForKickoff(this.world.teams[h.team][idx]);
     }
-    this.playerInput.sync();
-    this.chargeKind = null;
   }
 
   // ================================================================ pause
@@ -797,7 +567,7 @@ export class MatchScene extends Phaser.Scene {
 
   private onBlur(): void {
     // Auto-pause when the window loses focus
-    if (this.humanTeam !== null && !this.sceneData.sim && this.scene.isActive()) this.pause();
+    if (this.humans.length > 0 && !this.sceneData.sim && this.scene.isActive()) this.pause();
   }
 
   private togglePause(event?: KeyboardEvent): void {
@@ -823,7 +593,7 @@ export class MatchScene extends Phaser.Scene {
     this.lastState = this.match.state;
     this.pauseMenu.hide();
     this.tweens.resumeAll();
-    this.playerInput.sync();
+    for (const h of this.humans) h.input.sync();
     this.resumedAt = performance.now();
   }
 
@@ -831,79 +601,105 @@ export class MatchScene extends Phaser.Scene {
     this.scene.restart({ ...this.sceneData, simIndex: this.sceneData.simIndex });
   }
 
-  // ================================================================= fx
+  // ===================================================== scripted tests
 
-  private drawFx(): void {
-    const g = this.fx;
-    g.clear();
-    this.keeperTimer.setVisible(false);
-    const p = this.world.controlled;
-    if (!p || this.humanTeam === null) return;
-    const x = Math.round(p.x);
-    const y = Math.round(p.y);
-
-    // Countdown to the keeper's automatic kick
-    if (p.role === 'goalkeeper' && p.hasBall) {
-      const left = Math.max(0, GOALKEEPER.humanHoldMax - p.possessionTime);
-      const k = left / GOALKEEPER.humanHoldMax;
-      const color = k > 0.5 ? 0x66ff66 : k > 0.25 ? 0xffdd33 : 0xff4433;
-      // Drawn above the shot-power bar so both stay visible while charging a kick
-      g.fillStyle(0x000000, 0.7);
-      g.fillRect(x - 13, y - 30, 26, 5);
-      g.fillStyle(color, 1);
-      g.fillRect(x - 12, y - 29, Math.round(24 * k), 3);
-      this.keeperTimer
-        .setText((left / 1000).toFixed(1))
-        .setColor(`#${color.toString(16).padStart(6, '0')}`)
-        .setPosition(x, y - 31)
-        .setVisible(true);
-    }
-
-    // Stamina bar under the controlled player
-    if (p.stamina < 0.99) {
-      g.fillStyle(0x000000, 0.6);
-      g.fillRect(x - 9, y + 15, 18, 4);
-      g.fillStyle(p.stamina > 0.3 ? 0x44dd66 : 0xff5544, 1);
-      g.fillRect(x - 8, y + 16, Math.round(16 * p.stamina), 2);
-    }
-
-    // Power bar while charging a shot or a lob
-    if (this.chargeKind !== null && p.hasBall) {
-      const k = Phaser.Math.Clamp(this.chargeMs / BALL.maxChargeMs, 0, 1);
-      const color = k < 0.5 ? 0x66ff66 : k < 0.8 ? 0xffdd33 : 0xff4433;
-      g.fillStyle(0x000000, 0.7);
-      g.fillRect(x - 13, y - 22, 26, 6);
-      g.fillStyle(color, 1);
-      g.fillRect(x - 12, y - 21, Math.round(24 * k), 4);
-    }
-
-    if (this.match.state === 'playing') {
-      if (p.hasBall) {
-        // Yellow hint: who an S pass would go to (follows the held arrow direction)
-        const t = this.actions.passTarget(p, this.heldDir.x, this.heldDir.y);
-        if (t) this.drawHintArrow(g, t, 0xffe14d);
-      } else {
-        // Blue hint: who SPACE would switch to
-        const t = this.switchTarget(false, this.heldDir.x, this.heldDir.y);
-        if (t && t !== p) this.drawHintArrow(g, t, 0x7fd8ff);
-      }
-    }
+  /** Bot-as-human sim only: scripted checks of pause, formation change, keeper and pad. */
+  private scheduleScriptedTests(): void {
+    const human = this.humans[0];
+    // Pause with real ESC key events, change formation in the pause menu
+    // (↓ to FORMATION, → to switch), then ESC again to resume.
+    this.time.delayedCall(4000, () => {
+      pressKey('Escape', 27);
+      this.time.delayedCall(500, () => {
+        if (this.match.isPaused()) this.sim?.event('paused');
+        const team = human.team;
+        const before = this.formations[team];
+        pressKey('ArrowDown', 40);
+        pressKey('ArrowRight', 39);
+        // Phaser handles queued key events on the next frame
+        this.time.delayedCall(150, () => {
+          const after = this.formations[team];
+          const slots = FORMATIONS[after];
+          const rolesOk = this.world.teams[team].every((p, i) => p.role === slots[i].role);
+          this.sim?.event(after !== before && rolesOk ? 'formationChangeOk' : 'formationChangeWrong');
+          pressKey('Escape', 27);
+          this.time.delayedCall(300, () => {
+            if (!this.match.isPaused()) this.sim?.event('resumed');
+            else this.resume();
+          });
+        });
+      });
+    });
+    this.time.delayedCall(6000, () => this.keeperHeldKeyTest(0));
+    this.time.delayedCall(15000, () => this.padPauseTest(0));
   }
 
-  /** Small down-pointing pixel arrow with a dark outline above a player. */
-  private drawHintArrow(g: Phaser.GameObjects.Graphics, target: Player, color: number): void {
-    const tx = Math.round(target.x);
-    const ty = Math.round(target.y) - 17;
-    g.fillStyle(0x0b0f1c, 0.9);
-    g.fillRect(tx - 4, ty - 1, 9, 2);
-    g.fillRect(tx - 3, ty + 1, 7, 2);
-    g.fillRect(tx - 2, ty + 3, 5, 2);
-    g.fillRect(tx - 1, ty + 5, 3, 1);
-    g.fillStyle(color, 1);
-    g.fillRect(tx - 3, ty, 7, 1);
-    g.fillRect(tx - 2, ty + 1, 5, 2);
-    g.fillRect(tx - 1, ty + 3, 3, 1);
-    g.fillRect(tx, ty + 4, 1, 1);
+  /**
+   * Our forward gets the ball and starts charging a shot (shoot held); mid-charge
+   * our keeper takes the ball. Because the key is still held, the keeper must NOT
+   * kick (the hold is swallowed by InputSystem.sync when control passes to him).
+   */
+  private keeperHeldKeyTest(attempt: number): void {
+    const bot = this.bot;
+    const human = this.humans[0];
+    if (!bot || !human || attempt > 6) return;
+    const retry = () => {
+      bot.override = null;
+      this.time.delayedCall(1000, () => this.keeperHeldKeyTest(attempt + 1));
+    };
+    if (this.match.state !== 'playing') return retry();
+
+    const team = this.world.teams[human.team];
+    const forward = team.find((q) => q.role === 'forward');
+    const keeper = team.find((q) => q.role === 'goalkeeper');
+    if (!forward || !keeper) return;
+
+    bot.override = 'release'; // make sure the next shoot press is a fresh one
+    this.time.delayedCall(100, () => {
+      if (this.match.state !== 'playing') return retry();
+      this.collisions.givePossession(forward);
+      bot.override = 'holdShoot';
+      this.time.delayedCall(250, () => {
+        const charging = human.chargeKind === 'shoot' && forward.hasBall;
+        if (!charging || this.match.state !== 'playing') return retry();
+        this.collisions.givePossession(keeper);
+        this.time.delayedCall(1000, () => {
+          // Still holding the ball = the held key was ignored; otherwise he kicked it
+          this.sim?.event(keeper.hasBall ? 'keeperHeldKeyOk' : 'keeperHeldKeyFired');
+          bot.override = null;
+        });
+      });
+    });
+  }
+
+  /** A fake Xbox controller presses Menu (must pause), then B (pause menu "back" must resume). */
+  private padPauseTest(attempt: number): void {
+    if (attempt > 6) return;
+    if (this.match.state !== 'playing') {
+      this.time.delayedCall(1000, () => this.padPauseTest(attempt + 1));
+      return;
+    }
+    const w = window as unknown as { __RF_FAKE_PAD__?: PadState };
+    const fakePad = (held: number[]): PadState => ({
+      buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: held.includes(i), value: held.includes(i) ? 1 : 0 })),
+      axes: [0, 0, 0, 0],
+    });
+    const press = (button: number, then: () => void) => {
+      w.__RF_FAKE_PAD__ = fakePad([button]);
+      this.time.delayedCall(100, () => {
+        w.__RF_FAKE_PAD__ = fakePad([]);
+        this.time.delayedCall(100, then);
+      });
+    };
+    w.__RF_FAKE_PAD__ = fakePad([]);
+    this.time.delayedCall(50, () => press(PAD.MENU, () => {
+      if (this.match.isPaused()) this.sim?.event('padPaused');
+      press(PAD.B, () => {
+        if (!this.match.isPaused()) this.sim?.event('padResumed');
+        else this.resume();
+        delete w.__RF_FAKE_PAD__;
+      });
+    }));
   }
 
   // ============================================================= teardown
@@ -914,8 +710,8 @@ export class MatchScene extends Phaser.Scene {
     kb?.off('keydown-P', this.onPauseKey, this);
     kb?.off('keydown-M', this.onMuteKey, this);
     this.game.events.off(Phaser.Core.Events.BLUR, this.onBlur, this);
-    this.playerInput.destroy();
+    for (const h of this.humans) h.destroy();
+    this.humans = [];
     this.sim = null;
-    this.world.controlled = null;
   }
 }

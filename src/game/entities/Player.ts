@@ -4,6 +4,7 @@
 // ============================================================
 
 import Phaser from 'phaser';
+import type { MarkerId } from '../assets/AssetGenerator';
 import {
   PLAYER, GOALKEEPER, FormationPosition, PlayerRole,
 } from '../config/GameplayConfig';
@@ -112,10 +113,11 @@ export class Player {
 
   // ---------------------------------------------------------------- control
 
-  setSelected(scene: Phaser.Scene, selected: boolean): void {
+  /** @param marker which human's marker colour (p1 yellow, p2 green). */
+  setSelected(scene: Phaser.Scene, selected: boolean, marker: MarkerId = 'p1'): void {
     if (selected && !this.marker) {
-      this.marker = scene.add.image(this.x, this.y + 9, 'selection_circle').setDepth(4);
-      this.arrow = scene.add.image(this.x, this.y, 'direction_indicator').setDepth(4);
+      this.marker = scene.add.image(this.x, this.y + 9, `selection_circle_${marker}`).setDepth(4);
+      this.arrow = scene.add.image(this.x, this.y, `direction_indicator_${marker}`).setDepth(4);
       this.syncSprite();
     } else if (!selected && this.marker) {
       this.marker.destroy();

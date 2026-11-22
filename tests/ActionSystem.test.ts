@@ -39,7 +39,7 @@ function setup(mates: Player[]): { actions: ActionSystem; passer: Player; ball: 
   ball.ownerId = passer.id;
   const team = [passer, ...mates];
   const world: MatchWorld = {
-    ball, players: team, teams: [team, []], humanTeam: 0, controlled: passer, stats: createStats(),
+    ball, players: team, teams: [team, []], controlled: [passer, null], stats: createStats(),
   };
   return { actions: new ActionSystem(world), passer, ball };
 }

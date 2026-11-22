@@ -227,7 +227,7 @@ export class AISystem {
     for (let pass = 0; pass < 2; pass++) {
       for (const o of others) {
         const m = this.minds.get(o.id);
-        const holdsShape = m && !o.hasBall && o !== this.world.controlled && o !== this.chasers[team];
+        const holdsShape = m && !o.hasBall && o !== this.world.controlled[team] && o !== this.chasers[team];
         const ox = holdsShape ? m.tx : o.x;
         const oy = holdsShape ? m.ty : o.y;
         let dx = x - ox;

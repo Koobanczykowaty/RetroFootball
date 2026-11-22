@@ -7,6 +7,10 @@
 import Phaser from 'phaser';
 import { TEAMS } from '../config/GameplayConfig';
 
+/** Selection-marker colour per human player (texture suffix → CSS colour). */
+export const MARKER_COLORS = { p1: '#ffe14d', p2: '#6dff7a' } as const;
+export type MarkerId = keyof typeof MARKER_COLORS;
+
 const PLAYER_SIZE = 20;
 const PLAYER_FRAMES = 7; // idle, run1, run2, kick, dive, celebrate, idle2
 const BALL_SIZE = 10;
@@ -220,27 +224,28 @@ export class AssetGenerator {
       ctx.fillRect(1, 2, 10, 2);
     });
 
-    // Selection ring under the controlled player (pixel ellipse)
-    this.canvasTexture(scene, 'selection_circle', 24, 10, (ctx) => {
-      const cx = 11.5;
-      const cy = 4.5;
-      for (let y = 0; y < 10; y++) {
-        for (let x = 0; x < 24; x++) {
-          const d = ((x - cx) / 11.5) ** 2 + ((y - cy) / 4.5) ** 2;
-          if (d <= 1 && d > 0.55) {
-            ctx.fillStyle = '#ffe14d';
-            ctx.fillRect(x, y, 1, 1);
+    // Selection ring + direction arrow of the controlled player, one colour per
+    // human (the Canvas renderer can't tint, so each colour is its own texture)
+    for (const [id, color] of Object.entries(MARKER_COLORS)) {
+      // Pixel ellipse under the player's feet
+      this.canvasTexture(scene, `selection_circle_${id}`, 24, 10, (ctx) => {
+        const cx = 11.5;
+        const cy = 4.5;
+        ctx.fillStyle = color;
+        for (let y = 0; y < 10; y++) {
+          for (let x = 0; x < 24; x++) {
+            const d = ((x - cx) / 11.5) ** 2 + ((y - cy) / 4.5) ** 2;
+            if (d <= 1 && d > 0.55) ctx.fillRect(x, y, 1, 1);
           }
         }
-      }
-    });
-
-    // Direction arrow (points right; rotated in game)
-    this.canvasTexture(scene, 'direction_indicator', 6, 7, (ctx) => {
-      ctx.fillStyle = '#ffe14d';
-      const rows = [1, 3, 5, 6, 5, 3, 1];
-      rows.forEach((w, y) => ctx.fillRect(0, y, Math.min(w, 6), 1));
-    });
+      });
+      // Arrow (points right; rotated in game)
+      this.canvasTexture(scene, `direction_indicator_${id}`, 6, 7, (ctx) => {
+        ctx.fillStyle = color;
+        const rows = [1, 3, 5, 6, 5, 3, 1];
+        rows.forEach((w, y) => ctx.fillRect(0, y, Math.min(w, 6), 1));
+      });
+    }
 
     // Confetti / particle pixel
     this.canvasTexture(scene, 'pixel', 3, 3, (ctx) => {

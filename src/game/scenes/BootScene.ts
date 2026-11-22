@@ -33,6 +33,7 @@ export class BootScene extends Phaser.Scene {
         simIndex: 0,
         simMinutes: minutes,
         simHuman: params.get('human') === '1',
+        simTwoPlayer: params.get('p2') === '1',
       };
       this.scene.start('MatchScene', data);
       return;
@@ -41,7 +42,8 @@ export class BootScene extends Phaser.Scene {
     // Dev shortcut: ?scene=TeamSelectScene opens a screen directly
     const direct = params.get('scene');
     if (direct && direct !== 'BootScene' && this.scene.get(direct)) {
-      this.scene.start(direct);
+      // Optional &mode=2p for the setup / match screens
+      this.scene.start(direct, { mode: params.get('mode') === '2p' ? '2p' : '1p' });
       return;
     }
 

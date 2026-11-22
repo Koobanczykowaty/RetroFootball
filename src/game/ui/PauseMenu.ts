@@ -15,10 +15,13 @@ export interface PauseHandlers {
   onResume: () => void;
   onRestart: () => void;
   onMainMenu: () => void;
-  /** Change the human team's formation mid-match. */
-  onFormationChange: (id: FormationId) => void;
-  /** Formation selected when the menu is created. */
-  formation: FormationId;
+  /** One formation row per human player (none in AI-only simulations). */
+  formations: Array<{
+    label: string;
+    /** Formation selected when the menu is created. */
+    value: FormationId;
+    onChange: (id: FormationId) => void;
+  }>;
 }
 
 const CX = GAME_WIDTH / 2;
@@ -37,31 +40,44 @@ export class PauseMenu {
     const dim = scene.add.rectangle(CX, CY, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.6).setInteractive();
     this.root.add(dim);
 
-    // --- Main pause panel
+    // --- Main pause panel (height grows with the number of formation rows)
+    const rowH = 48;
+    const rows = 4 + handlers.formations.length;
+    const panelH = 80 + rows * rowH;
+    const top = CY - panelH / 2;
     this.main = scene.add.container(0, 0);
     const g = scene.add.graphics();
-    drawPanel(g, CX - 170, CY - 170, 340, 340);
+    drawPanel(g, CX - 180, top, 360, panelH);
     this.main.add(g);
-    this.main.add(scene.add.text(CX, CY - 136, 'PAUSED', titleStyle(30)).setOrigin(0.5));
+    this.main.add(scene.add.text(CX, top + 34, 'PAUSED', titleStyle(30)).setOrigin(0.5));
 
     const opts = { width: 220, height: 38, fontSize: 16 };
-    const resume = new Button(scene, CX, CY - 80, 'RESUME', handlers.onResume, opts);
-    const formation = new OptionSelector<FormationId>(
-      scene, CX, CY - 32, 'FORMATION', FORMATION_IDS, Math.max(0, FORMATION_IDS.indexOf(handlers.formation)),
-      (v) => v, handlers.onFormationChange, 300,
-    );
-    const restart = new Button(scene, CX, CY + 16, 'RESTART MATCH', handlers.onRestart, opts);
-    const controls = new Button(scene, CX, CY + 64, 'CONTROLS', () => this.showControls(true), opts);
-    const menu = new Button(scene, CX, CY + 112, 'MAIN MENU', handlers.onMainMenu, opts);
-    const items = [resume, formation, restart, controls, menu];
+    let y = top + 90;
+    const next = () => {
+      const current = y;
+      y += rowH;
+      return current;
+    };
+    const items = [
+      new Button(scene, CX, next(), 'RESUME', handlers.onResume, opts),
+      ...handlers.formations.map((f) => new OptionSelector<FormationId>(
+        scene, CX, next(), f.label, FORMATION_IDS, Math.max(0, FORMATION_IDS.indexOf(f.value)),
+        (v) => v, f.onChange, 320,
+      )),
+      new Button(scene, CX, next(), 'RESTART MATCH', handlers.onRestart, opts),
+      new Button(scene, CX, next(), 'CONTROLS', () => this.showControls(true), opts),
+      new Button(scene, CX, next(), 'MAIN MENU', handlers.onMainMenu, opts),
+    ];
     this.main.add(items);
     this.mainNav = new MenuNavigator(scene, items, handlers.onResume);
 
     // --- Controls view
     this.controls = scene.add.container(0, 0).setVisible(false);
-    const top = 30;
-    this.controls.add(createControlsPanel(scene, CX, top));
-    const back = new Button(scene, CX, top + CONTROLS_PANEL_HEIGHT + 40, 'BACK', () => this.showControls(false), opts);
+    const controlsTop = 30;
+    this.controls.add(createControlsPanel(scene, CX, controlsTop));
+    const back = new Button(
+      scene, CX, controlsTop + CONTROLS_PANEL_HEIGHT + 40, 'BACK', () => this.showControls(false), opts,
+    );
     this.controls.add(back);
     this.controlsNav = new MenuNavigator(scene, [back], () => this.showControls(false));
 

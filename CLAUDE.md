@@ -30,7 +30,8 @@ Debug URL params (see `BootScene`):
 - `?sim=N&minutes=M` runs AI-vs-AI matches; results go to `window.__RF_SIM__` and `<pre id="sim-result">`.
 - `&human=1` makes team 0 driven by `debug/BotInput` through the real human input path, and pauses/resumes once with synthetic ESC key events.
 - `&difficulty=easy|normal|hard` sets the CPU level for the run.
-- `?scene=<Key>` opens a scene directly.
+- `&p2=1` runs 2-player mode with a bot on each team.
+- `?scene=<Key>[&mode=2p]` opens a scene directly.
 
 Sim mode forces Phaser's `setTimeout` loop because rAF doesn't tick under headless virtual time.
 
@@ -71,6 +72,11 @@ Scenes: `BootScene` (generates textures and animations) → `MenuScene` → `Tea
   - At kickoff only `kickoffTakerIndex` (the most central forward) stands on the centre spot. `kickoffPositions(team, kicking, formation)` needs the formation.
   - The bot-as-human sim changes formation through the pause menu with real arrow keys (`formationChangeOk`).
 - **Phaser key events can be delivered twice.** `KeyboardPlugin` re-processes the whole frame queue on each new DOM key event, and its duplicate check only catches an immediate repeat. So two different keys within one frame re-emit the earlier event object. Every key listener must dedupe with its own `createEventDeduper()` (see `MenuNavigator`, and `MatchScene` for ESC/P/M). Don't share one deduper between listeners, or one listener swallows the event for the others.
+- **Human players / 2 PLAYERS mode:** all human control lives in `scenes/HumanController.ts`, one instance per human with its own `InputSystem`, charge state, hints and keeper countdown. `MatchScene.humans` is the list and `humanTeams` gives the team per player (P1 first). `MatchWorld.controlled` is per team (`[Player | null, Player | null]`).
+  - Quick Match (`mode: '1p'`): one human with keyboard + pad sources.
+  - 2 PLAYERS (`mode: '2p'`, menu button): P1 uses the keyboard only and picks the team (`settings.playerTeam`), P2 uses the pad only and plays the other team. Formations are `settings.formation` / `formationP2`, and the pause menu has a formation row per human. Both human teams use `TEAMMATE_PROFILE` for their AI teammates.
+  - Marker colours: p1 yellow, p2 green (`AssetGenerator.MARKER_COLORS`). **The renderer is Canvas, so `setTint` does nothing.** Coloured variants must be separate textures.
+  - The sim `&p2=1` runs 2p mode with one `BotInput` per team (`BotInput` takes a team) and checks that both humans pass and shoot.
 - **Xbox controller** (`systems/Gamepad.ts`, browser Gamepad API, "standard" layout):
   - Gameplay mapping: stick/D-pad move, RT sprint, A pass, B shoot/tackle, X lob, LB switch. `GamepadInput` is just another `InputSource` (alongside `KeyboardInput`), so charging and every mechanic work unchanged.
   - `PadEdges` turns held buttons into one-shot commands (up/down/left/right/confirm/back/pause/mute). `MenuNavigator` polls one on the scene `UPDATE` event while active, syncing on activate so a held A doesn't re-trigger. `MatchScene.update` polls one for Menu (pause) and View (mute).

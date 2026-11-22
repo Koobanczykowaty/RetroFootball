@@ -14,8 +14,10 @@ export interface GameSettings {
   difficulty: Difficulty;
   /** Index of the team the human controls in Quick Match. */
   playerTeam: number;
-  /** The human team's formation. */
+  /** The human team's formation (player 1 / keyboard in 2-player mode). */
   formation: FormationId;
+  /** Player 2's (controller) formation in 2-player mode. */
+  formationP2: FormationId;
 }
 
 const STORAGE_KEY = 'retrofootball.settings.v1';
@@ -27,6 +29,7 @@ const DEFAULTS: GameSettings = {
   difficulty: 'normal',
   playerTeam: 0,
   formation: '2-3',
+  formationP2: '2-3',
 };
 
 function load(): GameSettings {
@@ -43,6 +46,7 @@ function load(): GameSettings {
     if (parsed.difficulty && DIFFICULTIES.includes(parsed.difficulty)) s.difficulty = parsed.difficulty;
     if (parsed.playerTeam === 0 || parsed.playerTeam === 1) s.playerTeam = parsed.playerTeam;
     if (parsed.formation && FORMATION_IDS.includes(parsed.formation)) s.formation = parsed.formation;
+    if (parsed.formationP2 && FORMATION_IDS.includes(parsed.formationP2)) s.formationP2 = parsed.formationP2;
   } catch {
     // Storage unavailable or corrupt — use defaults.
   }

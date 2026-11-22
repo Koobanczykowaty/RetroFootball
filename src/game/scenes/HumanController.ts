@@ -1,0 +1,313 @@
+// ============================================================
+// HumanController — Everything one human player does with his team:
+// reading his input device, steering the controlled player, charged
+// pass / shot / lob, tackles, player switching, keeper control, and
+// the on-pitch hints (power bar, stamina, keeper countdown, arrows).
+// One instance per human: one in Quick Match, two in 2-player mode.
+// ============================================================
+
+import Phaser from 'phaser';
+import type { MarkerId } from '../assets/AssetGenerator';
+import { BALL, GOALKEEPER } from '../config/GameplayConfig';
+import type { SimReport } from '../debug/SimReport';
+import type { Player } from '../entities/Player';
+import { ballOwner, MatchWorld } from '../logic/MatchWorld';
+import { attackDir } from '../logic/PitchGeometry';
+import { pickPlayerForBall, pickPlayerInDirection } from '../logic/PlayerSelection';
+import type { ActionSystem } from '../systems/ActionSystem';
+import type { InputSystem } from '../systems/InputSystem';
+import type { MatchState } from '../systems/MatchSystem';
+import { textStyle } from '../ui/Theme';
+
+export type ChargeKind = 'pass' | 'shoot' | 'lob';
+
+/** What a HumanController needs from the match scene. */
+export interface HumanContext {
+  scene: Phaser.Scene;
+  world: MatchWorld;
+  actions: ActionSystem;
+  matchState(): MatchState;
+  sim(): SimReport | null;
+  /** The passer keeps joining the attack after a pass. */
+  startSupportRun(passer: Player): void;
+}
+
+export class HumanController {
+  /** What is currently charging (hold pass / shoot / lob). */
+  chargeKind: ChargeKind | null = null;
+  chargeMs = 0;
+  /** Direction held this frame (for the hint arrows). */
+  private heldDir = { x: 0, y: 0 };
+  /** Countdown above our keeper while he holds the ball. */
+  private readonly keeperTimer: Phaser.GameObjects.Text;
+
+  constructor(
+    private readonly ctx: HumanContext,
+    readonly team: number,
+    readonly input: InputSystem,
+    /** Selection-marker colour: p1 yellow, p2 green. */
+    private readonly marker: MarkerId = 'p1',
+  ) {
+    this.keeperTimer = ctx.scene.add.text(0, 0, '', {
+      ...textStyle(11, '#ffffff', true),
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5, 1).setDepth(61).setVisible(false);
+  }
+
+  get controlled(): Player | null {
+    return this.ctx.world.controlled[this.team];
+  }
+
+  // ============================================================ per frame
+
+  update(dt: number): void {
+    const { actions } = this.ctx;
+    const input = this.input.update(dt * 1000);
+    this.heldDir = { x: input.moveX, y: input.moveY };
+    if (input.switchPressed) this.switchPlayer(false, input.moveX, input.moveY);
+
+    // The human only controls the keeper while he holds the ball
+    if (this.controlled?.role === 'goalkeeper' && !this.controlled.hasBall) this.switchPlayer(false);
+
+    const p = this.controlled;
+    if (!p) return;
+
+    // Don't let the game stall if the player never releases the keeper's ball
+    if (p.role === 'goalkeeper' && p.hasBall && p.possessionTime > GOALKEEPER.humanHoldMax && p.canKick()) {
+      this.input.consumeShoot();
+      const receiver = actions.lob(p, attackDir(p.teamIndex), 0);
+      if (receiver) this.setControlled(receiver);
+      else this.switchPlayer(false);
+      return;
+    }
+
+    p.steer(input.moveX, input.moveY, input.sprint, dt);
+    const hasDir = input.moveX !== 0 || input.moveY !== 0;
+    const dirX = hasDir ? input.moveX : 0;
+    const dirY = hasDir ? input.moveY : 0;
+
+    if (p.hasBall) {
+      // Pass, shot and lob are all "hold to charge, release to play".
+      // Only one charges at a time; the first key held wins.
+      const held = { pass: input.passHeld, shoot: input.shootHeld, lob: input.lobHeld };
+      const heldMs = { pass: input.passHeldMs, shoot: input.shootHeldMs, lob: input.lobHeldMs };
+      const released = { pass: input.passReleased, shoot: input.shootReleased, lob: input.lobReleased };
+      if (this.chargeKind === null) {
+        this.chargeKind = held.pass ? 'pass' : held.shoot ? 'shoot' : held.lob ? 'lob' : null;
+      }
+      const kind = this.chargeKind;
+      if (kind && held[kind]) {
+        this.chargeMs = heldMs[kind];
+        if (this.chargeMs >= BALL.maxChargeMs) {
+          this.fireCharged(p, kind, 1, input.moveY, dirX, dirY);
+          this.consumeCharge(kind);
+        }
+      } else if (kind && released[kind]) {
+        this.fireCharged(p, kind, this.chargeMs / BALL.maxChargeMs, input.moveY, dirX, dirY);
+      } else {
+        this.chargeKind = null;
+      }
+    } else {
+      this.chargeKind = null;
+      if (input.shootPressed) {
+        if (actions.tackle(p)) this.ctx.sim()?.event('humanTackle');
+        this.input.consumeShoot();
+      }
+      // Lob without the ball does nothing; don't let the hold carry over into possession
+      if (input.lobPressed) this.input.consumeLob();
+      if (input.passPressed) {
+        this.input.consumePass(); // pass key here means "switch", not a pass to charge later
+        this.switchPlayer(true, dirX, dirY);
+      }
+    }
+  }
+
+  private fireCharged(p: Player, kind: ChargeKind, charge: number, aimY: number, dirX: number, dirY: number): void {
+    if (kind === 'pass') this.firePass(p, charge, dirX, dirY);
+    else if (kind === 'shoot') this.fireShot(p, charge, aimY, dirX, dirY);
+    else this.fireLob(p, charge, dirX, dirY);
+  }
+
+  private consumeCharge(kind: ChargeKind): void {
+    if (kind === 'pass') this.input.consumePass();
+    else if (kind === 'shoot') this.input.consumeShoot();
+    else this.input.consumeLob();
+  }
+
+  private firePass(p: Player, charge: number, dirX: number, dirY: number): void {
+    this.chargeKind = null;
+    const receiver = this.ctx.actions.pass(p, dirX, dirY, Phaser.Math.Clamp(charge, 0, 1));
+    this.ctx.sim()?.event('humanPass');
+    this.ctx.sim()?.event(`humanPassTeam${this.team}`);
+    this.ctx.startSupportRun(p);
+    if (receiver) this.setControlled(receiver);
+  }
+
+  private fireLob(p: Player, charge: number, dirX: number, dirY: number): void {
+    this.chargeKind = null;
+    const power = Phaser.Math.Clamp(charge, 0, 1);
+    const receiver = this.ctx.actions.lobToSpot(p, dirX, dirY, power);
+    const sim = this.ctx.sim();
+    sim?.event('humanLob');
+    sim?.event(power >= 0.99 ? 'humanLobFull' : power < 0.33 ? 'humanLobWeak' : 'humanLobMid');
+    this.ctx.startSupportRun(p);
+    if (receiver) this.setControlled(receiver);
+  }
+
+  private fireShot(p: Player, charge: number, aimY: number, dirX: number, dirY: number): void {
+    this.chargeKind = null;
+    const power = 0.2 + 0.8 * Phaser.Math.Clamp(charge, 0, 1);
+    this.ctx.actions.shoot(p, power, aimY, dirX, dirY, 0.85);
+    this.ctx.sim()?.event('humanShot');
+    this.ctx.sim()?.event(`humanShotTeam${this.team}`);
+  }
+
+  // ======================================================= player switch
+
+  /**
+   * Switch player. With a direction held it picks the teammate in that
+   * direction from the current player; otherwise the best player for the
+   * situation (pass receiver, goal-side defender, or whoever reaches a loose
+   * ball first). See logic/PlayerSelection.ts.
+   */
+  switchPlayer(includeCurrent: boolean, dirX = 0, dirY = 0): void {
+    this.ctx.sim()?.event(dirX !== 0 || dirY !== 0 ? 'switchDirectional' : 'switch');
+    const target = this.switchTarget(includeCurrent, dirX, dirY);
+    if (target) this.setControlled(target);
+  }
+
+  /** Who switchPlayer() would select right now (no side effects). */
+  switchTarget(includeCurrent: boolean, dirX = 0, dirY = 0): Player | null {
+    const { world } = this.ctx;
+    const ball = world.ball;
+    const current = this.controlled;
+    const mates = world.teams[this.team];
+
+    // Explicit direction wins
+    if (current && (dirX !== 0 || dirY !== 0)) {
+      const inDirection = pickPlayerInDirection(mates, current, dirX, dirY, current);
+      if (inDirection) return inDirection;
+    }
+
+    const receiver = ball.isFree ? mates.find((p) => p.id === ball.passTargetId) : undefined;
+    if (receiver && receiver !== current) return receiver;
+
+    const carrier = ballOwner(world);
+    const opponentCarrier = carrier && carrier.teamIndex !== this.team ? carrier : null;
+    // Never stay on a goalkeeper who no longer has the ball
+    const exclude = includeCurrent && current?.role !== 'goalkeeper' ? null : current;
+    return pickPlayerForBall(mates, this.team, ball, opponentCarrier, exclude);
+  }
+
+  setControlled(p: Player): void {
+    const current = this.controlled;
+    if (current === p) return;
+    current?.setSelected(this.ctx.scene, false);
+    p.setSelected(this.ctx.scene, true, this.marker);
+    this.ctx.world.controlled[this.team] = p;
+    this.chargeKind = null;
+  }
+
+  /** Called by the scene whenever any player gains the ball. */
+  onPossession(p: Player, previousTeam: number | null): void {
+    if (p.teamIndex === this.team) {
+      // Includes our goalkeeper: the human decides where he plays the ball
+      this.setControlled(p);
+      if (p.role === 'goalkeeper') {
+        // Keys still held from defending (e.g. shoot used for a tackle) must
+        // not immediately fire a keeper action: require a fresh press.
+        this.input.sync();
+        this.ctx.sim()?.event('humanKeeper');
+      }
+    } else if (previousTeam === this.team || this.controlled?.role === 'goalkeeper') {
+      // We lost the ball: take the defender best placed to stop the carrier
+      this.switchPlayer(true);
+    }
+  }
+
+  /** Kickoff: start on the given player with a clean input state. */
+  resetForKickoff(startOn: Player): void {
+    this.setControlled(startOn);
+    this.input.sync();
+    this.chargeKind = null;
+  }
+
+  // =================================================================== fx
+
+  drawFx(g: Phaser.GameObjects.Graphics): void {
+    this.keeperTimer.setVisible(false);
+    const p = this.controlled;
+    if (!p) return;
+    const x = Math.round(p.x);
+    const y = Math.round(p.y);
+
+    // Countdown to the keeper's automatic kick
+    if (p.role === 'goalkeeper' && p.hasBall) {
+      const left = Math.max(0, GOALKEEPER.humanHoldMax - p.possessionTime);
+      const k = left / GOALKEEPER.humanHoldMax;
+      const color = k > 0.5 ? 0x66ff66 : k > 0.25 ? 0xffdd33 : 0xff4433;
+      // Drawn above the power bar so both stay visible while charging a kick
+      g.fillStyle(0x000000, 0.7);
+      g.fillRect(x - 13, y - 30, 26, 5);
+      g.fillStyle(color, 1);
+      g.fillRect(x - 12, y - 29, Math.round(24 * k), 3);
+      this.keeperTimer
+        .setText((left / 1000).toFixed(1))
+        .setColor(`#${color.toString(16).padStart(6, '0')}`)
+        .setPosition(x, y - 31)
+        .setVisible(true);
+    }
+
+    // Stamina bar under the controlled player
+    if (p.stamina < 0.99) {
+      g.fillStyle(0x000000, 0.6);
+      g.fillRect(x - 9, y + 15, 18, 4);
+      g.fillStyle(p.stamina > 0.3 ? 0x44dd66 : 0xff5544, 1);
+      g.fillRect(x - 8, y + 16, Math.round(16 * p.stamina), 2);
+    }
+
+    // Power bar while charging
+    if (this.chargeKind !== null && p.hasBall) {
+      const k = Phaser.Math.Clamp(this.chargeMs / BALL.maxChargeMs, 0, 1);
+      const color = k < 0.5 ? 0x66ff66 : k < 0.8 ? 0xffdd33 : 0xff4433;
+      g.fillStyle(0x000000, 0.7);
+      g.fillRect(x - 13, y - 22, 26, 6);
+      g.fillStyle(color, 1);
+      g.fillRect(x - 12, y - 21, Math.round(24 * k), 4);
+    }
+
+    if (this.ctx.matchState() === 'playing') {
+      if (p.hasBall) {
+        // Yellow hint: who a pass would go to (follows the held direction)
+        const t = this.ctx.actions.passTarget(p, this.heldDir.x, this.heldDir.y);
+        if (t) drawHintArrow(g, t, 0xffe14d);
+      } else {
+        // Blue hint: who a switch would select
+        const t = this.switchTarget(false, this.heldDir.x, this.heldDir.y);
+        if (t && t !== p) drawHintArrow(g, t, 0x7fd8ff);
+      }
+    }
+  }
+
+  destroy(): void {
+    this.input.destroy();
+    this.ctx.world.controlled[this.team] = null;
+  }
+}
+
+/** Small down-pointing pixel arrow with a dark outline above a player. */
+function drawHintArrow(g: Phaser.GameObjects.Graphics, target: Player, color: number): void {
+  const tx = Math.round(target.x);
+  const ty = Math.round(target.y) - 17;
+  g.fillStyle(0x0b0f1c, 0.9);
+  g.fillRect(tx - 4, ty - 1, 9, 2);
+  g.fillRect(tx - 3, ty + 1, 7, 2);
+  g.fillRect(tx - 2, ty + 3, 5, 2);
+  g.fillRect(tx - 1, ty + 5, 3, 1);
+  g.fillStyle(color, 1);
+  g.fillRect(tx - 3, ty, 7, 1);
+  g.fillRect(tx - 2, ty + 1, 5, 2);
+  g.fillRect(tx - 1, ty + 3, 3, 1);
+  g.fillRect(tx, ty + 4, 1, 1);
+}

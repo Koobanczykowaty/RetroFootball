@@ -21,6 +21,8 @@ export class BotInput implements InputSource {
     private readonly getWorld: () => MatchWorld | null,
     /** Called when the keeper caught the ball while the shoot key was held. */
     private readonly onHeldAtCatch?: () => void,
+    /** Team this bot plays (two bots play each other in the 2-player sim). */
+    private readonly team = 0,
   ) {}
 
   /**
@@ -34,7 +36,7 @@ export class BotInput implements InputSource {
     if (this.override === 'release') {
       r = { ...EMPTY_RAW };
     } else if (this.override === 'holdShoot') {
-      const team = this.getWorld()?.controlled?.teamIndex ?? 0;
+      const team = this.team;
       r = { ...EMPTY_RAW, shoot: true, moveX: -attackDir(team) };
     } else {
       r = this.decide();
@@ -46,7 +48,7 @@ export class BotInput implements InputSource {
   private decide(): RawInput {
     const r: RawInput = { ...EMPTY_RAW };
     const w = this.getWorld();
-    const p = w?.controlled;
+    const p = w?.controlled[this.team];
     if (!w || !p) return r;
     this.frame++;
     const ball = w.ball;

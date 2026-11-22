@@ -20,10 +20,11 @@ export interface MatchWorld {
   ball: Ball;
   players: Player[];
   teams: [Player[], Player[]];
-  /** Team index of the human player, or null when both teams are AI (simulation). */
-  humanTeam: number | null;
-  /** Player currently controlled by the human. */
-  controlled: Player | null;
+  /**
+   * Player currently controlled by a human, per team (index = team).
+   * null for a CPU team. Both are set in 2-player mode.
+   */
+  controlled: [Player | null, Player | null];
   stats: MatchStats;
 }
 
