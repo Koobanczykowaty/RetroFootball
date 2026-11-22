@@ -83,6 +83,7 @@ Scenes: `BootScene` (generates textures and animations) → `MenuScene` → `Tea
   - Mapping and edges are pure and unit-tested (`tests/Gamepad.test.ts`). The input types live in `systems/InputTypes.ts` (no Phaser import).
   - The bot sim uses the `window.__RF_FAKE_PAD__` hook to press Menu and B (`padPaused`/`padResumed`).
   - Not tested with a physical controller by Claude.
+- **No throw-ins, corners, offside or fouls, by design.** The user considers the bouncing boards a core feature (it keeps play fast). Don't propose adding set pieces. The user also considers the current balance OK, so don't retune it unasked.
 - **Desktop browser only.** There are no touch or mobile controls (the user decided this); don't add them.
 - **Controls:** arrows move, Shift sprints, S passes (hold to charge; without the ball it switches player), A lobs (hold to charge; without the ball it tackles), D shoots (hold to charge; without the ball it does nothing), Space switches player, Esc/P pause, M mutes. All charged actions reach full power after `BALL.maxChargeMs` (350 ms). These are defined in `INPUT_MAP`. Menus use arrows, Enter/Space and Esc only, because A/S/D are gameplay keys.
 - **Key-event ordering:** Phaser emits `keydown-<KEY>` before the generic `keydown` for the same DOM event. A listener added while handling the first (e.g. the pause menu opened by ESC) still receives the second. `MenuNavigator.activate(i, openedBy)` ignores that exact event object; pass it whenever a key opens a menu.

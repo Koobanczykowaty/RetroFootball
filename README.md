@@ -166,13 +166,15 @@ Parametry URL przydatne przy tworzeniu gry:
 - `&difficulty=easy|normal|hard`: poziom komputera w symulacji.
 - `?scene=TeamSelectScene`: otwiera wybraną scenę od razu.
 
+## Założenia projektu
+
+- **Brak autów, rzutów rożnych, spalonych i fauli** – piłka odbija się od band. To celowa cecha gry: utrzymuje ciągłą, szybką akcję.
+- Gra jest przeznaczona na komputer (klawiatura, mysz, pad Xbox). Nie ma sterowania dotykowego ani wersji mobilnej.
+
 ## Znane ograniczenia
 
-- Brak autów, rzutów rożnych, spalonych i fauli. Piłka odbija się od band (świadoma decyzja arcade).
-- Dwie drużyny, jedna formacja, jeden stadion. Brak główek i strzałów z powietrza.
-- Gra jest przeznaczona na komputer (klawiatura i mysz). Nie ma sterowania dotykowego ani wersji mobilnej.
-- Brak obsługi gamepada (architektura `InputSource` jest na to gotowa).
-- Balans (np. skuteczność bramkarzy, liczba goli) był strojony na symulacjach AI vs AI. Wymaga jeszcze testów z ludźmi. Wszystkie wartości są w `GameplayConfig.ts`.
+- Dwie drużyny, dwie formacje (2-3, 3-2), jeden stadion. Brak główek i strzałów z powietrza.
+- Gra na dwa pady w trybie 2 PLAYERS nie była jeszcze sprawdzona na fizycznym sprzęcie (jeden pad działa).
 - Teksty używają systemowej czcionki monospace, więc ich wygląd zależy od systemu.
 - Plik JS ma ok. 1,5 MB (ok. 360 KB gzip), głównie przez Phaser. Vite wyświetla ostrzeżenie o rozmiarze chunka.
 
