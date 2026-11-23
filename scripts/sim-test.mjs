@@ -112,6 +112,9 @@ async function runSim(label, human, twoPlayer = false) {
       failures.push(`${tag}: players exceeded sprint speed in ${r.events.overspeed} frames (max ${r.events.maxSpeed} px/s)`);
     }
     if (s.shots[0] + s.shots[1] === 0) failures.push(`${tag}: no shots were taken`);
+    if (r.events.goalZoomStuck) {
+      failures.push(`${tag}: camera still zoomed (or HUD hidden) after ${r.events.goalZoomStuck} goal slow motion(s)`);
+    }
     if (human) {
       // Scripted every match: pause/resume via ESC and the keeper held-key scenario
       for (const e of ['paused', 'resumed', 'keeperHeldKeyOk', 'formationChangeOk', 'padPaused', 'padResumed']) {

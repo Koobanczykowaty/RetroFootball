@@ -154,6 +154,12 @@ export const MATCH = {
   /** The match clock runs from 0 to this many game minutes. */
   fullTimeMinutes: 90,
   goalCelebrationDuration: 2200,
+  /** Slow motion right after a goal (real ms; the celebration follows it). */
+  goalSlowMoMs: 1500,
+  /** Game speed during the goal slow motion. */
+  goalSlowMoScale: 0.3,
+  /** Camera zoom on the goal during the slow motion. */
+  goalSlowMoZoom: 1.6,
   kickoffDelay: 1200,
   halftimeDelay: 2500,
 };

@@ -121,6 +121,7 @@ export class TeamSelectScene extends Phaser.Scene {
   }
 
   create(): void {
+    soundManager.playMusic('menu');
     const twoPlayer = this.mode === '2p';
     const bg = this.add.graphics();
     bg.fillStyle(UI.background, 1);

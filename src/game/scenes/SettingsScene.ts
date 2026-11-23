@@ -23,6 +23,7 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   create(data?: { focus?: number }): void {
+    soundManager.playMusic('menu');
     const bg = this.add.graphics();
     bg.fillStyle(UI.background, 1);
     bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -51,10 +52,16 @@ export class SettingsScene extends Phaser.Scene {
       },
     );
 
+    const music = new OptionSelector<boolean>(
+      this, GAME_WIDTH / 2, 235, s.music, [true, false], settings.musicEnabled ? 0 : 1,
+      (v) => (v ? s.on : s.off),
+      (v) => soundManager.setMusicEnabled(v),
+    );
+
     const volIndex = VOLUMES.reduce((best, v, i) =>
       (Math.abs(v - settings.volume) < Math.abs(VOLUMES[best] - settings.volume) ? i : best), 0);
     const volume = new OptionSelector<number>(
-      this, GAME_WIDTH / 2, 235, s.volume, VOLUMES, volIndex,
+      this, GAME_WIDTH / 2, 280, s.volume, VOLUMES, volIndex,
       (v) => `${Math.round(v * 100)}%`,
       (v) => {
         soundManager.setVolume(v);
@@ -63,7 +70,7 @@ export class SettingsScene extends Phaser.Scene {
     );
 
     const difficulty = new OptionSelector<Difficulty>(
-      this, GAME_WIDTH / 2, 280, s.difficulty, DIFFICULTIES, Math.max(0, DIFFICULTIES.indexOf(settings.difficulty)),
+      this, GAME_WIDTH / 2, 325, s.difficulty, DIFFICULTIES, Math.max(0, DIFFICULTIES.indexOf(settings.difficulty)),
       (v) => s.difficultyName(v),
       (v) => {
         settings.difficulty = v;
@@ -71,7 +78,7 @@ export class SettingsScene extends Phaser.Scene {
       },
     );
 
-    const fullscreen = new Button(this, GAME_WIDTH / 2, 335, this.fsLabel(), () => {
+    const fullscreen = new Button(this, GAME_WIDTH / 2, 375, this.fsLabel(), () => {
       if (this.scale.isFullscreen) this.scale.stopFullscreen();
       else this.scale.startFullscreen();
     }, { width: 420, height: 34, fontSize: 16 });
@@ -83,11 +90,11 @@ export class SettingsScene extends Phaser.Scene {
       this.scale.off(Phaser.Scale.Events.LEAVE_FULLSCREEN, updateFs);
     });
 
-    this.add.text(GAME_WIDTH / 2, 385, s.settingsSaved, textStyle(11, UI.textMuted)).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, 418, s.settingsSaved, textStyle(11, UI.textMuted)).setOrigin(0.5);
 
     const back = () => this.scene.start('MenuScene');
     const backBtn = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT - 60, s.back, back, { width: 160, height: 34, fontSize: 16 });
-    new MenuNavigator(this, [language, sound, volume, difficulty, fullscreen, backBtn], back).activate(data?.focus ?? 0);
+    new MenuNavigator(this, [language, sound, music, volume, difficulty, fullscreen, backBtn], back).activate(data?.focus ?? 0);
   }
 
   private fsLabel(): string {

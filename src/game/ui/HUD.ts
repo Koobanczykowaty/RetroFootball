@@ -87,6 +87,14 @@ export class HUD {
     this.muteText.setVisible(muted);
   }
 
+  get visible(): boolean {
+    return this.container.visible;
+  }
+
+  setVisible(visible: boolean): void {
+    this.container.setVisible(visible);
+  }
+
   destroy(): void {
     this.container.destroy();
   }

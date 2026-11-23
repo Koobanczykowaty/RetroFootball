@@ -36,6 +36,7 @@ export interface Strings {
   setupHint: string;
   // Settings
   sound: string;
+  music: string;
   on: string;
   off: string;
   volume: string;
@@ -118,6 +119,7 @@ const EN: Strings = {
   back: 'BACK',
   setupHint: '←→ change   ↑↓ move   ENTER confirm   ESC back',
   sound: 'SOUND',
+  music: 'MUSIC',
   on: 'ON',
   off: 'OFF',
   volume: 'VOLUME',
@@ -199,6 +201,7 @@ const PL: Strings = {
   back: 'WSTECZ',
   setupHint: '←→ zmiana   ↑↓ ruch   ENTER zatwierdź   ESC wstecz',
   sound: 'DŹWIĘK',
+  music: 'MUZYKA',
   on: 'WŁ.',
   off: 'WYŁ.',
   volume: 'GŁOŚNOŚĆ',

@@ -20,6 +20,8 @@ export function browserLanguage(): Language {
 
 export interface GameSettings {
   soundEnabled: boolean;
+  /** Chiptune music in menus and (quietly) in matches. */
+  musicEnabled: boolean;
   /** 0..1 */
   volume: number;
   /** Real-time match length in minutes. */
@@ -39,6 +41,7 @@ const STORAGE_KEY = 'retrofootball.settings.v1';
 
 const DEFAULTS: GameSettings = {
   soundEnabled: true,
+  musicEnabled: true,
   volume: AUDIO.defaultVolume,
   matchMinutes: MATCH.defaultDuration,
   difficulty: 'normal',
@@ -55,6 +58,7 @@ function load(): GameSettings {
     if (!raw) return s;
     const parsed = JSON.parse(raw) as Partial<GameSettings>;
     if (typeof parsed.soundEnabled === 'boolean') s.soundEnabled = parsed.soundEnabled;
+    if (typeof parsed.musicEnabled === 'boolean') s.musicEnabled = parsed.musicEnabled;
     if (typeof parsed.volume === 'number') s.volume = Math.max(0, Math.min(1, parsed.volume));
     if (typeof parsed.matchMinutes === 'number' && MATCH.durationOptions.includes(parsed.matchMinutes)) {
       s.matchMinutes = parsed.matchMinutes;

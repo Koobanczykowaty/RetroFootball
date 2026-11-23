@@ -5,6 +5,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/GameplayConfig';
 import { t } from '../config/i18n';
+import { soundManager } from '../systems/SoundManager';
 import { Button } from '../ui/Button';
 import { CONTROLS_PANEL_HEIGHT, createControlsPanel } from '../ui/ControlsPanel';
 import { MenuNavigator } from '../ui/MenuNavigator';
@@ -16,6 +17,7 @@ export class ControlsScene extends Phaser.Scene {
   }
 
   create(): void {
+    soundManager.playMusic('menu');
     const bg = this.add.graphics();
     bg.fillStyle(UI.background, 1);
     bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);

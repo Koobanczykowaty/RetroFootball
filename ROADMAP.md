@@ -9,7 +9,7 @@ Gra celowo nie ma autów, rzutów rożnych, spalonych ani fauli (piłka odbija s
 ## P1 — Dopracowanie rozgrywki (v0.3)
 
 1. **Test gry na dwa pady** na prawdziwym sprzęcie.
-2. **Lepsza czytelność akcji**: krótkie spowolnienie po golu (replay-lite).
+2. ~~**Lepsza czytelność akcji**: krótkie spowolnienie po golu.~~ Zrobione w v0.3.0 (slow-mo z przybliżeniem).
 3. **Główki i woleje**: piłka w powietrzu na wysokości głowy, przycisk strzału przy górnej piłce.
 4. **Własna czcionka pixel art** (wbudowana, np. bitmap font generowany jak sprite'y), aby UI wyglądało tak samo na każdym systemie.
 5. **Code-splitting Phasera**, żeby zmniejszyć ostrzeżenie o rozmiarze paczki.
@@ -23,7 +23,7 @@ Gra celowo nie ma autów, rzutów rożnych, spalonych ani fauli (piłka odbija s
 5. **Turniej / puchar** (drabinka kilku meczów) i **liga** z tabelą.
 6. **Zapisy postępów** (localStorage, później konto).
 7. **Nowe stadiony i pogoda** (deszcz spowalnia piłkę, śnieg zmienia kolor murawy; parametry tarcia per stadion).
-8. **Muzyka w menu** (syntezowana chiptune lub legalne assety).
+8. ~~**Muzyka w menu**~~ Zrobione w v0.3.0: chiptune w menu i w meczu, efekty 8-bit, doping kibiców.
 9. **Ustawienia rozgrywki**: czas, prędkość gry, asysty (auto-celowanie podań).
 
 ## P3 — Online i duże systemy (v1.x)

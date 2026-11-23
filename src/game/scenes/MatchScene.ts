@@ -8,7 +8,8 @@
 
 import Phaser from 'phaser';
 import {
-  AI_PROFILES, AIProfile, FORMATION_IDS, FORMATIONS, FormationId, MATCH, PLAYER, TEAMMATE_PROFILE, TEAMS,
+  AI_PROFILES, AIProfile, FORMATION_IDS, FORMATIONS, FormationId, GAME_HEIGHT, GAME_WIDTH, MATCH, PLAYER,
+  TEAMMATE_PROFILE, TEAMS,
 } from '../config/GameplayConfig';
 import { saveSettings, settings } from '../config/Settings';
 import { t } from '../config/i18n';
@@ -84,6 +85,9 @@ export class MatchScene extends Phaser.Scene {
   private lastState: MatchState = 'kickoff';
   private resumedAt = 0;
   private wasPowerShot = false;
+  /** Goal waiting for its celebration while the slow motion runs. */
+  private pendingGoal: { team: number; ownGoal: boolean } | null = null;
+  private slowMoMs = 0;
   private sim: SimReport | null = null;
   private bot: BotInput | null = null;
   /** Controller Menu/View presses (pause, mute) — any controller. */
@@ -106,12 +110,16 @@ export class MatchScene extends Phaser.Scene {
     this.humans = [];
     this.lastState = 'kickoff';
     this.wasPowerShot = false;
+    this.pendingGoal = null;
+    this.slowMoMs = 0;
     this.bot = null;
   }
 
   create(): void {
     // A restart from the pause menu must not inherit paused tweens
     this.tweens.resumeAll();
+    // The goal zoom must not show anything outside the game area
+    this.cameras.main.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
     // First half: team 0 attacks right (also resets after a restart mid-match)
     setSidesSwapped(false);
     new Pitch(this);
@@ -236,6 +244,8 @@ export class MatchScene extends Phaser.Scene {
     this.resetPositions();
     this.match.startKickoff();
     this.overlay.showBanner(t().kickOffBanner);
+    soundManager.playMusic('match');
+    soundManager.startCrowd();
     soundManager.whistle();
   }
 
@@ -249,8 +259,19 @@ export class MatchScene extends Phaser.Scene {
       else if (cmd === 'mute') soundManager.toggle();
     }
 
-    const dt = Math.min(delta, 50) / 1000;
-    const state = this.match.update(dt * 1000);
+    let dt = Math.min(delta, 50) / 1000;
+    // Goal slow motion: the world runs slower and the match timers wait
+    // (the celebration starts only after it)
+    let matchMs = dt * 1000;
+    if (this.pendingGoal) {
+      this.slowMoMs -= dt * 1000;
+      if (this.slowMoMs <= 0) this.endGoalSlowMo();
+      else {
+        dt *= MATCH.goalSlowMoScale;
+        matchMs = 0;
+      }
+    }
+    const state = this.match.update(matchMs);
     if (state !== this.lastState) {
       const from = this.lastState;
       this.lastState = state;
@@ -381,6 +402,10 @@ export class MatchScene extends Phaser.Scene {
       case 'kickoff':
         if (from === 'halftime') this.changeEnds();
         this.resetPositions();
+        // Test check: the goal slow-motion zoom has ended before the restart
+        if (this.sim && from === 'goal_scored') {
+          this.sim.event(this.cameras.main.zoom === 1 && this.hudVisible() ? 'goalSlowMoOk' : 'goalZoomStuck');
+        }
         if (from === 'halftime' && this.sim) {
           // Test check: everyone lines up in their (new) own half, team 0's keeper on the right
           const inOwnHalf = this.world.players.every((q) => (q.x - PITCH_CX) * attackDir(q.teamIndex) <= 0);
@@ -400,6 +425,7 @@ export class MatchScene extends Phaser.Scene {
         this.overlay.setDim(0.35);
         this.overlay.showBanner(t().halfTime, `${TEAMS[0].shortName} ${a} - ${b} ${TEAMS[1].shortName}`);
         soundManager.whistleLong();
+        this.time.delayedCall(1600, () => soundManager.jingle('halftime'));
         break;
       }
       case 'fulltime':
@@ -420,14 +446,52 @@ export class MatchScene extends Phaser.Scene {
     }
 
     soundManager.goal();
-    this.overlay.setDim(0.2);
-    this.overlay.showGoal(ownGoal ? t().ownGoal(TEAMS[scoringTeam].name) : TEAMS[scoringTeam].name);
-    this.cameras.main.shake(300, 0.008);
-    this.cameras.main.flash(180, 255, 255, 255);
     for (const h of this.humans) h.chargeKind = null;
 
-    for (const p of this.world.teams[scoringTeam]) p.setPose('celebrate', MATCH.goalCelebrationDuration);
-    this.burstConfetti(this.ball.x, this.ball.y, TEAMS[scoringTeam].uiColor);
+    // Slow motion with the camera zoomed on the goal first; the banner,
+    // confetti and celebration follow in celebrateGoal(). The HUD would be
+    // zoomed with the world, so it is hidden meanwhile.
+    this.pendingGoal = { team: scoringTeam, ownGoal };
+    this.slowMoMs = MATCH.goalSlowMoMs;
+    this.hud.setVisible(false);
+    const cam = this.cameras.main;
+    cam.flash(120, 255, 255, 255);
+    cam.zoomTo(MATCH.goalSlowMoZoom, 300, 'Sine.easeOut');
+    cam.pan(this.ball.x, this.ball.y, 300, 'Sine.easeOut');
+  }
+
+  private hudVisible(): boolean {
+    return this.hud.visible;
+  }
+
+  /**
+   * Ends the goal slow motion and starts the celebration.
+   * @param instant snap the camera back (when pausing) instead of easing
+   */
+  private endGoalSlowMo(instant = false): void {
+    const goal = this.pendingGoal;
+    if (!goal) return;
+    this.pendingGoal = null;
+    this.slowMoMs = 0;
+    const cam = this.cameras.main;
+    if (instant) {
+      cam.panEffect.reset();
+      cam.zoomEffect.reset();
+      cam.setZoom(1);
+      cam.centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    } else {
+      cam.zoomTo(1, 350, 'Sine.easeInOut');
+      cam.pan(GAME_WIDTH / 2, GAME_HEIGHT / 2, 350, 'Sine.easeInOut');
+    }
+    this.hud.setVisible(true);
+
+    const team = goal.team;
+    this.overlay.setDim(0.2);
+    this.overlay.showGoal(goal.ownGoal ? t().ownGoal(TEAMS[team].name) : TEAMS[team].name);
+    if (!instant) cam.shake(300, 0.008);
+    soundManager.jingle('goal');
+    for (const p of this.world.teams[team]) p.setPose('celebrate', MATCH.goalCelebrationDuration);
+    this.burstConfetti(this.ball.x, this.ball.y, TEAMS[team].uiColor);
   }
 
   private burstConfetti(x: number, y: number, teamColor: number): void {
@@ -472,6 +536,12 @@ export class MatchScene extends Phaser.Scene {
     } else {
       resultText = winner === -1 ? t().draw : t().teamWins(TEAMS[winner].name);
     }
+
+    // Music stops; after the whistles a jingle for the result
+    soundManager.stopMusic();
+    const lost = this.mode === '1p' && this.humans.length > 0 && winner !== -1 && winner !== this.humans[0].team;
+    const jingle = winner === -1 ? 'draw' : lost ? 'lose' : 'win';
+    this.time.delayedCall(1600, () => soundManager.jingle(jingle));
 
     const totalPoss = s.possessionMs[0] + s.possessionMs[1] || 1;
     const poss0 = Math.round((s.possessionMs[0] / totalPoss) * 100);
@@ -586,6 +656,7 @@ export class MatchScene extends Phaser.Scene {
     if (st === 'fulltime' || st === 'paused') return;
     // Ignore the same key event that just closed the menu
     if (performance.now() - this.resumedAt < 150) return;
+    this.endGoalSlowMo(true); // the pause menu must not be zoomed
     this.match.pause();
     this.lastState = 'paused';
     this.pauseMenu.show(openedBy);
@@ -718,5 +789,6 @@ export class MatchScene extends Phaser.Scene {
     for (const h of this.humans) h.destroy();
     this.humans = [];
     this.sim = null;
+    soundManager.stopCrowd();
   }
 }

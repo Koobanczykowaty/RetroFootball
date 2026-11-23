@@ -6,6 +6,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, GAME_VERSION } from '../config/GameplayConfig';
 import { t } from '../config/i18n';
+import { soundManager } from '../systems/SoundManager';
 import { PLAYER_FRAME } from '../entities/Player';
 import { Button } from '../ui/Button';
 import { MenuNavigator } from '../ui/MenuNavigator';
@@ -44,6 +45,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    soundManager.playMusic('menu');
     this.drawBackground();
     this.addRunners();
 

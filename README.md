@@ -143,9 +143,9 @@ W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura dzia
   - do piłki biegnie tylko jeden zawodnik, więc nie ma zbiegania się całej drużyny;
   - pressing, asekuracja obrońcy, podania, loby, strzały w róg dalszy od bramkarza;
   - bramkarz ustawia się między piłką a bramką, przewiduje tor strzału, rzuca się, łapie lub odbija piłkę i wznawia grę.
-- **Przebieg meczu**: rozpoczęcie, zegar 0–90 min, przerwa, druga połowa ze zmianą stron (drużyny zamieniają się bramkami), gol z efektem GOAL! (dźwięk, konfetti, wstrząs kamery, celebracja), reset pozycji, ekran końcowy ze statystykami (posiadanie, strzały, celne, podania, odbiory), REMATCH i MAIN MENU.
+- **Przebieg meczu**: rozpoczęcie, zegar 0–90 min, przerwa, druga połowa ze zmianą stron (drużyny zamieniają się bramkami), gol ze spowolnieniem (ok. 1,5 s slow-mo z przybliżeniem kamery na bramkę), potem GOL!, fanfara, konfetti, wstrząs kamery i celebracja, reset pozycji, ekran końcowy ze statystykami (posiadanie, strzały, celne, podania, odbiory), REMATCH i MAIN MENU.
 - **Pauza**: Resume, Restart Match, Controls, Main Menu. Gra pauzuje się też automatycznie po utracie fokusu okna.
-- **Dźwięk**: kopnięcie, podanie, strzał, mocny strzał, odbicie, wślizg, obrona, gol z dopingiem, gwizdek, dźwięki menu. Można go wyciszyć i ustawić głośność.
+- **Dźwięk i muzyka (8-bit, wszystko syntezowane)**: efekty w stylu starych konsol (kopnięcie, podanie, strzał, mocny strzał, odbicie, wślizg, obrona, gol, gwizdek, menu); muzyka chiptune w menu i cichszy podkład w meczu; doping kibiców (szum trybun, który rośnie przy strzałach i golach, oraz co jakiś czas klaskanie ze śpiewem); jingle przy golu, przerwie i na koniec meczu (wygrana / porażka / remis). W ustawieniach: DŹWIĘK, MUZYKA (osobno) i GŁOŚNOŚĆ; M wycisza wszystko.
 - **Skalowanie**: proporcje 16:9 zawsze zachowane. Gra używa skali całkowitej (np. ×2 na Full HD), gdy wypełnia ona co najmniej 85% okna, w przeciwnym razie skali ułamkowej. Piksele są zawsze ostre. Działa też pełny ekran.
 
 ## Struktura projektu
@@ -167,7 +167,8 @@ src/game/
     CollisionSystem.ts     kolizje, posiadanie, przechwyty, odbiory, obrony
     AISystem.ts            zachowanie zawodników komputera i bramkarzy
     InputSystem.ts         źródła wejścia (klawiatura, bot testowy, gamepad w przyszłości)
-    SoundManager.ts        syntezowane efekty dźwiękowe
+    SoundManager.ts        efekty 8-bit, sekwencer muzyki, doping kibiców
+  audio/Tunes.ts           melodie i jingle zapisane jako dane (nuty)
   scenes/                  Boot, Menu, TeamSelect, Match, Controls, Settings
   ui/                      HUD, przyciski, nawigacja klawiaturą, pauza, nakładki
   assets/AssetGenerator.ts generowanie sprite'ów pixel art

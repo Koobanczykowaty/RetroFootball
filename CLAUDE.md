@@ -126,6 +126,16 @@ Scenes: `BootScene` (generates textures and animations) → `MenuScene` → `Tea
   - Warsaw's National Stadium (`drawNationalStadium`): an oval bowl with horizontal white-red facade bands, every other panel column shifted by 30% of a band. It has a crown of masts with a cable roof, a spire with a waving white-red flag (`addSpireFlag`) and a grass embankment sloping down behind the stands.
   - The Palace of Culture and Science (`drawPalaceOfCulture`) has flickering windows. These are separate rectangles, so `standTopAt(x)` leaves out windows the stands would cover.
   - Proportions follow the real buildings. Don't use the national emblem.
+- **Audio** (`systems/SoundManager.ts`, all synthesized, 8-bit style at the user's request):
+  - Every source goes through one master gain (volume, and mute via `soundEnabled`/M). Music has its own gain under it (`settings.musicEnabled`, the MUSIC row in SETTINGS).
+  - Music and jingles are note data in `audio/Tunes.ts` (original compositions, pure and unit-tested). A look-ahead scheduler plays them.
+  - Menu scenes call `playMusic('menu')`; it does nothing if that track is already playing. `MatchScene` plays `'match'` quietly plus the crowd (`startCrowd`/`stopCrowd`: murmur, swells on shots, saves and goals, a periodic clap chant).
+  - At full time the music stops and a result jingle plays.
+  - The AudioContext resumes on the first key or click; browsers block audio until then.
+- **Goal slow motion** (`MatchScene.onGoal` → `endGoalSlowMo`): `MATCH.goalSlowMoMs` real ms at `goalSlowMoScale` with the camera zoomed on the ball (camera bounds = game area). The match timers wait meanwhile; the banner, fanfare, confetti and celebration come after.
+  - The HUD shares the camera, so it is hidden during the zoom.
+  - Pausing ends the slow motion instantly.
+  - The sim fails on `goalZoomStuck` (zoom or HUD not restored by the next kickoff).
 - **Main menu players** (`MenuScene.update`, timeline `DUEL`) run a dribbling duel: run-in, feints, the cut past a lunging defender, then a chase. Roles and direction swap every round. To screenshot any animation under headless virtual time, the game loop must use setTimeout. Only the `sim`/`uitest` params force that (`main.ts`), so add a temporary param for the shot.
 - In-match HUD: no "ESC pause" corner box (the user found it tacky). Only the mute indicator appears there, and only while muted.
 - Depth layers: pitch 0, ball shadow 3, selection ring 4, players and low ball 5 + y·0.001, ball trail 9, high ball 10, fx bars 60, HUD 100, banners 190–201, panels 300, pause 400.
