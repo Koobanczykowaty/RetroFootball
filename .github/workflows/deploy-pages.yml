@@ -1,4 +1,4 @@
-# Builds the game and publishes it to GitHub Pages on every push to main.
+# Tests, builds and publishes the game to GitHub Pages on every push to main.
 # One-time setup on GitHub: Settings → Pages → Build and deployment → Source: "GitHub Actions".
 name: Deploy to GitHub Pages
 
@@ -36,6 +36,12 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Headless Chrome (preinstalled on the runner) plays real matches:
+      # UI flow, AI vs AI, bot-as-human and 2-player mode. A failure stops
+      # the deploy, so testers keep the last working version.
+      - name: Gameplay simulations
+        run: npm run test:sim -- 2 1
 
       - uses: actions/configure-pages@v5
 

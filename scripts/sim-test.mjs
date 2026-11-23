@@ -44,6 +44,8 @@ function runBrowser(browser, url, budgetMs) {
       '--disable-gpu',
       '--no-first-run',
       '--mute-audio',
+      // GitHub's Ubuntu runners block Chrome's user-namespace sandbox
+      ...(process.env.CI ? ['--no-sandbox'] : []),
       `--user-data-dir=${profile}`,
       `--virtual-time-budget=${budgetMs}`,
       '--dump-dom',

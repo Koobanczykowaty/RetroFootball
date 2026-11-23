@@ -38,4 +38,4 @@ Gra celowo nie ma autów, rzutów rożnych, spalonych ani fauli (piłka odbija s
 
 - Seedowany RNG w całej logice rozgrywki (wymagany dla powtórek i online).
 - Wydzielenie symulacji meczu od renderowania do końca (encje → czyste dane + osobne widoki), żeby logikę dało się testować bez przeglądarki.
-- CI: `npm run build && npm test && npm run test:sim` przy każdym pushu.
+- ~~CI: `npm run build && npm test && npm run test:sim` przy każdym pushu.~~ Zrobione w v0.3.0: błąd w symulacji blokuje wdrożenie.
