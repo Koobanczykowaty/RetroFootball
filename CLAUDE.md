@@ -41,6 +41,7 @@ Debug URL params (see `BootScene`):
 - `?sim=N&minutes=M` runs AI-vs-AI matches; results go to `window.__RF_SIM__` and `<pre id="sim-result">`.
 - `&human=1` makes team 0 driven by `debug/BotInput` through the real human input path, and pauses/resumes once with synthetic ESC key events.
 - `&difficulty=easy|normal|hard` sets the CPU level for the run.
+- `&stadium=narodowy|blokowisko` forces the stadium (normally random every match).
 - `&p2=1` runs 2-player mode with a bot on each team.
 - `?scene=<Key>[&mode=2p]` opens a scene directly.
 
@@ -132,6 +133,10 @@ Scenes: `BootScene` (generates textures and animations) → `MenuScene` → `Tea
   - Menu scenes call `playMusic('menu')`; it does nothing if that track is already playing. `MatchScene` plays `'match'` quietly plus the crowd (`startCrowd`/`stopCrowd`: murmur, swells on shots, saves and goals, a periodic clap chant).
   - At full time the music stops and a result jingle plays.
   - The AudioContext resumes on the first key or click; browsers block audio until then.
+- **Stadiums** (`STADIUMS` in GameplayConfig) are picked at random every match (the user's choice): `narodowy` (the original stadium) and `blokowisko` (housing estate). The estate has worn grass with bald patches, chalk lines, prefab blocks, a fence, a carpet beater, benches, trees and pipe goals, drawn in `Pitch.drawEstate`, and it uses the rag ball texture `ball_rag`.
+  - Only the look differs: geometry and physics are identical (the user wanted the rag ball to look different only).
+  - The kickoff banner shows the stadium name.
+  - `?stadium=narodowy|blokowisko` forces one for testing. The sim records `stadium_<id>`.
 - **Goal slow motion** (`MatchScene.onGoal` → `endGoalSlowMo`): `MATCH.goalSlowMoMs` real ms at `goalSlowMoScale` with the camera zoomed on the ball (camera bounds = game area). The match timers wait meanwhile; the banner, fanfare, confetti and celebration come after.
   - The HUD shares the camera, so it is hidden during the zoom.
   - Pausing ends the slow motion instantly.

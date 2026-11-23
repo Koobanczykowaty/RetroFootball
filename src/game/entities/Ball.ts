@@ -48,12 +48,13 @@ export class Ball {
 
   private rollDistance = 0;
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
+  /** @param texture 'ball', or 'ball_rag' on the housing-estate pitch */
+  constructor(scene: Phaser.Scene, x: number, y: number, texture = 'ball') {
     this.x = x;
     this.y = y;
     this.trail = scene.add.graphics().setDepth(9);
     this.shadow = scene.add.image(x, y + 3, 'ball_shadow').setDepth(3);
-    this.sprite = scene.add.sprite(x, y, 'ball', 0).setDepth(6);
+    this.sprite = scene.add.sprite(x, y, texture, 0).setDepth(6);
   }
 
   reset(x: number, y: number): void {

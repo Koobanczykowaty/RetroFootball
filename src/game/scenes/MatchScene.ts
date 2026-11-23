@@ -9,7 +9,7 @@
 import Phaser from 'phaser';
 import {
   AI_PROFILES, AIProfile, FORMATION_IDS, FORMATIONS, FormationId, GAME_HEIGHT, GAME_WIDTH, MATCH, PLAYER,
-  TEAMMATE_PROFILE, TEAMS,
+  STADIUMS, StadiumId, TEAMMATE_PROFILE, TEAMS,
 } from '../config/GameplayConfig';
 import { saveSettings, settings } from '../config/Settings';
 import { t } from '../config/i18n';
@@ -88,6 +88,7 @@ export class MatchScene extends Phaser.Scene {
   /** Goal waiting for its celebration while the slow motion runs. */
   private pendingGoal: { team: number; ownGoal: boolean } | null = null;
   private slowMoMs = 0;
+  private stadium: StadiumId = 'narodowy';
   private sim: SimReport | null = null;
   private bot: BotInput | null = null;
   /** Controller Menu/View presses (pause, mute) — any controller. */
@@ -122,8 +123,13 @@ export class MatchScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
     // First half: team 0 attacks right (also resets after a restart mid-match)
     setSidesSwapped(false);
-    new Pitch(this);
-    this.ball = new Ball(this, PITCH_CX, PITCH_CY);
+    // A random stadium every match (?stadium=narodowy|blokowisko forces one, for testing)
+    const forced = new URLSearchParams(window.location.search).get('stadium');
+    this.stadium = (STADIUMS as readonly string[]).includes(forced ?? '')
+      ? (forced as StadiumId)
+      : STADIUMS[Math.floor(Math.random() * STADIUMS.length)];
+    new Pitch(this, this.stadium);
+    this.ball = new Ball(this, PITCH_CX, PITCH_CY, this.stadium === 'blokowisko' ? 'ball_rag' : 'ball');
 
     // Humans use their chosen formations; a CPU team picks one at random each match
     const randomFormation = () => FORMATION_IDS[Math.floor(Math.random() * FORMATION_IDS.length)];
@@ -243,7 +249,8 @@ export class MatchScene extends Phaser.Scene {
 
     this.resetPositions();
     this.match.startKickoff();
-    this.overlay.showBanner(t().kickOffBanner);
+    this.overlay.showBanner(t().kickOffBanner, t().stadiumName(this.stadium));
+    this.sim?.event(`stadium_${this.stadium}`);
     soundManager.playMusic('match');
     soundManager.startCrowd();
     soundManager.whistle();

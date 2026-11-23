@@ -212,6 +212,70 @@ export class AssetGenerator {
     if (tex) {
       for (let f = 0; f < frames; f++) tex.add(f, 0, f * BALL_SIZE, 0, BALL_SIZE, BALL_SIZE);
     }
+    this.generateRagBallSprite(scene);
+  }
+
+  /**
+   * Rag ball for the housing-estate pitch: a lumpy bundle of cloth patches
+   * tied with string. Same size and frames as the normal ball.
+   */
+  private static generateRagBallSprite(scene: Phaser.Scene): void {
+    if (scene.textures.exists('ball_rag')) scene.textures.remove('ball_rag');
+    const frames = 3; // roll A, roll B, fast
+    const canvas = document.createElement('canvas');
+    canvas.width = BALL_SIZE * frames;
+    canvas.height = BALL_SIZE;
+    const ctx = canvas.getContext('2d')!;
+
+    // Slightly irregular silhouette (cloth, not a sphere)
+    const mask = [
+      '..XXX...',
+      '.XXXXXX.',
+      'XXXXXXX.',
+      'XXXXXXXX',
+      'XXXXXXXX',
+      '.XXXXXXX',
+      '.XXXXXX.',
+      '...XXX..',
+    ];
+    // Cloth patches: grey-beige base, a faded red and a blue rag
+    const patchA = ['aaabbbcc', 'aaabbbcc', 'aaaabbcc', 'ddaabbcc', 'dddaaccc', 'dddaaacc', 'ddaaaacc', 'ddaaaacc'];
+    const patchB = ['ccaaabbb', 'ccaaabbb', 'cccaaabb', 'ccddaabb', 'cdddaaab', 'cdddaaaa', 'ccddaaaa', 'ccddaaaa'];
+    const colors: Record<string, [string, string]> = {
+      a: ['#cbbf9f', '#a89c7e'], // beige cloth (light, shaded)
+      b: ['#b5483f', '#8e3530'], // faded red
+      c: ['#9a9a90', '#7a7a72'], // grey
+      d: ['#4f6a8f', '#3d5372'], // blue
+    };
+    for (let f = 0; f < frames; f++) {
+      const ox = f * BALL_SIZE + 1;
+      const patches = f === 1 ? patchB : patchA;
+      mask.forEach((row, y) => {
+        for (let x = 0; x < row.length; x++) {
+          if (row[x] !== 'X') continue;
+          const [light, dark] = colors[patches[y][x]];
+          ctx.fillStyle = f === 2 ? '#a89c7e' : x + y > 9 ? dark : light; // fast: blurred into one colour
+          ctx.fillRect(ox + x, 1 + y, 1, 1);
+        }
+      });
+      // String tied around the bundle
+      ctx.fillStyle = '#3a2a1a';
+      if (f === 0) {
+        for (let i = 1; i < 7; i++) ctx.fillRect(ox + i, 1 + i, 1, 1);
+        for (let x = 1; x < 7; x++) ctx.fillRect(ox + x, 1 + 4, 1, 1);
+      } else if (f === 1) {
+        for (let i = 1; i < 7; i++) ctx.fillRect(ox + 7 - i, 1 + i, 1, 1);
+        for (let y = 1; y < 7; y++) ctx.fillRect(ox + 3, 1 + y, 1, 1);
+      } else {
+        ctx.fillRect(ox + 3, 1 + 3, 2, 1);
+      }
+    }
+    this.outline(ctx, canvas.width, canvas.height, BALL_SIZE);
+
+    const tex = scene.textures.addCanvas('ball_rag', canvas);
+    if (tex) {
+      for (let f = 0; f < frames; f++) tex.add(f, 0, f * BALL_SIZE, 0, BALL_SIZE, BALL_SIZE);
+    }
   }
 
   // --------------------------------------------------------------------- UI

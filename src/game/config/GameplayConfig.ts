@@ -34,6 +34,15 @@ export const PITCH = {
   crossbarHeight: 22,
 };
 
+// ---- Stadiums ----
+/**
+ * Where a match is played; picked at random for every match. Only the look
+ * changes (pitch, surroundings, ball sprite); the geometry and physics are
+ * the same everywhere.
+ */
+export const STADIUMS = ['narodowy', 'blokowisko'] as const;
+export type StadiumId = (typeof STADIUMS)[number];
+
 // ---- Player ----
 export const PLAYER = {
   radius: 10,

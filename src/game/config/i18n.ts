@@ -4,7 +4,7 @@
 // Team names and the RETRO GAŁA logo are not translated.
 // ============================================================
 
-import type { Difficulty, FormationId } from './GameplayConfig';
+import type { Difficulty, FormationId, StadiumId } from './GameplayConfig';
 import { settings, type Language } from './Settings';
 
 export interface Strings {
@@ -74,6 +74,7 @@ export interface Strings {
   // In-match
   kickOffBanner: string;
   secondHalf: string;
+  stadiumName: (s: StadiumId) => string;
   halfTime: string;
   goal: string;
   ownGoal: (team: string) => string;
@@ -154,6 +155,7 @@ const EN: Strings = {
   mainMenu: 'MAIN MENU',
   kickOffBanner: 'KICK OFF',
   secondHalf: 'SECOND HALF',
+  stadiumName: (s) => (s === 'narodowy' ? 'NATIONAL STADIUM' : 'HOUSING ESTATE'),
   halfTime: 'HALF TIME',
   goal: 'GOAL!',
   ownGoal: (team) => `OWN GOAL — ${team}`,
@@ -236,6 +238,7 @@ const PL: Strings = {
   mainMenu: 'MENU GŁÓWNE',
   kickOffBanner: 'HARATAJMY!',
   secondHalf: 'DRUGA POŁOWA',
+  stadiumName: (s) => (s === 'narodowy' ? 'STADION NARODOWY' : 'BLOKOWISKO'),
   halfTime: 'PRZERWA',
   goal: 'GOL!',
   ownGoal: (team) => `SAMOBÓJ — ${team}`,
