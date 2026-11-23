@@ -3,7 +3,7 @@
 // interceptions and goalkeeper saves. Decides who has the ball.
 // ============================================================
 
-import { BALL, GOALKEEPER, PLAYER } from '../config/GameplayConfig';
+import { BALL, GOALKEEPER, PLAYER, ROLE_TRAITS } from '../config/GameplayConfig';
 import type { Player } from '../entities/Player';
 import { ballOwner, MatchWorld } from '../logic/MatchWorld';
 import {
@@ -125,7 +125,9 @@ export class CollisionSystem {
       if (t.distanceTo(ball.x, ball.y) > PLAYER.tackleRange) continue;
 
       t.tackleResolved = true;
-      if (carrier.protectTimer > 0 || Math.random() > this.tackleSuccess[t.teamIndex]) {
+      // Defenders win the ball a bit more often
+      const success = Math.min(0.95, this.tackleSuccess[t.teamIndex] + ROLE_TRAITS[t.role].tackleSuccess);
+      if (carrier.protectTimer > 0 || Math.random() > success) {
         // Missed — the tackler loses balance briefly
         t.stun(PLAYER.missStunDuration);
         continue;

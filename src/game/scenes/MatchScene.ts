@@ -9,7 +9,7 @@
 import Phaser from 'phaser';
 import {
   AI_PROFILES, AIProfile, FORMATION_IDS, FORMATIONS, FormationId, GAME_HEIGHT, GAME_WIDTH, MATCH, PLAYER,
-  STADIUMS, StadiumId, TEAMMATE_PROFILE, TEAMS,
+  ROLE_TRAITS, STADIUMS, StadiumId, TEAMMATE_PROFILE, TEAMS,
 } from '../config/GameplayConfig';
 import { saveSettings, settings } from '../config/Settings';
 import { t } from '../config/i18n';
@@ -335,7 +335,7 @@ export class MatchScene extends Phaser.Scene {
       // dash (stunned players may still carry a decaying dash from a missed tackle)
       for (const p of this.world.players) {
         if (p.isTackling || p.isStunned) continue;
-        const limit = PLAYER.sprintSpeed * Math.max(1, p.speedFactor) * 1.1 + 5;
+        const limit = PLAYER.sprintSpeed * Math.max(1, p.speedFactor) * ROLE_TRAITS[p.role].speed * 1.1 + 5;
         if (p.getSpeed() > limit) {
           this.sim.event('overspeed');
           this.sim.events.maxSpeed = Math.max(this.sim.events.maxSpeed ?? 0, Math.round(p.getSpeed()));
@@ -582,6 +582,7 @@ export class MatchScene extends Phaser.Scene {
     this.overlay.showFulltime(info, () => this.restartMatch(), () => this.scene.start('MenuScene'));
 
     if (this.sim) {
+      if (this.ai.feintBites) this.sim.add('feintBites', this.ai.feintBites);
       const more = recordSimMatch(this.sim, d.score, s);
       const total = this.sceneData.simMatches ?? 1;
       const next = (this.sceneData.simIndex ?? 0) + 1;

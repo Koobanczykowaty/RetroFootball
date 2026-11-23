@@ -3,7 +3,7 @@
 // the human player and the AI so both play by the same rules.
 // ============================================================
 
-import { BALL, PITCH } from '../config/GameplayConfig';
+import { BALL, PITCH, ROLE_TRAITS } from '../config/GameplayConfig';
 import type { Player } from '../entities/Player';
 import type { MatchWorld } from '../logic/MatchWorld';
 import {
@@ -174,12 +174,13 @@ export class ActionSystem {
     } else {
       const halfMouth = PITCH.goalWidth / 2 - 8;
       const dist = distance(p.x, p.y, goalX, PITCH_CY);
+      accuracy = Math.min(1, accuracy + ROLE_TRAITS[p.role].shotAccuracy); // forwards finish better
       const error = (1 - accuracy * 0.85) * halfMouth * (0.6 + power * 0.8) * (0.6 + dist / 400);
       const ty = PITCH_CY + clamp(aimY, -1, 1) * halfMouth * 0.85 + (Math.random() - 0.5) * 2 * error;
       angle = Math.atan2(ty - p.y, goalX - p.x);
     }
 
-    const speed = BALL.shootSpeedMin + (BALL.shootSpeedMax - BALL.shootSpeedMin) * power;
+    const speed = (BALL.shootSpeedMin + (BALL.shootSpeedMax - BALL.shootSpeedMin) * power) * ROLE_TRAITS[p.role].shotSpeed;
     this.release(p);
     const ball = this.world.ball;
     ball.kick(Math.cos(angle) * speed, Math.sin(angle) * speed, {

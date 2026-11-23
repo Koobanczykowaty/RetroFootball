@@ -6,7 +6,7 @@
 import Phaser from 'phaser';
 import type { MarkerId } from '../assets/AssetGenerator';
 import {
-  PLAYER, GOALKEEPER, FormationPosition, PlayerRole,
+  PLAYER, GOALKEEPER, FormationPosition, PlayerRole, ROLE_TRAITS,
 } from '../config/GameplayConfig';
 import {
   GOAL_TOP, GOAL_BOTTOM, PITCH_LEFT, PITCH_RIGHT, PITCH_TOP, PITCH_BOTTOM,
@@ -151,7 +151,7 @@ export class Player {
     const wantSprint = sprint && moving && this.stamina > PLAYER.minSprintStamina;
     this.isSprinting = wantSprint;
 
-    let maxSpeed = (wantSprint ? PLAYER.sprintSpeed : PLAYER.walkSpeed) * this.speedFactor;
+    let maxSpeed = (wantSprint ? PLAYER.sprintSpeed : PLAYER.walkSpeed) * this.speedFactor * ROLE_TRAITS[this.role].speed;
     if (this.hasBall) maxSpeed *= PLAYER.dribbleSpeedFactor;
     maxSpeed *= clamp(speedScale, 0, 1);
 
@@ -323,7 +323,7 @@ export class Player {
     }
 
     if (this.isSprinting && speed > 10) {
-      this.stamina = Math.max(0, this.stamina - PLAYER.sprintStaminaDrain * dt);
+      this.stamina = Math.max(0, this.stamina - PLAYER.sprintStaminaDrain * ROLE_TRAITS[this.role].staminaDrain * dt);
     } else {
       this.stamina = Math.min(1, this.stamina + PLAYER.staminaRegen * dt);
     }

@@ -121,10 +121,11 @@ W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura dzia
 - **Język polski / angielski**: menu i napisy w meczu. Domyślnie według języka przeglądarki (polska przeglądarka → polski, inaczej angielski); zmiana w SETTINGS / USTAWIENIA → JĘZYK / LANGUAGE, zapamiętywana. W wersji polskiej przycisk startu meczu i baner rozpoczęcia to „HARATAJMY!”, a karta przeglądarki nazywa się „Retro Gała”.
 - **Quick Match**: wybór jednej z dwóch drużyn (Czerwone Orły / Białe Bociany), długości meczu (2/4/6 min) i poziomu trudności. Ustawienia są zapamiętywane w przeglądarce.
 - **Poziomy trudności** (ekran QUICK MATCH lub SETTINGS; aktualny poziom widać w meczu w lewym górnym rogu jako `CPU: …`):
-  - **EASY**: komputer wolniej reaguje i biega, rzadko i nieskutecznie atakuje wślizgiem, strzela niecelnie, bramkarz często puszcza;
-  - **NORMAL**: wyrównana gra;
-  - **HARD**: szybki, agresywny pressing, skuteczne odbiory, celne strzały, mocny bramkarz.
+  - **EASY**: komputer wolniej reaguje i biega, rzadko i nieskutecznie atakuje wślizgiem, strzela niecelnie, bramkarz często puszcza, obrońcy często nabierają się na zwody;
+  - **NORMAL**: wyrównana gra; obrońcy czasem nabierają się na zwody (ostra zmiana kierunku przy dryblingu);
+  - **HARD**: szybki, agresywny pressing, skuteczne odbiory, celne strzały, mocny bramkarz; zwodów nie daje się nabrać.
   Wszystkie parametry są w `AI_PROFILES` w `GameplayConfig.ts`.
+- **Role zawodników** (subtelne różnice, `ROLE_TRAITS`): napastnicy biegają nieco szybciej, ale szybciej się męczą, i strzelają celniej i mocniej; obrońcy częściej skutecznie odbierają piłkę wślizgiem.
 - **2 PLAYERS (lokalnie)**: przycisk w menu głównym. Gracz 1 wybiera drużynę, gracz 2 gra drugą. Urządzenia:
   - jeden pad: P1 = klawiatura, P2 = pad;
   - dwa pady: P1 = klawiatura **albo** pad 1, P2 = pad 2.

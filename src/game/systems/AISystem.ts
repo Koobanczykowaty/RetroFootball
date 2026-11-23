@@ -23,11 +23,24 @@ interface Mind {
   sprint: boolean;
   /** Time until the next on-ball decision (ms). */
   thinkTimer: number;
+  /** Carrier velocity as last read by this player when pressing (feints). */
+  seenVx: number;
+  seenVy: number;
+  /** Time until the next read of the carrier's direction (ms). */
+  readMs: number;
+  /** Clock (ms) of the last read; a fresh press starts with a clean read. */
+  lastReadAt: number;
+  /** > 0 while fooled by a feint (ms). */
+  fooledMs: number;
 }
 
 export class AISystem {
   private minds = new Map<number, Mind>();
   private chasers: [Player | null, Player | null] = [null, null];
+  /** How many times a presser fell for a feint (sim metric). */
+  public feintBites = 0;
+  /** AI clock (ms), advanced once per frame. */
+  private clockMs = 0;
   /** Called after an AI field player passes or lobs to a teammate. */
   public onFieldPass?: (passer: Player) => void;
 
@@ -45,6 +58,7 @@ export class AISystem {
    * Update all players of `team` except `controlled` (the human's player).
    */
   updateTeam(team: number, dt: number, profile: AIProfile, controlled: Player | null): void {
+    if (team === 0) this.clockMs += dt * 1000;
     const mates = this.world.teams[team];
     const chaser = this.pickChaser(team, controlled);
 
@@ -107,12 +121,15 @@ export class AISystem {
 
     if (isChaser && !keeperHasBall) {
       if (oppHasBall && carrier) {
-        // Press the carrier
-        const tx = carrier.x + carrier.vx * 0.2;
-        const ty = carrier.y + carrier.vy * 0.2;
+        // Press the carrier, anticipating his run as the presser reads it
+        const read = this.readCarrier(p, carrier, dt, profile);
+        const lead = read.fooled ? 0.5 : 0.2; // fooled: commits to the old direction
+        const tx = carrier.x + read.vx * lead;
+        const ty = carrier.y + read.vy * lead;
         const d = p.distanceTo(carrier.x, carrier.y);
         p.moveToward(tx, ty, d > 40, dt);
-        if (d < PLAYER.tackleRange + 8 && carrier.protectTimer <= 0 && Math.random() < profile.tackleRate * dt) {
+        if (!read.fooled && d < PLAYER.tackleRange + 8 && carrier.protectTimer <= 0
+          && Math.random() < profile.tackleRate * dt) {
           this.actions.tackle(p);
         }
       } else {
@@ -433,10 +450,54 @@ export class AISystem {
     }
   }
 
+  /**
+   * How a pressing defender reads the carrier's direction (feints). With
+   * feintReactionMs = 0 he sees it perfectly every frame (hard, teammates).
+   * Otherwise he re-reads it only every feintReactionMs; a sharp turn since
+   * the last read fools him with chance feintBite, and he keeps following the
+   * old direction for feintCommitMs.
+   */
+  private readCarrier(p: Player, carrier: Player, dt: number, profile: AIProfile): { vx: number; vy: number; fooled: boolean } {
+    const m = this.mind(p);
+    if (profile.feintReactionMs <= 0) {
+      m.seenVx = carrier.vx;
+      m.seenVy = carrier.vy;
+      return { vx: carrier.vx, vy: carrier.vy, fooled: false };
+    }
+    const ms = dt * 1000;
+    if (this.clockMs - m.lastReadAt > 300) {
+      // Just started pressing: read the carrier as he is now
+      m.seenVx = carrier.vx;
+      m.seenVy = carrier.vy;
+      m.readMs = profile.feintReactionMs;
+      m.fooledMs = 0;
+    }
+    m.lastReadAt = this.clockMs;
+    m.fooledMs = Math.max(0, m.fooledMs - ms);
+    m.readMs -= ms;
+    if (m.fooledMs <= 0 && m.readMs <= 0) {
+      m.readMs = profile.feintReactionMs;
+      const now = Math.hypot(carrier.vx, carrier.vy);
+      const seen = Math.hypot(m.seenVx, m.seenVy);
+      const turned = now > 50 && seen > 50
+        && (carrier.vx * m.seenVx + carrier.vy * m.seenVy) / (now * seen) < 0.3;
+      if (turned && Math.random() < profile.feintBite) {
+        m.fooledMs = profile.feintCommitMs;
+        this.feintBites++;
+      } else {
+        m.seenVx = carrier.vx;
+        m.seenVy = carrier.vy;
+      }
+    }
+    return { vx: m.seenVx, vy: m.seenVy, fooled: m.fooledMs > 0 };
+  }
+
   private mind(p: Player): Mind {
     let m = this.minds.get(p.id);
     if (!m) {
-      m = { timer: 0, tx: p.homeX, ty: p.homeY, sprint: false, thinkTimer: 0 };
+      m = {
+        timer: 0, tx: p.homeX, ty: p.homeY, sprint: false, thinkTimer: 0, seenVx: 0, seenVy: 0, readMs: 0, fooledMs: 0, lastReadAt: -1e9,
+      };
       this.minds.set(p.id, m);
     }
     return m;

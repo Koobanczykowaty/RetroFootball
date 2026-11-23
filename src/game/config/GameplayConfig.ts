@@ -201,6 +201,15 @@ export interface AIProfile {
   /** Chance that a tackle by this team wins the ball. */
   tackleSuccess: number;
   speedFactor: number;
+  /**
+   * Feints (dribbling direction changes). A pressing defender only re-reads
+   * the carrier's direction every feintReactionMs; when it turned sharply he
+   * falls for it with chance feintBite and keeps following the old direction
+   * for feintCommitMs, without tackling. 0 = reads the carrier perfectly.
+   */
+  feintReactionMs: number;
+  feintBite: number;
+  feintCommitMs: number;
 }
 
 export const AI_PROFILES: Record<Difficulty, AIProfile> = {
@@ -216,6 +225,9 @@ export const AI_PROFILES: Record<Difficulty, AIProfile> = {
     gkReactionMs: 280,
     tackleSuccess: 0.45,
     speedFactor: 0.8,
+    feintReactionMs: 260,
+    feintBite: 0.55,
+    feintCommitMs: 550,
   },
   normal: {
     decisionInterval: 500,
@@ -224,10 +236,13 @@ export const AI_PROFILES: Record<Difficulty, AIProfile> = {
     passChance: 0.6,
     shootRange: 215,
     shotAccuracy: 0.72,
-    gkSaveChance: 0.7,
-    gkReactionMs: 170,
+    gkSaveChance: 0.62, // was 0.7 (keepers weakened at the user's request)
+    gkReactionMs: 195, // was 170
     tackleSuccess: 0.65,
     speedFactor: 0.95,
+    feintReactionMs: 170,
+    feintBite: 0.3,
+    feintCommitMs: 400,
   },
   // Quick, aggressive pressing, accurate finishing, strong keeper
   hard: {
@@ -237,10 +252,14 @@ export const AI_PROFILES: Record<Difficulty, AIProfile> = {
     passChance: 0.75,
     shootRange: 250,
     shotAccuracy: 0.9,
-    gkSaveChance: 0.85,
-    gkReactionMs: 90,
+    gkSaveChance: 0.78, // was 0.85 (keepers weakened at the user's request)
+    gkReactionMs: 110, // was 90
     tackleSuccess: 0.8,
     speedFactor: 1.06,
+    // Hard reads every feint (unchanged at the user's request)
+    feintReactionMs: 0,
+    feintBite: 0,
+    feintCommitMs: 0,
   },
 };
 
@@ -255,6 +274,13 @@ export const TEAMMATE_PROFILE: AIProfile = {
   ...AI_PROFILES.normal,
   tackleRate: 1.2,
   speedFactor: 1.0,
+  // The human's own keeper and AI teammates keep their previous strength:
+  // only the CPU keepers and CPU defenders were weakened
+  gkSaveChance: 0.7,
+  gkReactionMs: 170,
+  feintReactionMs: 0,
+  feintBite: 0,
+  feintCommitMs: 0,
 };
 
 // ---- Teams ----
@@ -345,6 +371,33 @@ export const FORMATIONS: Record<FormationId, FormationPosition[]> = {
 };
 
 /** How far (fraction of half-pitch) each role pushes up when its team attacks. */
+/**
+ * Subtle differences between roles, for everyone (human, teammates, CPU):
+ * forwards are a bit faster but tire sooner and finish better; defenders win
+ * the ball more often. 1 / 0 = no change.
+ */
+export interface RoleTraits {
+  /** Multiplier on walk/sprint speed. */
+  speed: number;
+  /** Multiplier on stamina used while sprinting. */
+  staminaDrain: number;
+  /** Added to shot accuracy (0..1). */
+  shotAccuracy: number;
+  /** Multiplier on shot speed. */
+  shotSpeed: number;
+  /** Added to the chance that this player's tackle wins the ball. */
+  tackleSuccess: number;
+}
+
+const NO_TRAITS: RoleTraits = { speed: 1, staminaDrain: 1, shotAccuracy: 0, shotSpeed: 1, tackleSuccess: 0 };
+
+export const ROLE_TRAITS: Record<PlayerRole, RoleTraits> = {
+  goalkeeper: NO_TRAITS,
+  midfielder: NO_TRAITS,
+  defender: { ...NO_TRAITS, tackleSuccess: 0.08 },
+  forward: { ...NO_TRAITS, speed: 1.05, staminaDrain: 1.3, shotAccuracy: 0.08, shotSpeed: 1.05 },
+};
+
 export const ATTACK_PUSH: Record<PlayerRole, number> = {
   goalkeeper: 0,
   defender: 0.2,
