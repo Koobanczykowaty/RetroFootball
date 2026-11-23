@@ -21,7 +21,7 @@ export class MenuScene extends Phaser.Scene {
     // Logo
     const logo = this.add.container(GAME_WIDTH / 2, 110);
     const retro = this.add.text(0, -26, 'RETRO', titleStyle(64)).setOrigin(0.5);
-    const football = this.add.text(0, 30, 'FOOTBALL', {
+    const football = this.add.text(0, 30, 'GAŁA', {
       ...titleStyle(40), color: '#ffffff',
     }).setOrigin(0.5);
     const bar = this.add.graphics();
