@@ -4,6 +4,7 @@
 
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from './game/config/GameplayConfig';
+import { applyPageLanguage } from './game/config/i18n';
 import { BootScene } from './game/scenes/BootScene';
 import { MenuScene } from './game/scenes/MenuScene';
 import { TeamSelectScene } from './game/scenes/TeamSelectScene';
@@ -41,6 +42,7 @@ const config: Phaser.Types.Core.GameConfig = {
   disableContextMenu: true,
 };
 
+applyPageLanguage();
 const game = new Phaser.Game(config);
 
 /**

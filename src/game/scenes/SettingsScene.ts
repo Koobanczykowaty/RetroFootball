@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import { DIFFICULTIES, Difficulty, GAME_WIDTH, GAME_HEIGHT } from '../config/GameplayConfig';
 import { LANGUAGES, Language, saveSettings, settings } from '../config/Settings';
-import { t } from '../config/i18n';
+import { applyPageLanguage, t } from '../config/i18n';
 import { soundManager } from '../systems/SoundManager';
 import { Button } from '../ui/Button';
 import { MenuNavigator } from '../ui/MenuNavigator';
@@ -36,6 +36,7 @@ export class SettingsScene extends Phaser.Scene {
       (v) => {
         settings.language = v;
         saveSettings();
+        applyPageLanguage();
         // Rebuild the screen in the new language, keeping focus on this row
         this.scene.restart({ focus: 0 });
       },

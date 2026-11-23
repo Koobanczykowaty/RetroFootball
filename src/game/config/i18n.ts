@@ -8,6 +8,8 @@ import type { Difficulty, FormationId } from './GameplayConfig';
 import { settings, type Language } from './Settings';
 
 export interface Strings {
+  /** Browser tab title. */
+  pageTitle: string;
   // Main menu
   play: string;
   twoPlayers: string;
@@ -93,6 +95,7 @@ export interface Strings {
 }
 
 const EN: Strings = {
+  pageTitle: 'RetroFootball',
   play: 'PLAY',
   twoPlayers: '2 PLAYERS',
   controls: 'CONTROLS',
@@ -174,6 +177,7 @@ const EN: Strings = {
 const PL_DIFFICULTY: Record<Difficulty, string> = { easy: 'ŁATWY', normal: 'NORMALNY', hard: 'TRUDNY' };
 
 const PL: Strings = {
+  pageTitle: 'Retro Gała',
   play: 'GRAJ',
   twoPlayers: '2 GRACZY',
   controls: 'STEROWANIE',
@@ -257,4 +261,11 @@ export const STRINGS: Record<Language, Strings> = { pl: PL, en: EN };
 /** Strings in the current language (read at the time a text is created). */
 export function t(): Strings {
   return STRINGS[settings.language];
+}
+
+/** Sets the browser tab title and the page's lang attribute to the current language. */
+export function applyPageLanguage(): void {
+  if (typeof document === 'undefined') return;
+  document.title = t().pageTitle;
+  document.documentElement.lang = settings.language;
 }
