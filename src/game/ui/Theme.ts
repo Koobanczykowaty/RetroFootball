@@ -20,22 +20,37 @@ export const UI = {
   textHighlight: '#ffe14d',
 };
 
+/**
+ * Font size snapped to the pixel font's grid: one font pixel is 1/10 em, so
+ * sizes of 10, 20, 30… px make every font pixel exactly 1, 2, 3… game pixels,
+ * on the same grid as the sprites. Other sizes would give soft, "high
+ * resolution" letters.
+ */
+export function pixelFontSize(size: number): number {
+  return Math.max(10, Math.round(size / 10) * 10);
+}
+
+/** Outline thickness of one font pixel at that (snapped) size. */
+export function pixelStroke(size: number): number {
+  return (pixelFontSize(size) / 10) * 2; // a canvas stroke is half outside the glyph
+}
+
 export function titleStyle(size = 28): Phaser.Types.GameObjects.Text.TextStyle {
   return {
     fontFamily: UI.font,
-    fontSize: `${size}px`,
+    fontSize: `${pixelFontSize(size)}px`,
     color: UI.accent,
     fontStyle: 'bold',
     stroke: '#000000',
-    strokeThickness: Math.max(3, Math.round(size / 9)),
-    padding: { x: 2, y: 1 },
+    strokeThickness: pixelStroke(size),
+    padding: { x: 4, y: 2 },
   };
 }
 
 export function textStyle(size = 14, color = UI.text, bold = false): Phaser.Types.GameObjects.Text.TextStyle {
   return {
     fontFamily: UI.font,
-    fontSize: `${size}px`,
+    fontSize: `${pixelFontSize(size)}px`,
     color,
     fontStyle: bold ? 'bold' : 'normal',
     // Bold monospace glyphs overhang their measured width; pad to avoid clipping

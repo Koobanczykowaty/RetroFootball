@@ -57,7 +57,7 @@ export class KitEditorScene extends Phaser.Scene {
     const rx = 620;
     const teamRow = new OptionSelector<string>(
       this, rx, 120, s.kitTeam, TEAMS.map((tm) => tm.id), Math.max(0, TEAMS.findIndex((tm) => tm.id === this.teamId)),
-      (id) => baseTeam(id).name.toUpperCase(),
+      (id) => baseTeam(id).shortName, // the full name is under the preview
       (id) => this.scene.restart({ team: id, focus: 0 }),
       440,
     );

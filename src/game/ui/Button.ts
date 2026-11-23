@@ -5,7 +5,7 @@
 
 import Phaser from 'phaser';
 import { soundManager } from '../systems/SoundManager';
-import { UI } from './Theme';
+import { UI, pixelFontSize } from './Theme';
 
 export interface Focusable {
   setFocused(focused: boolean): void;
@@ -58,7 +58,7 @@ export class Button extends Phaser.GameObjects.Container implements Focusable {
     this.bg = scene.add.graphics();
     this.label = scene.add.text(0, 0, text, {
       fontFamily: UI.font,
-      fontSize: `${opts.fontSize ?? 18}px`,
+      fontSize: `${pixelFontSize(opts.fontSize ?? 18)}px`,
       color: this.textColor,
       fontStyle: 'bold',
       padding: { x: 2, y: 1 },

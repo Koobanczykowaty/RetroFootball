@@ -175,5 +175,5 @@ Scenes: `BootScene` (generates textures) → `MenuScene` → `TeamSelectScene` (
 
 - `assets/PixelFontGlyphs.ts`: hand-drawn 5-px glyphs (ASCII, Polish letters, arrows, ◀ ▶, — •), loosely inspired by Ubuntu.
 - `assets/PixelFont.ts` builds a TrueType font from them in memory and registers it as `RetroGala` (FontFace API, normal and bold), so all Phaser texts keep colours, strokes and sizes. No font file ships. `BootScene` waits for it before the first text; if the browser rejects it, monospace is used.
-- `Theme.UI.font` = `RetroGala, monospace`. One pixel = 1/10 em: crisp at 10/20/30… px, slightly soft at 11–16 px.
+- `Theme.UI.font` = `RetroGala, monospace`. One font pixel = 1/10 em, and **every font size is snapped** (`pixelFontSize`: 10, 20, 30…) so a font pixel is exactly 1, 2, 3… game pixels, on the sprites' grid. Strokes use `pixelStroke` (one font pixel). The user found unsnapped sizes "too high resolution", without pixel-art charm. Use `textStyle`/`titleStyle`/Button `fontSize` (all snapped); call `pixelFontSize` for any `setFontSize`.
 - `tests/PixelFont.test.ts` checks that every UI character has a glyph and that the font file is structurally valid (checksum).

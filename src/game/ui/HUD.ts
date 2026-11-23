@@ -7,7 +7,7 @@ import { GAME_WIDTH, type Difficulty } from '../config/GameplayConfig';
 import { matchTeam } from '../config/Teams';
 import { t } from '../config/i18n';
 import type { MatchData } from '../systems/MatchSystem';
-import { UI, hexColor, textStyle } from './Theme';
+import { UI, hexColor, pixelStroke, textStyle } from './Theme';
 
 export class HUD {
   private container: Phaser.GameObjects.Container;
@@ -58,7 +58,7 @@ export class HUD {
 
     // Mute indicator in the corner (only while muted)
     this.muteText = scene.add.text(GAME_WIDTH - 8, 6, t().hudMuted, {
-      ...textStyle(10, '#ff8877', true), stroke: '#000000', strokeThickness: 3,
+      ...textStyle(10, '#ff8877', true), stroke: '#000000', strokeThickness: pixelStroke(10),
     }).setOrigin(1, 0);
     this.container.add(this.muteText);
 
