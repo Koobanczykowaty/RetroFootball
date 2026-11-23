@@ -18,7 +18,7 @@ const SECTIONS: Array<{ title: string; rows: Row[] }> = [
     rows: [
       { keys: 'ARROWS', pad: 'L-STICK / D-PAD', action: 'Move (8 directions)' },
       { keys: 'SHIFT', pad: 'RT', action: 'Sprint (uses stamina)' },
-      { keys: 'SPACE (+ARROW)', pad: 'LB (+STICK)', action: 'Switch player (toward arrow)' },
+      { keys: 'W (+ARROW)', pad: 'LB (+STICK)', action: 'Switch player (toward arrow)' },
     ],
   },
   {

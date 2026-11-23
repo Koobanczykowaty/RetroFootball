@@ -82,7 +82,7 @@ Od tej pory wystarczy `git push`, a testerzy po odświeżeniu strony mają najno
 | S (przytrzymaj) | Podanie po ziemi do partnera w kierunku ruchu. Siła (pełna po 0,35 s) ustala prędkość: od 70% (krótkie wciśnięcie) do 130% normalnej (300–480 px/s) | Przełącz na najlepiej ustawionego zawodnika |
 | A (przytrzymaj) | Lob nad obrońcami w kierunku strzałki (bez auto-celu). Siła (pełna po 0,35 s) ustala, jak daleko spadnie piłka: ok. 90–380 px. Odbiorcą jest partner najbliżej miejsca lądowania | Wślizg / odbiór |
 | D (przytrzymaj) | Strzał (pełna siła po 0,35 s): im dłużej trzymasz, tym mocniej. ↑/↓ celuje w górny/dolny róg. Ze strzałką w stronę własnej bramki piłka leci wzdłuż strzałki (wybicie, możliwy samobój) | – |
-| Spacja | Zmiana zawodnika | Zmiana na najlepiej ustawionego zawodnika |
+| W | Zmiana zawodnika | Zmiana na najlepiej ustawionego zawodnika |
 | Esc / P | Pauza (Esc w menu pauzy wznawia grę) | Pauza |
 | M | Wycisz dźwięk | Wycisz dźwięk |
 
@@ -103,7 +103,7 @@ Menu obsługuje mysz i klawiaturę (↑↓ wybór, ←→ zmiana opcji, Enter/Sp
 
 W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura działają jednocześnie, a obie kolumny są też na ekranie CONTROLS.
 
-**Zmiana zawodnika strzałkami:** przytrzymaj strzałkę i naciśnij Spację (albo S bez piłki), żeby wybrać zawodnika w tym kierunku: strzałka w górę wybiera zawodnika wyżej, w lewo zawodnika po lewej, działają też skosy. Niebieska strzałka nad zawodnikiem pokazuje, na kogo przełączy Spacja.
+**Zmiana zawodnika strzałkami:** przytrzymaj strzałkę i naciśnij W (albo S bez piłki; na padzie LB), żeby wybrać zawodnika w tym kierunku: strzałka w górę wybiera zawodnika wyżej, w lewo zawodnika po lewej, działają też skosy. Niebieska strzałka nad zawodnikiem pokazuje, na kogo przełączy W.
 
 **Kontynuowanie akcji:** zawodnik, który podał piłkę (S lub A), nie wraca od razu na pozycję. Tak samo grają zawodnicy komputera. Dopóki Twoja drużyna ma piłkę (najdłużej 6 s), biegnie dalej do przodu przed piłką w swoim korytarzu i można mu ją oddać. Po stracie piłki wraca do zwykłego ustawienia. Czas i dystans wybiegnięcia ustawisz w `supportRunMax` i `supportRunLead` w `GameplayConfig.ts`.
 

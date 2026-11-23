@@ -334,7 +334,7 @@ export const INPUT_MAP = {
   shoot: ['D'],
   /** Lob / long pass, hold to charge (without the ball: tackle). */
   lob: ['A'],
-  switchPlayer: ['SPACE'],
+  switchPlayer: ['W'],
 };
 
 // ---- Audio ----
