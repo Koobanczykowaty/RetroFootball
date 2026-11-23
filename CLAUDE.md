@@ -26,6 +26,7 @@ npm run build:single        # release/RetroFootball.html: the whole game in one 
 
 **Distribution:**
 - `vite.config.ts` uses `base: './'` (relative paths) so the build works under a GitHub Pages sub-path and from disk.
+- The web build puts Phaser in its own chunk (`rolldownOptions.output.codeSplitting`), so a game update re-downloads only the ~120 kB game chunk. `chunkSizeWarningLimit` is raised because Phaser alone is ~1.2 MB.
 - `--mode single` adds `vite-plugin-singlefile` plus an inline-favicon plugin and writes to `release/` (git-ignored). `scripts/rename-single.mjs` renames the output to RetroFootball.html.
 - `.github/workflows/deploy-pages.yml` runs unit tests, builds, runs `test:sim -- 2 1` (headless Chrome on the runner; `--no-sandbox` is added when `CI` is set) and only then deploys `dist/` to GitHub Pages on every push to `main`. A failing simulation blocks the deploy. The repo needs Pages → Source: GitHub Actions.
 - **Published:** remote `origin` = https://github.com/Koobanczykowaty/RetroFootball (public). The live game is https://koobanczykowaty.github.io/RetroFootball/ (Pages source: GitHub Actions). Every push to `main` redeploys it, so **pushing publishes**: only push when the user asks. **Testers play the Pages version**, not the single file. The version number is `GAME_VERSION` in GameplayConfig (shown in the menu) plus `package.json`/`package-lock.json` and the README heading; bump it only on request. The first push needed the user's interactive GitHub login; Claude's shell can't show that prompt.

@@ -43,7 +43,15 @@ export default defineConfig(({ mode }) => {
       assetsDir: 'assets',
       sourcemap: !single,
       emptyOutDir: true,
-      rolldownOptions: single ? { output: { entryFileNames: 'RetroFootball.js' } } : undefined,
+      // Web build: Phaser goes into its own chunk. It changes only when the
+      // library is upgraded, so after a game update browsers re-download just
+      // the small game chunk and keep Phaser cached. (The single file inlines
+      // everything anyway.)
+      rolldownOptions: single
+        ? { output: { entryFileNames: 'RetroFootball.js' } }
+        : { output: { codeSplitting: { groups: [{ name: 'phaser', test: /node_modules[\\/]phaser/ }] } } },
+      // Phaser alone is ~1.2 MB minified and can't be split further
+      chunkSizeWarningLimit: 1400,
     },
     server: {
       port: 3000,
