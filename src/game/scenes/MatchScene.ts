@@ -9,9 +9,11 @@
 import Phaser from 'phaser';
 import {
   AI_PROFILES, AIProfile, FORMATION_IDS, FORMATIONS, FormationId, GAME_HEIGHT, GAME_WIDTH, MATCH, PLAYER,
-  ROLE_TRAITS, STADIUMS, StadiumId, TEAMMATE_PROFILE, TEAMS,
+  ROLE_TRAITS, STADIUMS, StadiumId, TEAMMATE_PROFILE, TEAMS, TeamConfig,
 } from '../config/GameplayConfig';
 import { saveSettings, settings } from '../config/Settings';
+import { cycleTeam, setMatchTeams, teamWithKits } from '../config/Teams';
+import { AssetGenerator } from '../assets/AssetGenerator';
 import { t } from '../config/i18n';
 import { Ball } from '../entities/Ball';
 import { Pitch } from '../entities/Pitch';
@@ -40,7 +42,10 @@ import { HumanContext, HumanController } from './HumanController';
 export type GameMode = '1p' | '2p';
 
 export interface MatchSceneData {
-  /** 1p: the human's team. 2p: the KEYBOARD player's team (the pad player gets the other). */
+  /**
+   * Side the keyboard human plays (default 0). The teams on the sides come
+   * from settings.teamP1 (side 0) and settings.teamP2 (side 1).
+   */
   playerTeam?: number;
   mode?: GameMode;
   /** Simulation mode: both teams AI-controlled (automated testing). */
@@ -89,6 +94,8 @@ export class MatchScene extends Phaser.Scene {
   private pendingGoal: { team: number; ownGoal: boolean } | null = null;
   private slowMoMs = 0;
   private stadium: StadiumId = 'narodowy';
+  /** The two teams of this match by side, with the user's kits. */
+  private teams!: [TeamConfig, TeamConfig];
   private sim: SimReport | null = null;
   private bot: BotInput | null = null;
   /** Controller Menu/View presses (pause, mute) — any controller. */
@@ -103,7 +110,7 @@ export class MatchScene extends Phaser.Scene {
   init(data: MatchSceneData): void {
     this.sceneData = { ...data };
     this.mode = data.sim ? (data.simTwoPlayer ? '2p' : '1p') : (data.mode ?? '1p');
-    const keyboardTeam = data.playerTeam ?? settings.playerTeam;
+    const keyboardTeam = data.playerTeam ?? 0;
     if (data.sim && data.simTwoPlayer) this.humanTeams = [0, 1];
     else if (data.sim) this.humanTeams = data.simHuman ? [0] : [];
     else if (this.mode === '2p') this.humanTeams = [keyboardTeam, 1 - keyboardTeam];
@@ -123,6 +130,16 @@ export class MatchScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
     // First half: team 0 attacks right (also resets after a restart mid-match)
     setSidesSwapped(false);
+    // The two teams (with the user's kits) and their match sprites, before any player exists
+    // (the simulation picks two random teams, so every team gets played)
+    let ids = [settings.teamP1, settings.teamP2];
+    if (this.sceneData.sim) {
+      const a = TEAMS[Math.floor(Math.random() * TEAMS.length)].id;
+      ids = [a, cycleTeam(a, 1 + Math.floor(Math.random() * (TEAMS.length - 1)))];
+    }
+    this.teams = [teamWithKits(ids[0], settings.kits), teamWithKits(ids[1], settings.kits)];
+    setMatchTeams(this.teams);
+    AssetGenerator.generatePlayerSprites(this, this.teams);
     // A random stadium every match (?stadium=narodowy|blokowisko forces one, for testing)
     const forced = new URLSearchParams(window.location.search).get('stadium');
     this.stadium = (STADIUMS as readonly string[]).includes(forced ?? '')
@@ -251,6 +268,7 @@ export class MatchScene extends Phaser.Scene {
     this.match.startKickoff();
     this.overlay.showBanner(t().kickOffBanner, t().stadiumName(this.stadium));
     this.sim?.event(`stadium_${this.stadium}`);
+    this.sim?.event(`teams_${this.teams[0].id}_${this.teams[1].id}`);
     soundManager.playMusic('match');
     soundManager.startCrowd();
     soundManager.whistle();
@@ -444,7 +462,7 @@ export class MatchScene extends Phaser.Scene {
       case 'halftime': {
         const [a, b] = this.match.data.score;
         this.overlay.setDim(0.35);
-        this.overlay.showBanner(t().halfTime, `${TEAMS[0].shortName} ${a} - ${b} ${TEAMS[1].shortName}`);
+        this.overlay.showBanner(t().halfTime, `${this.teams[0].shortName} ${a} - ${b} ${this.teams[1].shortName}`);
         soundManager.whistleLong();
         this.time.delayedCall(1600, () => soundManager.jingle('halftime'));
         break;
@@ -508,11 +526,11 @@ export class MatchScene extends Phaser.Scene {
 
     const team = goal.team;
     this.overlay.setDim(0.2);
-    this.overlay.showGoal(goal.ownGoal ? t().ownGoal(TEAMS[team].name) : TEAMS[team].name);
+    this.overlay.showGoal(goal.ownGoal ? t().ownGoal(this.teams[team].name) : this.teams[team].name);
     if (!instant) cam.shake(300, 0.008);
     soundManager.jingle('goal');
     for (const p of this.world.teams[team]) p.setPose('celebrate', MATCH.goalCelebrationDuration);
-    this.burstConfetti(this.ball.x, this.ball.y, TEAMS[team].uiColor);
+    this.burstConfetti(this.ball.x, this.ball.y, this.teams[team].uiColor);
   }
 
   private burstConfetti(x: number, y: number, teamColor: number): void {
@@ -542,7 +560,7 @@ export class MatchScene extends Phaser.Scene {
     if (this.mode === '2p') {
       if (winner === -1) resultText = t().draw;
       else {
-        resultText = t().playerWins(this.humanTeams.indexOf(winner) + 1, TEAMS[winner].name);
+        resultText = t().playerWins(this.humanTeams.indexOf(winner) + 1, this.teams[winner].name);
         resultColor = '#66ff88';
       }
     } else if (this.humans.length > 0) {
@@ -555,7 +573,7 @@ export class MatchScene extends Phaser.Scene {
         resultColor = '#ff7766';
       }
     } else {
-      resultText = winner === -1 ? t().draw : t().teamWins(TEAMS[winner].name);
+      resultText = winner === -1 ? t().draw : t().teamWins(this.teams[winner].name);
     }
 
     // Music stops; after the whistles a jingle for the result
@@ -568,7 +586,7 @@ export class MatchScene extends Phaser.Scene {
     const poss0 = Math.round((s.possessionMs[0] / totalPoss) * 100);
     const info: FulltimeInfo = {
       title: t().fullTime,
-      scoreLine: `${TEAMS[0].shortName}  ${d.score[0]} - ${d.score[1]}  ${TEAMS[1].shortName}`,
+      scoreLine: `${this.teams[0].shortName}  ${d.score[0]} - ${d.score[1]}  ${this.teams[1].shortName}`,
       resultText,
       resultColor,
       statLines: [

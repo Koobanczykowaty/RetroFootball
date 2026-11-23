@@ -3,7 +3,8 @@
 // ============================================================
 
 import Phaser from 'phaser';
-import { TEAMS, GAME_WIDTH, type Difficulty } from '../config/GameplayConfig';
+import { GAME_WIDTH, type Difficulty } from '../config/GameplayConfig';
+import { matchTeam } from '../config/Teams';
 import { t } from '../config/i18n';
 import type { MatchData } from '../systems/MatchSystem';
 import { UI, hexColor, textStyle } from './Theme';
@@ -30,15 +31,15 @@ export class HUD {
     bg.fillStyle(0x16213a, 0.95);
     bg.fillRect(cx - 170, 4, 340, 30);
     // Team colour chips
-    bg.fillStyle(TEAMS[0].uiColor, 1);
+    bg.fillStyle(matchTeam(0).uiColor, 1);
     bg.fillRect(cx - 164, 9, 8, 20);
-    bg.fillStyle(TEAMS[1].uiColor, 1);
+    bg.fillStyle(matchTeam(1).uiColor, 1);
     bg.fillRect(cx + 156, 9, 8, 20);
     this.container.add(bg);
 
     const nameStyle = textStyle(15, UI.text, true);
-    const t0 = scene.add.text(cx - 148, 10, TEAMS[0].shortName, { ...nameStyle, color: hexColor(TEAMS[0].textColor) });
-    const t1 = scene.add.text(cx + 148, 10, TEAMS[1].shortName, { ...nameStyle, color: hexColor(TEAMS[1].textColor) })
+    const t0 = scene.add.text(cx - 148, 10, matchTeam(0).shortName, { ...nameStyle, color: hexColor(matchTeam(0).textColor) });
+    const t1 = scene.add.text(cx + 148, 10, matchTeam(1).shortName, { ...nameStyle, color: hexColor(matchTeam(1).textColor) })
       .setOrigin(1, 0);
     this.container.add([t0, t1]);
 

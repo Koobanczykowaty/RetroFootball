@@ -5,10 +5,11 @@
 
 import Phaser from 'phaser';
 import {
-  DIFFICULTIES, Difficulty, FORMATION_IDS, FormationId, GAME_WIDTH, GAME_HEIGHT, MATCH, TEAMS,
+  DIFFICULTIES, Difficulty, FORMATION_IDS, FormationId, GAME_WIDTH, GAME_HEIGHT, MATCH,
 } from '../config/GameplayConfig';
 import { saveSettings, settings } from '../config/Settings';
 import { t } from '../config/i18n';
+import { cycleTeam, teamWithKits } from '../config/Teams';
 import { soundManager } from '../systems/SoundManager';
 import { Button, Focusable } from '../ui/Button';
 import { MenuNavigator } from '../ui/MenuNavigator';
@@ -17,55 +18,61 @@ import { connectedPads } from '../systems/Gamepad';
 import type { GameMode, MatchSceneData } from './MatchScene';
 import { UI, drawPanel, textStyle, titleStyle } from '../ui/Theme';
 
-/** Row with both team cards; Left/Right switches the selected team. */
-class TeamPicker implements Focusable {
+/**
+ * One team card (left = player 1, right = opponent / player 2). Left/Right
+ * (or the ◀ ▶ arrows, or a click) cycles through the teams, skipping the
+ * team picked on the other card.
+ */
+class TeamCard implements Focusable {
   public onPointerFocus?: () => void;
-  private readonly cards: Phaser.GameObjects.Graphics[] = [];
-  private readonly tags: Phaser.GameObjects.Text[] = [];
+  private readonly card: Phaser.GameObjects.Graphics;
+  private readonly player: Phaser.GameObjects.Sprite;
+  private readonly keeper: Phaser.GameObjects.Sprite;
+  private readonly name: Phaser.GameObjects.Text;
+  private readonly arrows: Phaser.GameObjects.Text[];
   private focused = false;
 
-  /**
-   * @param twoPlayer 2-player mode: the selected card is the keyboard player's
-   *   (P1), the other card the controller player's (P2).
-   */
   constructor(
     scene: Phaser.Scene,
-    private selected: number,
-    private readonly onChange: (i: number) => void,
-    private readonly twoPlayer = false,
+    private readonly x: number,
+    private id: string,
+    tagText: string,
+    /** Tag colour: P1 yellow, P2 green, CPU opponent grey. */
+    private readonly tagColor: number,
+    private readonly otherId: () => string,
+    private readonly onChange: (id: string) => void,
   ) {
-    TEAMS.forEach((team, i) => {
-      const x = GAME_WIDTH / 2 + (i === 0 ? -150 : 150);
-      const y = 170;
-      const card = scene.add.graphics();
-      this.cards.push(card);
-
-      scene.add.sprite(x - 26, y - 14, `player_team${i}`, 0).setScale(4);
-      scene.add.sprite(x + 34, y - 6, `player_gk${i}`, 0).setScale(2.5);
-      scene.add.text(x, y + 42, team.name.toUpperCase(), textStyle(16, UI.text, true)).setOrigin(0.5);
-      this.tags.push(scene.add.text(x, y - 82, '', textStyle(11, '#0b0f1c', true)).setOrigin(0.5));
-
-      const zone = scene.add.zone(x, y, 220, 160).setInteractive({ useHandCursor: true });
-      zone.on('pointerdown', () => this.select(i));
-      zone.on('pointerover', () => {
-        this.setFocused(true);
-        this.onPointerFocus?.();
-      });
+    const y = CARD_Y;
+    this.card = scene.add.graphics();
+    this.player = scene.add.sprite(x - 26, y - 14, `kit_${id}`, 0).setScale(4);
+    this.keeper = scene.add.sprite(x + 34, y - 6, `kit_gk_${id}`, 0).setScale(2.5);
+    this.name = scene.add.text(x, y + 42, '', textStyle(16, UI.text, true)).setOrigin(0.5);
+    // Tag above the card (drawn over the coloured bar from redraw)
+    scene.add.text(x, y - 82, tagText, textStyle(11, '#0b0f1c', true)).setOrigin(0.5).setDepth(1);
+    this.arrows = [[-1, x - 96], [1, x + 96]].map(([delta, ax]) => {
+      const a = scene.add.text(ax, y + 42, delta < 0 ? '◀' : '▶', textStyle(16, UI.accent, true)).setOrigin(0.5);
+      a.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.step(delta));
+      return a;
     });
-    scene.add.text(GAME_WIDTH / 2, 170, 'VS', titleStyle(28)).setOrigin(0.5);
+    const zone = scene.add.zone(x, y - 10, 160, 120).setInteractive({ useHandCursor: true });
+    zone.on('pointerdown', () => this.step(1));
+    zone.on('pointerover', () => {
+      this.setFocused(true);
+      this.onPointerFocus?.();
+    });
     this.redraw();
   }
 
   left(): void {
-    this.select(0);
+    this.step(-1);
   }
 
   right(): void {
-    this.select(1);
+    this.step(1);
   }
 
   activate(): void {
-    this.select(1 - this.selected);
+    this.step(1);
   }
 
   setFocused(f: boolean): void {
@@ -73,34 +80,35 @@ class TeamPicker implements Focusable {
     this.redraw();
   }
 
-  private select(i: number): void {
-    if (i !== this.selected) soundManager.menuClick();
-    this.selected = i;
-    this.onChange(i);
+  private step(delta: number): void {
+    const next = cycleTeam(this.id, delta, this.otherId());
+    if (next === this.id) return;
+    soundManager.menuClick();
+    this.id = next;
+    this.onChange(next);
     this.redraw();
   }
 
   private redraw(): void {
-    TEAMS.forEach((team, i) => {
-      const g = this.cards[i];
-      const x = GAME_WIDTH / 2 + (i === 0 ? -150 : 150);
-      const sel = i === this.selected;
-      g.clear();
-      const highlighted = sel || this.twoPlayer; // in 2P both teams are played by humans
-      drawPanel(g, x - 110, 170 - 80, 220, 160, highlighted ? 0x22365a : UI.panel, highlighted ? team.uiColor : 0x334466);
-      if (sel) {
-        g.fillStyle(this.focused ? 0xffe14d : 0xffcc00, 1);
-        g.fillRect(x - 55, 170 - 90, 110, 18);
-        this.tags[i].setText(this.twoPlayer ? t().player1 : t().yourTeam);
-      } else if (this.twoPlayer) {
-        g.fillStyle(0x6dff7a, 1); // P2 colour
-        g.fillRect(x - 55, 170 - 90, 110, 18);
-        this.tags[i].setText(t().player2);
-      }
-      this.tags[i].setVisible(sel || this.twoPlayer);
-    });
+    const team = teamWithKits(this.id, settings.kits);
+    const g = this.card;
+    const y = CARD_Y;
+    g.clear();
+    drawPanel(g, this.x - 110, y - 80, 220, 160, this.focused ? 0x2a4470 : 0x22365a, team.uiColor);
+    g.fillStyle(this.tagColor, 1);
+    g.fillRect(this.x - 60, y - 90, 120, 18);
+    if (this.focused) {
+      g.fillStyle(0xffe14d, 1);
+      g.fillRect(this.x - 110, y + 76, 220, 4);
+    }
+    this.player.setTexture(`kit_${this.id}`, 0);
+    this.keeper.setTexture(`kit_gk_${this.id}`, 0);
+    this.name.setText(team.name.toUpperCase());
+    for (const a of this.arrows) a.setAlpha(this.focused ? 1 : 0.6);
   }
 }
+
+const CARD_Y = 170;
 
 const formationLabel = (v: FormationId) => t().formationValue(v);
 
@@ -129,10 +137,24 @@ export class TeamSelectScene extends Phaser.Scene {
 
     this.add.text(GAME_WIDTH / 2, 44, twoPlayer ? t().twoPlayers : t().quickMatch, titleStyle(30)).setOrigin(0.5);
 
-    const picker = new TeamPicker(this, settings.playerTeam, (i) => {
-      settings.playerTeam = i;
-      saveSettings();
-    }, twoPlayer);
+    // Team cards: left = player 1 (side 0), right = opponent / player 2 (side 1)
+    const cardP1 = new TeamCard(
+      this, GAME_WIDTH / 2 - 150, settings.teamP1, twoPlayer ? t().player1 : t().yourTeam, 0xffcc00,
+      () => settings.teamP2,
+      (id) => {
+        settings.teamP1 = id;
+        saveSettings();
+      },
+    );
+    const cardP2 = new TeamCard(
+      this, GAME_WIDTH / 2 + 150, settings.teamP2, twoPlayer ? t().player2 : t().opponent, twoPlayer ? 0x6dff7a : 0x9aa8bb,
+      () => settings.teamP1,
+      (id) => {
+        settings.teamP2 = id;
+        saveSettings();
+      },
+    );
+    this.add.text(GAME_WIDTH / 2, CARD_Y, 'VS', titleStyle(28)).setOrigin(0.5);
 
     const length = new OptionSelector<number>(
       this, GAME_WIDTH / 2, 288, t().matchLength,
@@ -210,15 +232,15 @@ export class TeamSelectScene extends Phaser.Scene {
       width: 140, height: 30, fontSize: 14,
     });
 
-    new MenuNavigator(this, [picker, length, ...rows, start, back], () => this.scene.start('MenuScene'))
-      .activate(4);
+    new MenuNavigator(this, [cardP1, cardP2, length, ...rows, start, back], () => this.scene.start('MenuScene'))
+      .activate(5); // KICK OFF
 
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, t().setupHint, textStyle(11, UI.textMuted))
       .setOrigin(0.5);
   }
 
   private startMatch(): void {
-    const data: MatchSceneData = { playerTeam: settings.playerTeam, mode: this.mode };
+    const data: MatchSceneData = { mode: this.mode };
     this.scene.start('MatchScene', data);
   }
 }

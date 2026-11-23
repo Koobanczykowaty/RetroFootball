@@ -328,6 +328,8 @@ export const TEAMMATE_PROFILE: AIProfile = {
 
 // ---- Teams ----
 export interface TeamConfig {
+  /** Stable id (settings, saved kits); never shown. */
+  id: string;
   name: string;
   shortName: string;
   /** Shirt colour. */
@@ -344,8 +346,14 @@ export interface TeamConfig {
   textColor: number;
 }
 
+/**
+ * All teams that can be picked. A match is played between two of them (side
+ * 0 = left in the first half, side 1); kit colours can be changed by the user
+ * in the kit editor (config/Teams.ts applies those changes).
+ */
 export const TEAMS: TeamConfig[] = [
   {
+    id: 'orly',
     name: 'Czerwone Orły',
     shortName: 'ORŁ',
     primaryColor: 0xdd2222,
@@ -360,6 +368,7 @@ export const TEAMS: TeamConfig[] = [
   {
     // Stork colours: black shirt with a beak-orange stripe, beak-orange socks,
     // white shorts (the white plumage)
+    id: 'bociany',
     name: 'Białe Bociany',
     shortName: 'BOC',
     primaryColor: 0x1c1c22,
@@ -371,6 +380,81 @@ export const TEAMS: TeamConfig[] = [
     uiColor: 0xf0642a,
     textColor: 0xff9a5c,
   },
+  {
+    // Bison: gold shirt, brown stripe and shorts
+    id: 'zubry',
+    name: 'Złote Żubry',
+    shortName: 'ŻUB',
+    primaryColor: 0xe0b020,
+    secondaryColor: 0x5a3a1a,
+    shortsColor: 0x5a3a1a,
+    sockColor: 0xe0b020,
+    skinColor: 0xf0c8a0,
+    goalkeeperColor: 0x3a8ae0,
+    uiColor: 0xe0b020,
+    textColor: 0xffd860,
+  },
+  {
+    // The Wawel dragon: green with a fiery yellow stripe
+    id: 'smoki',
+    name: 'Zielone Smoki',
+    shortName: 'SMO',
+    primaryColor: 0x2a9a3a,
+    secondaryColor: 0xffd23a,
+    shortsColor: 0x1d5a26,
+    sockColor: 0x2a9a3a,
+    skinColor: 0xe8b890,
+    goalkeeperColor: 0xe86aa0,
+    uiColor: 0x2a9a3a,
+    textColor: 0x6ee07a,
+  },
+  {
+    // Warsaw's mermaid: sky blue and white
+    id: 'syreny',
+    name: 'Niebieskie Syreny',
+    shortName: 'SYR',
+    primaryColor: 0x3a8ae0,
+    secondaryColor: 0xf4f4f4,
+    shortsColor: 0xf4f4f4,
+    sockColor: 0x3a8ae0,
+    skinColor: 0xc68a5e,
+    goalkeeperColor: 0xff8800,
+    uiColor: 0x3a8ae0,
+    textColor: 0x8cc4ff,
+  },
+  {
+    id: 'rysie',
+    name: 'Fioletowe Rysie',
+    shortName: 'RYS',
+    primaryColor: 0x7a3ab0,
+    secondaryColor: 0xd8c0ff,
+    shortsColor: 0x2c1a44,
+    sockColor: 0x7a3ab0,
+    skinColor: 0xf5c5a3,
+    goalkeeperColor: 0x22cc55,
+    uiColor: 0x9a5ad0,
+    textColor: 0xc79cff,
+  },
+];
+
+/** Colours offered in the kit editor (name keys are in i18n). */
+export const KIT_PALETTE: Array<{ id: string; color: number }> = [
+  { id: 'red', color: 0xdd2222 },
+  { id: 'maroon', color: 0x8e1b1b },
+  { id: 'orange', color: 0xf0642a },
+  { id: 'gold', color: 0xe0b020 },
+  { id: 'yellow', color: 0xffe14d },
+  { id: 'green', color: 0x2a9a3a },
+  { id: 'darkGreen', color: 0x1d5a26 },
+  { id: 'teal', color: 0x1f9a9a },
+  { id: 'sky', color: 0x3a8ae0 },
+  { id: 'navy', color: 0x1f3a7a },
+  { id: 'purple', color: 0x7a3ab0 },
+  { id: 'pink', color: 0xe86aa0 },
+  { id: 'white', color: 0xf4f4f4 },
+  { id: 'grey', color: 0x8a8f99 },
+  { id: 'black', color: 0x1c1c22 },
+  { id: 'brown', color: 0x6b4423 },
 ];
 
 // ---- Formations (6v6: 1 GK + 5 field) ----

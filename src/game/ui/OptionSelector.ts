@@ -27,6 +27,8 @@ export class OptionSelector<T> extends Phaser.GameObjects.Container implements F
     private readonly format: (v: T) => string,
     private readonly onChange: (v: T) => void,
     width = 420,
+    /** Optional: draw a colour swatch for the value (colour pickers). */
+    private readonly swatch?: (v: T) => number,
   ) {
     super(scene, x, y);
     this.rowWidth = width;
@@ -94,6 +96,13 @@ export class OptionSelector<T> extends Phaser.GameObjects.Container implements F
       g.fillRect(-this.rowWidth / 2, -17, 4, 34);
     }
     this.valueText.setText(this.format(this.value));
+    if (this.swatch) {
+      const sx = this.rowWidth / 2 - 80;
+      g.fillStyle(0x000000, 1);
+      g.fillRect(sx - 34, -10, 68, 20);
+      g.fillStyle(this.swatch(this.value), 1);
+      g.fillRect(sx - 32, -8, 64, 16);
+    }
     this.labelText.setColor(this.focused ? UI.textHighlight : UI.textSoft);
     for (const a of this.arrows) a.setAlpha(this.focused ? 1 : 0.6);
   }

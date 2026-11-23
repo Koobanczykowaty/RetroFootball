@@ -1,11 +1,14 @@
 // ============================================================
 // Asset Generator — Programmatic pixel art sprite generation.
 // Creates all game textures at runtime with Canvas 2D, so the game
-// ships without image files. Team colours come from TEAMS config.
+// ships without image files. Team colours come from TEAMS config
+// with the user's kit colours applied (config/Teams.ts).
 // ============================================================
 
 import Phaser from 'phaser';
-import { TEAMS } from '../config/GameplayConfig';
+import { TEAMS, TeamConfig } from '../config/GameplayConfig';
+import { settings } from '../config/Settings';
+import { teamWithKits } from '../config/Teams';
 
 /** Selection-marker colour per human player (texture suffix → CSS colour). */
 export const MARKER_COLORS = { p1: '#ffe14d', p2: '#6dff7a' } as const;
@@ -30,31 +33,51 @@ type Px = (x: number, y: number, w: number, h: number, color: number | string) =
 export class AssetGenerator {
   static generateAll(scene: Phaser.Scene): void {
     this.generatePlayerSprites(scene);
+    this.generateRosterSprites(scene);
     this.generateBallSprite(scene);
     this.generateUISprites(scene);
-    this.createAnimations(scene);
   }
 
   // ---------------------------------------------------------------- players
 
-  static generatePlayerSprites(scene: Phaser.Scene): void {
-    TEAMS.forEach((team, i) => {
-      this.addSheet(scene, `player_team${i}`, {
-        shirt: team.primaryColor,
-        detail: team.secondaryColor,
-        shorts: team.shortsColor,
-        socks: team.sockColor,
-        skin: team.skinColor,
-        hands: team.skinColor,
-      });
-      this.addSheet(scene, `player_gk${i}`, {
-        shirt: team.goalkeeperColor,
-        detail: 0x222222,
-        shorts: 0x222222,
-        socks: team.goalkeeperColor,
-        skin: team.skinColor,
-        hands: 0xf4f4f4, // gloves
-      });
+  /**
+   * Match sprites for both sides (`player_team0/1`, `player_gk0/1`). The
+   * MatchScene calls this with the two chosen teams before creating players;
+   * at boot it uses the teams last picked in the settings.
+   */
+  static generatePlayerSprites(
+    scene: Phaser.Scene,
+    teams: [TeamConfig, TeamConfig] = [teamWithKits(settings.teamP1, settings.kits), teamWithKits(settings.teamP2, settings.kits)],
+  ): void {
+    teams.forEach((team, i) => this.generateTeamSheets(scene, team, `player_team${i}`, `player_gk${i}`));
+  }
+
+  /** Preview sprites of every team with the user's kits: `kit_<id>`, `kit_gk_<id>`. */
+  static generateRosterSprites(scene: Phaser.Scene): void {
+    for (const t of TEAMS) this.generateTeamKit(scene, t.id);
+  }
+
+  /** (Re)generates one team's preview sprites, e.g. after a kit change. */
+  static generateTeamKit(scene: Phaser.Scene, id: string): void {
+    this.generateTeamSheets(scene, teamWithKits(id, settings.kits), `kit_${id}`, `kit_gk_${id}`);
+  }
+
+  private static generateTeamSheets(scene: Phaser.Scene, team: TeamConfig, key: string, gkKey: string): void {
+    this.addSheet(scene, key, {
+      shirt: team.primaryColor,
+      detail: team.secondaryColor,
+      shorts: team.shortsColor,
+      socks: team.sockColor,
+      skin: team.skinColor,
+      hands: team.skinColor,
+    });
+    this.addSheet(scene, gkKey, {
+      shirt: team.goalkeeperColor,
+      detail: 0x222222,
+      shorts: 0x222222,
+      socks: team.goalkeeperColor,
+      skin: team.skinColor,
+      hands: 0xf4f4f4, // gloves
     });
   }
 
@@ -320,19 +343,6 @@ export class AssetGenerator {
 
   // ------------------------------------------------------------- animations
 
-  static createAnimations(scene: Phaser.Scene): void {
-    const keys = TEAMS.flatMap((_, i) => [`player_team${i}`, `player_gk${i}`]);
-    for (const key of keys) {
-      const anim = `${key}_run`;
-      if (scene.anims.exists(anim)) continue;
-      scene.anims.create({
-        key: anim,
-        frames: scene.anims.generateFrameNumbers(key, { frames: [1, 2] }),
-        frameRate: 7,
-        repeat: -1,
-      });
-    }
-  }
 
   // ---------------------------------------------------------------- helpers
 

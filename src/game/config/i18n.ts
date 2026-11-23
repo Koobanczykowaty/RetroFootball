@@ -15,11 +15,20 @@ export interface Strings {
   twoPlayers: string;
   controls: string;
   settings: string;
+  kits: string;
+  kitTeam: string;
+  kitShirt: string;
+  kitStripe: string;
+  kitShorts: string;
+  kitSocks: string;
+  kitKeeper: string;
+  kitReset: string;
   menuHint: string;
   menuFooter: string;
   // Match setup
   quickMatch: string;
   yourTeam: string;
+  opponent: string;
   player1: string;
   player2: string;
   matchLength: string;
@@ -102,10 +111,19 @@ const EN: Strings = {
   twoPlayers: '2 PLAYERS',
   controls: 'CONTROLS',
   settings: 'SETTINGS',
+  kits: 'KITS',
+  kitTeam: 'TEAM',
+  kitShirt: 'SHIRT',
+  kitStripe: 'STRIPE',
+  kitShorts: 'SHORTS',
+  kitSocks: 'SOCKS',
+  kitKeeper: 'GOALKEEPER',
+  kitReset: 'RESET TO DEFAULT',
   menuHint: '↑↓ choose   ENTER select',
   menuFooter: 'QUICK MATCH  •  6 v 6',
   quickMatch: 'QUICK MATCH',
   yourTeam: 'YOUR TEAM',
+  opponent: 'OPPONENT',
   player1: 'PLAYER 1',
   player2: 'PLAYER 2',
   matchLength: 'MATCH LENGTH',
@@ -186,10 +204,19 @@ const PL: Strings = {
   twoPlayers: '2 GRACZY',
   controls: 'STEROWANIE',
   settings: 'USTAWIENIA',
+  kits: 'STROJE',
+  kitTeam: 'DRUŻYNA',
+  kitShirt: 'KOSZULKA',
+  kitStripe: 'PAS',
+  kitShorts: 'SPODENKI',
+  kitSocks: 'GETRY',
+  kitKeeper: 'BRAMKARZ',
+  kitReset: 'PRZYWRÓĆ DOMYŚLNE',
   menuHint: '↑↓ wybór   ENTER zatwierdź',
   menuFooter: 'SZYBKI MECZ  •  6 na 6',
   quickMatch: 'SZYBKI MECZ',
   yourTeam: 'TWOJA DRUŻYNA',
+  opponent: 'PRZECIWNIK',
   player1: 'GRACZ 1',
   player2: 'GRACZ 2',
   matchLength: 'DŁUGOŚĆ MECZU',

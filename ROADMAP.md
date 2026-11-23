@@ -16,7 +16,7 @@ Gra celowo nie ma autów, rzutów rożnych, spalonych ani fauli (piłka odbija s
 
 ## P2 — Treść i tryby (v0.4–v0.6)
 
-1. **Więcej drużyn i edytor kolorów strojów**: `TEAMS` w konfiguracji, sprite'y generują się same z kolorów.
+1. ~~**Więcej drużyn i edytor kolorów strojów**~~ Zrobione: 6 drużyn, edytor STROJE (podstawa pod personalizację i multiplayer).
 2. **Więcej formacji i taktyki** (pressing wysoki / niski) jako dane w konfiguracji.
 3. **2 graczy w jednej drużynie** (co-op przeciwko komputerowi). Fundament już jest: każdy gracz ma własny `HumanController`; trzeba pozwolić, by dwóch steruje tą samą drużyną (np. różni sterowani zawodnicy, oddzielne znaczniki P1/P2).
 4. **Statystyki zawodników i umiejętności** (szybkość, strzał, podanie) wpływające na `ActionSystem`.
