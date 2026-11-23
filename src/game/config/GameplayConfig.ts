@@ -251,8 +251,8 @@ export interface TeamConfig {
 
 export const TEAMS: TeamConfig[] = [
   {
-    name: 'Red Eagles',
-    shortName: 'REG',
+    name: 'Czerwone Orły',
+    shortName: 'ORŁ',
     primaryColor: 0xdd2222,
     secondaryColor: 0xffffff,
     shortsColor: 0xf2f2f2,
@@ -261,8 +261,8 @@ export const TEAMS: TeamConfig[] = [
     textColor: 0xff6655,
   },
   {
-    name: 'Blue Sharks',
-    shortName: 'BSH',
+    name: 'Niebieskie Rekiny',
+    shortName: 'REK',
     primaryColor: 0x2255dd,
     secondaryColor: 0xffffff,
     shortsColor: 0x14215a,

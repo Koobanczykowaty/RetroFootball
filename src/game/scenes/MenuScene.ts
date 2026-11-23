@@ -18,22 +18,34 @@ export class MenuScene extends Phaser.Scene {
     this.drawBackground();
     this.addRunners();
 
-    // Logo
-    const logo = this.add.container(GAME_WIDTH / 2, 110);
-    const retro = this.add.text(0, -26, 'RETRO', titleStyle(64)).setOrigin(0.5);
-    const football = this.add.text(0, 30, 'GAŁA', {
-      ...titleStyle(40), color: '#ffffff',
-    }).setOrigin(0.5);
+    // Logo: "RETRO GAŁA" on one line, both words the same size and style,
+    // in the colours of the Polish flag (white / red) with a matching stripe
+    const logo = this.add.container(GAME_WIDTH / 2, 118);
+    const size = 60;
+    const white = '#ffffff';
+    const red = '#dc143c';
+    const retro = this.add.text(0, 0, 'RETRO', { ...titleStyle(size), color: white }).setOrigin(0, 0.5);
+    const gala = this.add.text(0, 0, 'GAŁA', { ...titleStyle(size), color: red }).setOrigin(0, 0.5);
+    const space = Math.round(size * 0.35);
+    const total = retro.width + space + gala.width;
+    retro.x = -total / 2;
+    gala.x = -total / 2 + retro.width + space;
+
+    // White-red stripe under the whole name, with the same dark outline as the letters
+    const barW = Math.round(total);
+    const barY = Math.round(size * 0.62);
     const bar = this.add.graphics();
-    bar.fillStyle(0xffcc00, 1);
-    bar.fillRect(-150, 56, 300, 4);
-    bar.fillStyle(0xdd2222, 1);
-    bar.fillRect(-150, 60, 150, 3);
-    bar.fillStyle(0x2255dd, 1);
-    bar.fillRect(0, 60, 150, 3);
-    logo.add([retro, football, bar]);
+    bar.fillStyle(0x000000, 1);
+    bar.fillRect(-barW / 2 - 2, barY - 2, barW + 4, 14);
+    bar.fillStyle(0xffffff, 1);
+    bar.fillRect(-barW / 2, barY, barW, 5);
+    bar.fillStyle(0xdc143c, 1);
+    bar.fillRect(-barW / 2, barY + 5, barW, 5);
+
+    logo.add([bar, retro, gala]);
+    // The whole logo pulses together
     this.tweens.add({
-      targets: retro, scaleX: 1.04, scaleY: 1.04, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+      targets: logo, scaleX: 1.03, scaleY: 1.03, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
 
     // Buttons
