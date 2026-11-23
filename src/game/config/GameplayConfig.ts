@@ -240,11 +240,16 @@ export const TEAMMATE_PROFILE: AIProfile = {
 export interface TeamConfig {
   name: string;
   shortName: string;
+  /** Shirt colour. */
   primaryColor: number;
+  /** Shirt stripe colour. */
   secondaryColor: number;
   shortsColor: number;
+  sockColor: number;
   skinColor: number;
   goalkeeperColor: number;
+  /** Team colour in the UI (HUD chip, card border, confetti); must show on dark backgrounds. */
+  uiColor: number;
   /** Lighter shade of the team colour, readable on dark UI. */
   textColor: number;
 }
@@ -256,19 +261,25 @@ export const TEAMS: TeamConfig[] = [
     primaryColor: 0xdd2222,
     secondaryColor: 0xffffff,
     shortsColor: 0xf2f2f2,
+    sockColor: 0xdd2222,
     skinColor: 0xf5c5a3,
     goalkeeperColor: 0xffcc00,
+    uiColor: 0xdd2222,
     textColor: 0xff6655,
   },
   {
-    name: 'Niebieskie Rekiny',
-    shortName: 'REK',
-    primaryColor: 0x2255dd,
-    secondaryColor: 0xffffff,
-    shortsColor: 0x14215a,
+    // Stork colours: black shirt with a beak-orange stripe, beak-orange socks,
+    // white shorts (the white plumage)
+    name: 'Białe Bociany',
+    shortName: 'BOC',
+    primaryColor: 0x1c1c22,
+    secondaryColor: 0xf0642a,
+    shortsColor: 0xf4f4f4,
+    sockColor: 0xf0642a,
     skinColor: 0xd4a574,
     goalkeeperColor: 0x00cc44,
-    textColor: 0x7799ff,
+    uiColor: 0xf0642a,
+    textColor: 0xff9a5c,
   },
 ];
 

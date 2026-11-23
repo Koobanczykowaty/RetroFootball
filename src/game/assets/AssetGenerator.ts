@@ -43,7 +43,7 @@ export class AssetGenerator {
         shirt: team.primaryColor,
         detail: team.secondaryColor,
         shorts: team.shortsColor,
-        socks: team.primaryColor,
+        socks: team.sockColor,
         skin: team.skinColor,
         hands: team.skinColor,
       });

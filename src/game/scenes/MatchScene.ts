@@ -426,7 +426,7 @@ export class MatchScene extends Phaser.Scene {
     for (const h of this.humans) h.chargeKind = null;
 
     for (const p of this.world.teams[scoringTeam]) p.setPose('celebrate', MATCH.goalCelebrationDuration);
-    this.burstConfetti(this.ball.x, this.ball.y, TEAMS[scoringTeam].primaryColor);
+    this.burstConfetti(this.ball.x, this.ball.y, TEAMS[scoringTeam].uiColor);
   }
 
   private burstConfetti(x: number, y: number, teamColor: number): void {

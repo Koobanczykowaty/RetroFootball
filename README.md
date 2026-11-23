@@ -118,7 +118,7 @@ W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura dzia
 ## Zakres MVP (v0.2.0)
 
 - **Menu główne** z animowanym tłem stadionu: PLAY, CONTROLS, SETTINGS, wersja gry.
-- **Quick Match**: wybór jednej z dwóch drużyn (Czerwone Orły / Niebieskie Rekiny), długości meczu (2/4/6 min) i poziomu trudności. Ustawienia są zapamiętywane w przeglądarce.
+- **Quick Match**: wybór jednej z dwóch drużyn (Czerwone Orły / Białe Bociany), długości meczu (2/4/6 min) i poziomu trudności. Ustawienia są zapamiętywane w przeglądarce.
 - **Poziomy trudności** (ekran QUICK MATCH lub SETTINGS; aktualny poziom widać w meczu w lewym górnym rogu jako `CPU: …`):
   - **EASY**: komputer wolniej reaguje i biega, rzadko i nieskutecznie atakuje wślizgiem, strzela niecelnie, bramkarz często puszcza;
   - **NORMAL**: wyrównana gra;

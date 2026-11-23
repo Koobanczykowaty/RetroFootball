@@ -107,6 +107,14 @@ export class Pitch {
           g.fillRect(x + Math.floor(rand() * 2), y, 2, 2);
         }
       }
+
+      // White-red flags waved in the crowd (top band: not under the HUD / corner hints)
+      for (let x = 36; x < GAME_WIDTH - 30; x += 92) {
+        const underHud = y0 === 0
+          && (x < 100 || (x > PITCH_CX - 190 && x < PITCH_CX + 190) || x > GAME_WIDTH - 110);
+        if (underHud) continue;
+        this.drawPolishFlag(g, x, y0 + 3);
+      }
     }
 
     // Advertising boards along both touchlines
@@ -117,13 +125,21 @@ export class Pitch {
       let i = by > PITCH_CY ? 2 : 0;
       while (x < PITCH.x + PITCH.width + 20) {
         const w = 70;
-        g.fillStyle(BOARD_COLORS[i % BOARD_COLORS.length], 1);
-        g.fillRect(x, by, w - 2, boardH);
-        // Abstract "logo" marks (no real brands)
-        g.fillStyle(0xffffff, 0.75);
-        g.fillRect(x + 8, by + 3, 18, 2);
-        g.fillRect(x + 30, by + 2, 4, 4);
-        g.fillRect(x + 38, by + 3, 22, 2);
+        if (i % 4 === 0) {
+          // Every fourth board in white and red
+          g.fillStyle(0xffffff, 1);
+          g.fillRect(x, by, w - 2, boardH / 2);
+          g.fillStyle(0xdc143c, 1);
+          g.fillRect(x, by + boardH / 2, w - 2, boardH / 2);
+        } else {
+          g.fillStyle(BOARD_COLORS[i % BOARD_COLORS.length], 1);
+          g.fillRect(x, by, w - 2, boardH);
+          // Abstract "logo" marks (no real brands)
+          g.fillStyle(0xffffff, 0.75);
+          g.fillRect(x + 8, by + 3, 18, 2);
+          g.fillRect(x + 30, by + 2, 4, 4);
+          g.fillRect(x + 38, by + 3, 22, 2);
+        }
         x += w;
         i++;
       }
@@ -160,9 +176,25 @@ export class Pitch {
 
   private drawCornerFlag(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
     g.lineStyle(1, 0xdddddd, 0.9);
-    g.lineBetween(x, y, x, y - 9);
-    g.fillStyle(0xffcc00, 0.95);
-    g.fillTriangle(x, y - 9, x + 6, y - 7, x, y - 5);
+    g.lineBetween(x, y, x, y - 10);
+    // White-red corner flag
+    g.fillStyle(0xffffff, 1);
+    g.fillRect(x + 1, y - 10, 6, 2);
+    g.fillStyle(0xdc143c, 1);
+    g.fillRect(x + 1, y - 8, 6, 2);
+  }
+
+  /** Small white-red flag on a pole, held up in the crowd. */
+  private drawPolishFlag(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+    g.fillStyle(0x0b0f1c, 1);
+    g.fillRect(x - 1, y - 1, 13, 8); // dark outline so it stands out from the crowd
+    g.fillRect(x - 1, y, 2, 16); // pole
+    g.fillStyle(0xbbbbbb, 1);
+    g.fillRect(x - 1, y + 7, 1, 9);
+    g.fillStyle(0xffffff, 1);
+    g.fillRect(x, y, 11, 3);
+    g.fillStyle(0xdc143c, 1);
+    g.fillRect(x, y + 3, 11, 3);
   }
 
   destroy(): void {

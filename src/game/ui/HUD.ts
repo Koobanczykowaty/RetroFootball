@@ -29,9 +29,9 @@ export class HUD {
     bg.fillStyle(0x16213a, 0.95);
     bg.fillRect(cx - 170, 4, 340, 30);
     // Team colour chips
-    bg.fillStyle(TEAMS[0].primaryColor, 1);
+    bg.fillStyle(TEAMS[0].uiColor, 1);
     bg.fillRect(cx - 164, 9, 8, 20);
-    bg.fillStyle(TEAMS[1].primaryColor, 1);
+    bg.fillStyle(TEAMS[1].uiColor, 1);
     bg.fillRect(cx + 156, 9, 8, 20);
     this.container.add(bg);
 

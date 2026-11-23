@@ -86,7 +86,7 @@ class TeamPicker implements Focusable {
       const sel = i === this.selected;
       g.clear();
       const highlighted = sel || this.twoPlayer; // in 2P both teams are played by humans
-      drawPanel(g, x - 110, 170 - 80, 220, 160, highlighted ? 0x22365a : UI.panel, highlighted ? team.primaryColor : 0x334466);
+      drawPanel(g, x - 110, 170 - 80, 220, 160, highlighted ? 0x22365a : UI.panel, highlighted ? team.uiColor : 0x334466);
       if (sel) {
         g.fillStyle(this.focused ? 0xffe14d : 0xffcc00, 1);
         g.fillRect(x - 55, 170 - 90, 110, 18);
