@@ -126,6 +126,7 @@ Scenes: `BootScene` (generates textures and animations) → `MenuScene` → `Tea
   - Warsaw's National Stadium (`drawNationalStadium`): an oval bowl with horizontal white-red facade bands, every other panel column shifted by 30% of a band. It has a crown of masts with a cable roof, a spire with a waving white-red flag (`addSpireFlag`) and a grass embankment sloping down behind the stands.
   - The Palace of Culture and Science (`drawPalaceOfCulture`) has flickering windows. These are separate rectangles, so `standTopAt(x)` leaves out windows the stands would cover.
   - Proportions follow the real buildings. Don't use the national emblem.
+- **Main menu players** (`MenuScene.update`, timeline `DUEL`) run a dribbling duel: run-in, feints, the cut past a lunging defender, then a chase. Roles and direction swap every round. To screenshot any animation under headless virtual time, the game loop must use setTimeout. Only the `sim`/`uitest` params force that (`main.ts`), so add a temporary param for the shot.
 - In-match HUD: no "ESC pause" corner box (the user found it tacky). Only the mute indicator appears there, and only while muted.
 - Depth layers: pitch 0, ball shadow 3, selection ring 4, players and low ball 5 + y·0.001, ball trail 9, high ball 10, fx bars 60, HUD 100, banners 190–201, panels 300, pause 400.
 - Scene teardown: `MatchScene.onShutdown` (bound to the `SHUTDOWN` event) removes keyboard and game listeners. `MenuNavigator` unbinds itself on shutdown.

@@ -6,6 +6,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, GAME_VERSION } from '../config/GameplayConfig';
 import { t } from '../config/i18n';
+import { PLAYER_FRAME } from '../entities/Player';
 import { Button } from '../ui/Button';
 import { MenuNavigator } from '../ui/MenuNavigator';
 import { UI, textStyle, titleStyle } from '../ui/Theme';
@@ -26,7 +27,18 @@ function standTopAt(x: number): number {
   return GAME_HEIGHT - 190 + 70 - h;
 }
 
+/** Menu dribbling duel timeline (ms): run-in, feints, the cut, run off. */
+const DUEL = { RUN_IN: 2600, FEINT: 4600, CUT: 5000, CYCLE: 9000 };
+
 export class MenuScene extends Phaser.Scene {
+  private duel?: {
+    players: [Phaser.GameObjects.Sprite, Phaser.GameObjects.Sprite];
+    ball: Phaser.GameObjects.Sprite;
+    shadow: Phaser.GameObjects.Image;
+    t: number;
+    round: number;
+  };
+
   constructor() {
     super({ key: 'MenuScene' });
   }
@@ -360,25 +372,107 @@ export class MenuScene extends Phaser.Scene {
     });
   }
 
-  /** A player dribbling across the grass, chased by an opponent. */
+  /**
+   * Two players on the grass: one dribbles in, the other runs to meet him,
+   * they jockey with feints, the attacker cuts past the lunging defender and
+   * runs off while the defender turns and chases. The roles and direction
+   * swap every round.
+   */
   private addRunners(): void {
     const y = GAME_HEIGHT - 50;
-    const runner = this.add.sprite(-40, y, 'player_team0', 1).play('player_team0_run').setScale(2);
-    const chaser = this.add.sprite(-110, y + 6, 'player_team1', 1).play('player_team1_run').setScale(2);
-    const ball = this.add.sprite(-16, y + 14, 'ball', 0).setScale(2);
-    const shadow = this.add.image(-16, y + 20, 'ball_shadow').setScale(2);
+    this.duel = {
+      players: [
+        this.add.sprite(-60, y, 'player_team0', PLAYER_FRAME.run1).setScale(2),
+        this.add.sprite(GAME_WIDTH + 60, y, 'player_team1', PLAYER_FRAME.run1).setScale(2),
+      ],
+      ball: this.add.sprite(-60, y + 14, 'ball', 0).setScale(2),
+      shadow: this.add.image(-60, y + 20, 'ball_shadow').setScale(2),
+      t: 0,
+      round: 0,
+    };
+  }
 
-    const duration = 6500;
-    for (const [obj, offset] of [[runner, 0], [ball, 24], [shadow, 24], [chaser, -70]] as const) {
-      this.tweens.add({
-        targets: obj,
-        x: GAME_WIDTH + 140 + offset,
-        duration,
-        repeat: -1,
-        repeatDelay: 1200,
-        onRepeat: () => obj.setFrame(obj === ball ? 0 : 1),
-      });
+  update(_time: number, delta: number): void {
+    const d = this.duel;
+    if (!d) return;
+    const { RUN_IN, FEINT, CUT, CYCLE } = DUEL;
+    d.t += Math.min(delta, 50);
+    if (d.t >= CYCLE) {
+      d.t -= CYCLE;
+      d.round++;
     }
-    this.tweens.add({ targets: ball, angle: 360, duration: 500, repeat: -1 });
+    const t = d.t;
+    const dir = d.round % 2 === 0 ? 1 : -1; // team 0 attacks right, then team 1 attacks left
+    const attacker = d.players[d.round % 2];
+    const defender = d.players[1 - (d.round % 2)];
+    const X = (u: number) => (dir > 0 ? u : GAME_WIDTH - u);
+    const lerp = (a: number, b: number, k: number) => a + (b - a) * Math.min(1, Math.max(0, k));
+    const runFrame = (period: number): number =>
+      Math.floor(t / period) % 2 === 0 ? PLAYER_FRAME.run1 : PLAYER_FRAME.run2;
+    const feintA = (time: number) => 12 * Math.sin((2 * Math.PI * time) / 750);
+    const feintD = (time: number) => 11 * Math.sin((2 * Math.PI * (time - 200)) / 750);
+
+    // Attacker (au, ay), defender (du, dy), ball lead in front of the attacker
+    let au: number, ay: number, du: number, dy: number, lead: number;
+    let aFrame = runFrame(130);
+    let dFrame = runFrame(130);
+    let dFacing = -dir; // towards the attacker
+    let spin = 0.6; // ball rotation speed (deg/ms)
+    if (t < RUN_IN) {
+      const k = t / RUN_IN;
+      au = lerp(-60, 380, k);
+      ay = 0;
+      du = lerp(1040, 500, k);
+      dy = 0;
+      lead = 14 + 8 * ((t % 380) / 380); // touch, ball rolls ahead, catch up
+    } else if (t < FEINT) {
+      // Jockeying: the attacker shimmies left/right, the defender mirrors late
+      const k = (t - RUN_IN) / (FEINT - RUN_IN);
+      au = lerp(380, 425, k);
+      ay = feintA(t - RUN_IN);
+      du = lerp(500, 462, k);
+      dy = feintD(t - RUN_IN);
+      lead = 10;
+      aFrame = runFrame(200);
+      dFrame = runFrame(220);
+      spin = 0.15;
+    } else if (t < CUT) {
+      // The cut: ball pushed past on one side, defender lunges to the other
+      const k = (t - FEINT) / (CUT - FEINT);
+      au = lerp(425, 470, k);
+      ay = lerp(feintA(FEINT - RUN_IN), 16, k);
+      du = lerp(462, 452, k);
+      dy = lerp(feintD(FEINT - RUN_IN), -14, k);
+      lead = lerp(10, 40, k);
+      dFrame = PLAYER_FRAME.kick;
+      spin = 1;
+    } else {
+      const k = (t - CUT) / (CYCLE - CUT);
+      au = lerp(470, 1120, k);
+      ay = 16 * (1 - Math.min(1, k * 3));
+      lead = lerp(40, 16, k * 4);
+      if (t < CUT + 500) {
+        // Defender off balance for a moment...
+        du = 452;
+        dy = -14;
+        dFrame = PLAYER_FRAME.kick;
+      } else {
+        // ...then turns and chases
+        const kk = (t - CUT - 500) / (CYCLE - CUT - 500);
+        du = lerp(452, 1000, kk);
+        dy = lerp(-14, 0, kk * 2);
+        dFacing = dir;
+      }
+    }
+
+    const baseY = GAME_HEIGHT - 50;
+    attacker.setPosition(X(au), baseY + ay).setFrame(aFrame).setFlipX(dir < 0);
+    defender.setPosition(X(du), baseY + dy).setFrame(dFrame).setFlipX(dFacing < 0);
+    attacker.setDepth(attacker.y);
+    defender.setDepth(defender.y);
+    const hop = t < RUN_IN || t > CUT ? Math.abs(Math.sin(t / 190)) * 2 : 0;
+    d.ball.setPosition(X(au + lead), baseY + ay + 14 - hop).setDepth(baseY + ay + 15);
+    d.ball.angle += dir * spin * Math.min(delta, 50);
+    d.shadow.setPosition(X(au + lead), baseY + ay + 20).setDepth(baseY + ay + 14);
   }
 }
