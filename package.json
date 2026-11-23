@@ -1,6 +1,6 @@
 {
   "name": "retro-football",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "RetroFootball — A dynamic 2D pixel art arcade football game",
   "type": "module",

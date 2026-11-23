@@ -115,7 +115,7 @@ W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura dzia
 
 > W trybie pełnoekranowym przeglądarka przechwytuje Esc do wyjścia z pełnego ekranu, więc do pauzy użyj wtedy klawisza **P**.
 
-## Zakres MVP (v0.2.0)
+## Zakres gry (v0.3.0)
 
 - **Menu główne** z animowanym tłem stadionu (na horyzoncie Stadion Narodowy i Pałac Kultury i Nauki z migoczącymi światłami; na murawie dwóch piłkarzy kiwa się ze sobą): PLAY, CONTROLS, SETTINGS, wersja gry.
 - **Język polski / angielski**: menu i napisy w meczu. Domyślnie według języka przeglądarki (polska przeglądarka → polski, inaczej angielski); zmiana w SETTINGS / USTAWIENIA → JĘZYK / LANGUAGE, zapamiętywana. W wersji polskiej przycisk startu meczu i baner rozpoczęcia to „HARATAJMY!”, a karta przeglądarki nazywa się „Retro Gała”.
