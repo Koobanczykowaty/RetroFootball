@@ -125,7 +125,7 @@ W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura dzia
   - **NORMAL**: wyrównana gra; obrońcy czasem nabierają się na zwody (ostra zmiana kierunku przy dryblingu);
   - **HARD**: szybki, agresywny pressing, skuteczne odbiory, celne strzały, mocny bramkarz; zwodów nie daje się nabrać.
   Wszystkie parametry są w `AI_PROFILES` w `GameplayConfig.ts`.
-- **Role zawodników** (subtelne różnice, `ROLE_TRAITS`): napastnicy biegają nieco szybciej, ale szybciej się męczą, i strzelają celniej i mocniej; obrońcy częściej skutecznie odbierają piłkę wślizgiem.
+- **Role zawodników** (subtelne różnice, `ROLE_TRAITS`): napastnicy biegają nieco szybciej, szybciej się męczą, ale też szybciej odzyskują siły, i strzelają celniej i mocniej; obrońcy częściej skutecznie odbierają piłkę wślizgiem.
 - **2 PLAYERS (lokalnie)**: przycisk w menu głównym. Gracz 1 wybiera drużynę, gracz 2 gra drugą. Urządzenia:
   - jeden pad: P1 = klawiatura, P2 = pad;
   - dwa pady: P1 = klawiatura **albo** pad 1, P2 = pad 2.
@@ -145,9 +145,9 @@ W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura dzia
   - pressing, asekuracja obrońcy, podania, loby, strzały w róg dalszy od bramkarza;
   - bramkarz ustawia się między piłką a bramką, przewiduje tor strzału, rzuca się, łapie lub odbija piłkę i wznawia grę.
 - **Dwa stadiony, losowane przed każdym meczem**: **Stadion Narodowy** (trybuny, biało-czerwone flagi i bandy) oraz **Blokowisko** (wydeptana trawa z łysymi plackami, kredowe linie, bramki z rurek z dziurawą siatką, bloki z wielkiej płyty, siatka, trzepak, ławki, drzewa) ze **szmacianą piłką**. Nazwa stadionu pojawia się przy rozpoczęciu meczu; zmienia się tylko wygląd, nie fizyka.
-- **Przebieg meczu**: rozpoczęcie, zegar 0–90 min, przerwa, druga połowa ze zmianą stron (drużyny zamieniają się bramkami), gol ze spowolnieniem (ok. 1,5 s slow-mo z przybliżeniem kamery na bramkę), potem GOL!, fanfara, konfetti, wstrząs kamery i celebracja, reset pozycji, ekran końcowy ze statystykami (posiadanie, strzały, celne, podania, odbiory), REMATCH i MAIN MENU.
+- **Przebieg meczu**: rozpoczęcie, zegar 0–90 min, przerwa, druga połowa ze zmianą stron (drużyny zamieniają się bramkami), gol ze spowolnieniem (ok. 1,5 s slow-mo z przybliżeniem kamery na bramkę), potem GOOOL!, fanfara, konfetti, wstrząs kamery i celebracja, reset pozycji, ekran końcowy ze statystykami (posiadanie, strzały, celne, podania, odbiory), REMATCH i MAIN MENU.
 - **Pauza**: Resume, Restart Match, Controls, Main Menu. Gra pauzuje się też automatycznie po utracie fokusu okna.
-- **Dźwięk i muzyka (8-bit, wszystko syntezowane)**: efekty w stylu starych konsol (kopnięcie, podanie, strzał, mocny strzał, odbicie, wślizg, obrona, gol, gwizdek, menu); muzyka chiptune w menu i cichszy podkład w meczu; doping kibiców (szum trybun, który rośnie przy strzałach i golach, oraz co jakiś czas klaskanie ze śpiewem); jingle przy golu, przerwie i na koniec meczu (wygrana / porażka / remis). W ustawieniach: DŹWIĘK, MUZYKA (osobno) i GŁOŚNOŚĆ; M wycisza wszystko.
+- **Dźwięk i muzyka (8-bit, wszystko syntezowane)**: efekty w stylu starych konsol (kopnięcie, podanie, strzał, mocny strzał, odbicie, wślizg, obrona, gol, gwizdek, menu); muzyka chiptune w menu i cichszy podkład w meczu; doping kibiców (szum trybun, który rośnie przy strzałach i golach); jingle przy golu, przerwie i na koniec meczu (wygrana / porażka / remis). W ustawieniach: DŹWIĘK, MUZYKA (osobno) i GŁOŚNOŚĆ; M wycisza wszystko.
 - **Skalowanie**: proporcje 16:9 zawsze zachowane. Gra używa skali całkowitej (np. ×2 na Full HD), gdy wypełnia ona co najmniej 85% okna, w przeciwnym razie skali ułamkowej. Piksele są zawsze ostre. Działa też pełny ekran.
 
 ## Struktura projektu

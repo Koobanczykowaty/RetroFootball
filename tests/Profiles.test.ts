@@ -22,11 +22,12 @@ describe('AI profiles', () => {
 });
 
 describe('role traits', () => {
-  it('forwards are faster, tire sooner and finish better; defenders tackle better', () => {
+  it('forwards are faster, tire and recover sooner, finish better; defenders tackle better', () => {
     const f = ROLE_TRAITS.forward;
     const d = ROLE_TRAITS.defender;
     expect(f.speed).toBeGreaterThan(d.speed);
     expect(f.staminaDrain).toBeGreaterThan(d.staminaDrain);
+    expect(f.staminaRegen).toBeGreaterThan(d.staminaRegen);
     expect(f.shotAccuracy).toBeGreaterThan(d.shotAccuracy);
     expect(d.tackleSuccess).toBeGreaterThan(f.tackleSuccess);
   });

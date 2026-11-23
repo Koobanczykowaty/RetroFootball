@@ -325,7 +325,7 @@ export class Player {
     if (this.isSprinting && speed > 10) {
       this.stamina = Math.max(0, this.stamina - PLAYER.sprintStaminaDrain * ROLE_TRAITS[this.role].staminaDrain * dt);
     } else {
-      this.stamina = Math.min(1, this.stamina + PLAYER.staminaRegen * dt);
+      this.stamina = Math.min(1, this.stamina + PLAYER.staminaRegen * ROLE_TRAITS[this.role].staminaRegen * dt);
     }
 
     this.animate(ms, speed);

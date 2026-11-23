@@ -370,17 +370,18 @@ export const FORMATIONS: Record<FormationId, FormationPosition[]> = {
   ],
 };
 
-/** How far (fraction of half-pitch) each role pushes up when its team attacks. */
 /**
  * Subtle differences between roles, for everyone (human, teammates, CPU):
- * forwards are a bit faster but tire sooner and finish better; defenders win
- * the ball more often. 1 / 0 = no change.
+ * forwards are a bit faster, tire sooner but also recover sooner, and finish
+ * better; defenders win the ball more often. 1 / 0 = no change.
  */
 export interface RoleTraits {
   /** Multiplier on walk/sprint speed. */
   speed: number;
   /** Multiplier on stamina used while sprinting. */
   staminaDrain: number;
+  /** Multiplier on stamina recovered while not sprinting. */
+  staminaRegen: number;
   /** Added to shot accuracy (0..1). */
   shotAccuracy: number;
   /** Multiplier on shot speed. */
@@ -389,15 +390,16 @@ export interface RoleTraits {
   tackleSuccess: number;
 }
 
-const NO_TRAITS: RoleTraits = { speed: 1, staminaDrain: 1, shotAccuracy: 0, shotSpeed: 1, tackleSuccess: 0 };
+const NO_TRAITS: RoleTraits = { speed: 1, staminaDrain: 1, staminaRegen: 1, shotAccuracy: 0, shotSpeed: 1, tackleSuccess: 0 };
 
 export const ROLE_TRAITS: Record<PlayerRole, RoleTraits> = {
   goalkeeper: NO_TRAITS,
   midfielder: NO_TRAITS,
   defender: { ...NO_TRAITS, tackleSuccess: 0.08 },
-  forward: { ...NO_TRAITS, speed: 1.05, staminaDrain: 1.3, shotAccuracy: 0.08, shotSpeed: 1.05 },
+  forward: { ...NO_TRAITS, speed: 1.05, staminaDrain: 1.3, staminaRegen: 1.25, shotAccuracy: 0.08, shotSpeed: 1.05 },
 };
 
+/** How far (fraction of half-pitch) each role pushes up when its team attacks. */
 export const ATTACK_PUSH: Record<PlayerRole, number> = {
   goalkeeper: 0,
   defender: 0.2,

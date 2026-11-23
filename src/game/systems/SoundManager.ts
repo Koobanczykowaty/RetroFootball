@@ -2,7 +2,7 @@
 // SoundManager — Procedural 8-bit audio with the Web Audio API.
 // No audio files: effects are short synthesized recipes, music and
 // jingles come from note data in audio/Tunes.ts, and the crowd is
-// filtered noise with retro chants.
+// filtered noise that swells on shots, saves and goals.
 //
 // Signal chain: every source → master gain (volume, mute) → output.
 // Music has its own gain under the master (on/off, per-track level,
@@ -20,7 +20,6 @@ type Recipe = (ctx: AudioContext, out: AudioNode, t: number) => void;
 const MUSIC_LEVEL: Record<TrackId, number> = { menu: 0.5, match: 0.16 };
 const CROWD_BASE = 0.03;
 const SCHEDULE_AHEAD = 0.2; // s of music scheduled in advance
-const CHANT_EVERY_MS = 24000;
 
 interface MusicState {
   id: TrackId;
@@ -43,7 +42,7 @@ export class SoundManager {
   private wantedTrack: TrackId | null = null;
   private duckUntil = 0;
 
-  private crowd: { src: AudioBufferSourceNode; gain: GainNode; chantTimer: ReturnType<typeof setInterval> } | null = null;
+  private crowd: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
 
   /** Creates the AudioContext lazily; browsers only start it after a user gesture. */
   init(): void {
@@ -416,7 +415,10 @@ export class SoundManager {
 
   // ------------------------------------------------------------ crowd
 
-  /** Background crowd murmur with an occasional retro chant (match only). */
+  /**
+   * Background crowd murmur (match only). There is no periodic chant: the
+   * user found a jingle playing every now and then distracting.
+   */
   startCrowd(): void {
     if (this.crowd) return;
     const ctx = this.ensureContext();
@@ -432,13 +434,11 @@ export class SoundManager {
     gain.gain.value = CROWD_BASE;
     src.connect(band).connect(gain).connect(this.master);
     src.start();
-    const chantTimer = setInterval(() => this.chant(), CHANT_EVERY_MS);
-    this.crowd = { src, gain, chantTimer };
+    this.crowd = { src, gain };
   }
 
   stopCrowd(): void {
     if (!this.crowd) return;
-    clearInterval(this.crowd.chantTimer);
     try {
       this.crowd.src.stop();
     } catch {
@@ -456,30 +456,6 @@ export class SoundManager {
     g.cancelScheduledValues(now);
     g.setTargetAtTime(peak, now, 0.08);
     g.setTargetAtTime(CROWD_BASE, now + seconds, 0.5);
-  }
-
-  /** Clap-clap, clap-clap-clap with chanted voices, twice. */
-  private chant(): void {
-    if (!this.crowd) return;
-    this.play((ctx, out, t0) => {
-      const beat = 0.28;
-      const claps = [0, 2, 4, 5, 6];
-      for (let rep = 0; rep < 2; rep++) {
-        const base = t0 + rep * beat * 8;
-        for (const c of claps) {
-          this.noise(0.05, 0.07, { crunchy: false, filter: 'bandpass', freq: 1500, delay: base + c * beat - t0 })(ctx, out, t0);
-        }
-        // Voices: two slightly detuned squares through a low-pass, far away
-        const voice = ctx.createBiquadFilter();
-        voice.type = 'lowpass';
-        voice.frequency.value = 900;
-        voice.connect(out);
-        const tune: Array<[number, number, number]> = [[330, 0, 1.6], [262, 2, 1.6], [330, 4, 0.8], [330, 5, 0.8], [294, 6, 1.6]];
-        for (const [f, at, len] of tune) {
-          for (const detune of [0, 3]) this.note(ctx, voice, 'square', f + detune, base + at * beat, len * beat, 0.03);
-        }
-      }
-    });
   }
 }
 

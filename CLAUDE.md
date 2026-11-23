@@ -122,7 +122,7 @@ Scenes: `BootScene` (generates textures and animations) → `MenuScene` → `Tea
   - **Feints** (`feintReactionMs/feintBite/feintCommitMs`, `AISystem.readCarrier`): on easy and normal, a pressing CPU defender re-reads the carrier's direction only periodically. A sharp turn can fool him: he follows the old direction and does not tackle. Hard and `TEAMMATE_PROFILE` read every frame, exactly as before (the user asked to keep hard unchanged). The sim records `feintBites`.
   - CPU keepers on normal and hard were weakened at the user's request (`gkSaveChance`, `gkReactionMs`). `TEAMMATE_PROFILE` pins the old normal keeper values, so the human's keeper is unchanged.
 - **Role traits** (`ROLE_TRAITS`, for everyone, kept subtle on purpose):
-  - Forwards: +5% speed, +30% sprint stamina drain, +0.08 shot accuracy, +5% shot speed.
+  - Forwards: +5% speed, +30% sprint stamina drain, +25% stamina regeneration, +0.08 shot accuracy, +5% shot speed.
   - Defenders: +0.08 tackle success.
   - Applied in `Player.update`, `ActionSystem.shoot` and the tackle resolution in `CollisionSystem`. The sim overspeed limit includes the role speed.
 
@@ -138,7 +138,7 @@ Scenes: `BootScene` (generates textures and animations) → `MenuScene` → `Tea
 - **Audio** (`systems/SoundManager.ts`, all synthesized, 8-bit style at the user's request):
   - Every source goes through one master gain (volume, and mute via `soundEnabled`/M). Music has its own gain under it (`settings.musicEnabled`, the MUSIC row in SETTINGS).
   - Music and jingles are note data in `audio/Tunes.ts` (original compositions, pure and unit-tested). A look-ahead scheduler plays them.
-  - Menu scenes call `playMusic('menu')`; it does nothing if that track is already playing. `MatchScene` plays `'match'` quietly plus the crowd (`startCrowd`/`stopCrowd`: murmur, swells on shots, saves and goals, a periodic clap chant).
+  - Menu scenes call `playMusic('menu')`; it does nothing if that track is already playing. `MatchScene` plays `'match'` quietly plus the crowd (`startCrowd`/`stopCrowd`: murmur that swells on shots, saves and goals; no periodic chant, the user found it distracting).
   - At full time the music stops and a result jingle plays.
   - The AudioContext resumes on the first key or click; browsers block audio until then.
 - **Stadiums** (`STADIUMS` in GameplayConfig) are picked at random every match (the user's choice): `narodowy` (the original stadium) and `blokowisko` (housing estate). The estate has worn grass with bald patches, chalk lines, prefab blocks, a fence, a carpet beater, benches, trees and pipe goals, drawn in `Pitch.drawEstate`, and it uses the rag ball texture `ball_rag`.
