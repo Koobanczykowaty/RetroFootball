@@ -107,7 +107,8 @@ export class MenuScene extends Phaser.Scene {
     const standTop = GAME_HEIGHT - 190;
 
     // Warsaw's National Stadium on the horizon, behind the stands
-    this.drawNationalStadium(g, 190, standTop - 14);
+    const spire = this.drawNationalStadium(g, 190, standTop - 14);
+    this.addSpireFlag(spire.x, spire.y);
     // ...and the Palace of Culture and Science further away on the right
     this.drawPalaceOfCulture(g, 780, standTop + 4);
     for (let x = 0; x < GAME_WIDTH; x += 16) {
@@ -148,8 +149,9 @@ export class MenuScene extends Phaser.Scene {
    * a white-red striped facade, a lit roof rim and the central spire held by
    * cables.
    * @param cx centre x  @param baseY bottom of the facade
+   * @returns top of the spire (where the flag is attached)
    */
-  private drawNationalStadium(g: Phaser.GameObjects.Graphics, cx: number, baseY: number): void {
+  private drawNationalStadium(g: Phaser.GameObjects.Graphics, cx: number, baseY: number): { x: number; y: number } {
     // Real proportions (approx.): 314 x 279 m bowl, masts 67 m, spire 108 m
     const S = 1.3; // overall size
     const halfW = Math.round(104 * S);
@@ -192,16 +194,19 @@ export class MenuScene extends Phaser.Scene {
       const s = Math.sqrt(Math.max(0, 1 - t * t));
       const top = Math.round(rimY + ry * s);
       const bottom = Math.round(baseY + ry * s);
-      for (let y = top; y < bottom; y += bandH) {
-        const band = Math.floor((y - top) / bandH);
-        const h = Math.min(bandH, bottom - y);
+      // Every other column of panels is shifted down by 30% of a band
+      const panel = Math.floor((x + halfW) / panelW);
+      const shift = panel % 2 === 1 ? Math.round(bandH * 0.3) : 0;
+      for (let y = top - shift, band = 0; y < bottom; y += bandH, band++) {
+        const y0 = Math.max(y, top);
+        const h = Math.min(y + bandH, bottom) - y0;
+        if (h <= 0) continue;
         g.fillStyle(band % 2 === 0 ? 0xd5dae4 : 0xc8102e, 1);
-        g.fillRect(cx + x, y, 1, h);
-        const joint = (x + halfW + (band % 2) * (panelW / 2)) % panelW === 0;
-        if (joint) {
-          g.fillStyle(0x000000, 0.14);
-          g.fillRect(cx + x, y, 1, h);
-        }
+        g.fillRect(cx + x, y0, 1, h);
+      }
+      if ((x + halfW) % panelW === 0) {
+        g.fillStyle(0x000000, 0.14); // joint between panel columns
+        g.fillRect(cx + x, top, 1, bottom - top);
       }
       g.fillStyle(0x0a1628, 0.6 * t * t);
       g.fillRect(cx + x, top, 1, bottom - top);
@@ -214,14 +219,22 @@ export class MenuScene extends Phaser.Scene {
     }
 
     // Grass embankment the stadium stands on (the old 10th-Anniversary
-    // Stadium), cut off by a flat strip of distant ground so its foot is clean
+    // Stadium): a rounded top that slopes on down behind the stands
     const groundY = baseY + 4;
-    g.fillStyle(0x2a5a3c, 1);
-    g.fillEllipse(cx, groundY, halfW * 2.5, 22);
-    g.fillStyle(0x1b3d2e, 1);
-    g.fillEllipse(cx, groundY + 2, halfW * 2.44, 20);
-    g.fillStyle(0x13203a, 1);
-    g.fillRect(0, groundY, GAME_WIDTH, 40);
+    const moundW = halfW * 1.25;
+    const slopeW = 70;
+    const hillBottom = baseY + 120; // well below the stands' top edge
+    for (let x = Math.floor(-moundW - slopeW); x <= moundW + slopeW; x++) {
+      const ax = Math.abs(x);
+      const top = ax < moundW
+        ? groundY - 11 * Math.sqrt(1 - (ax / moundW) ** 2)
+        : groundY + (ax - moundW) * 0.45;
+      const y = Math.round(top);
+      g.fillStyle(0x2a5a3c, 1);
+      g.fillRect(cx + x, y, 1, 2); // lit grass edge
+      g.fillStyle(0x1b3d2e, 1);
+      g.fillRect(cx + x, y + 2, 1, hillBottom - y - 2);
+    }
 
     // Spire: tapering needle on the central cable ring, red warning light on top
     g.fillStyle(0xb8c0d0, 1);
@@ -233,14 +246,40 @@ export class MenuScene extends Phaser.Scene {
     g.fillRect(cx - 1, cableY, 2, rimY - cableY); // hanger down to the roof
     g.fillStyle(0xe8ecf4, 1);
     g.fillRect(cx - 4, cableY - 1, 8, 2); // central ring
-    g.fillStyle(0xff3030, 1);
-    g.fillRect(cx, spireTop - 2, 1, 2);
 
     // Front masts and their cables
     g.lineStyle(1, 0xc8d0e0, 0.25);
     for (const m of masts) if (m.front) g.lineBetween(m.tx, m.ty, cx, cableY);
     g.lineStyle(1, 0xd8dee8, 1);
     for (const m of masts) if (m.front) g.lineBetween(m.bx, m.by, m.tx, m.ty);
+
+    return { x: cx, y: spireTop };
+  }
+
+  /** Small white-red flag waving from the top of the stadium's spire. */
+  private addSpireFlag(poleX: number, poleTop: number): void {
+    const flag = this.add.graphics();
+    const w = 10;
+    const h = 6;
+    let phase = 0;
+    const draw = () => {
+      flag.clear();
+      for (let i = 0; i < w; i++) {
+        // The wave grows towards the free end of the flag
+        const dy = Math.round(Math.sin(phase - i * 0.7) * (i / w) * 1.6);
+        const x = poleX + 1 + i;
+        const y = poleTop + dy;
+        flag.fillStyle(0x000000, 0.5);
+        flag.fillRect(x, y - 1, 1, h + 2);
+        flag.fillStyle(0xffffff, 1);
+        flag.fillRect(x, y, 1, h / 2);
+        flag.fillStyle(0xdc143c, 1);
+        flag.fillRect(x, y + h / 2, 1, h / 2);
+      }
+      phase += 0.6;
+    };
+    draw();
+    this.time.addEvent({ delay: 110, loop: true, callback: draw });
   }
 
   /**
@@ -257,7 +296,7 @@ export class MenuScene extends Phaser.Scene {
     tiers.forEach(([hw, h], i) => {
       const top = baseY - h;
       g.fillStyle(body, 1);
-      g.fillRect(cx - hw, top, hw * 2, baseY - top);
+      g.fillRect(cx - hw, top, hw * 2, baseY - top + 40); // continues down behind the stands
       g.fillStyle(edge, 1);
       g.fillRect(cx - hw, top, hw * 2, 1); // lit cornice
       // Pinnacles on the corners of every setback
@@ -273,8 +312,8 @@ export class MenuScene extends Phaser.Scene {
     });
     // Side wings step down towards the ends
     g.fillStyle(body, 1);
-    g.fillRect(cx - 74, baseY - 16, 16, 16);
-    g.fillRect(cx + 58, baseY - 16, 16, 16);
+    g.fillRect(cx - 74, baseY - 16, 16, 56);
+    g.fillRect(cx + 58, baseY - 16, 16, 56);
 
     // Spire with a warning light
     const lanternTop = baseY - 139;
