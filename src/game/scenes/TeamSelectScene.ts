@@ -229,7 +229,7 @@ export class TeamSelectScene extends Phaser.Scene {
       width: 240, height: 44, fontSize: 20, color: 0x2a8a4a, focusColor: 0x3fb066,
     });
     const back = new Button(this, GAME_WIDTH / 2, 478, t().back, () => this.scene.start('MenuScene'), {
-      width: 140, height: 30, fontSize: 14,
+      width: 140, height: 30, fontSize: 16,
     });
 
     new MenuNavigator(this, [cardP1, cardP2, length, ...rows, start, back], () => this.scene.start('MenuScene'))

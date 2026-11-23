@@ -8,7 +8,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../config/GameplayConfig';
 import { t } from '../config/i18n';
 import { Button } from './Button';
 import { MenuNavigator } from './MenuNavigator';
-import { UI, drawPanel, textStyle, titleStyle } from './Theme';
+import { UI, drawPanel, pixelFontSize, pixelStroke, textStyle, titleStyle } from './Theme';
 
 export interface FulltimeInfo {
   title: string;
@@ -31,7 +31,7 @@ export class MatchOverlay {
     this.dim = scene.add.rectangle(CX, CY, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0).setDepth(190);
     this.banner = scene.add.text(CX, CY - 20, '', titleStyle(40)).setOrigin(0.5).setDepth(201).setVisible(false);
     this.sub = scene.add.text(CX, CY + 24, '', {
-      ...textStyle(18, UI.text, true), stroke: '#000000', strokeThickness: 4,
+      ...textStyle(18, UI.text, true), stroke: '#000000', strokeThickness: pixelStroke(18),
     }).setOrigin(0.5).setDepth(201).setVisible(false);
   }
 
@@ -41,7 +41,7 @@ export class MatchOverlay {
 
   showBanner(text: string, sub = '', color: string = UI.text, size = 40): void {
     this.scene.tweens.killTweensOf(this.banner);
-    this.banner.setText(text).setColor(color).setFontSize(size).setScale(0.6).setAlpha(0).setVisible(true);
+    this.banner.setText(text).setColor(color).setFontSize(pixelFontSize(size)).setStroke('#000000', pixelStroke(size)).setScale(0.6).setAlpha(0).setVisible(true);
     this.sub.setText(sub).setVisible(sub !== '');
     this.scene.tweens.add({
       targets: this.banner, scaleX: 1, scaleY: 1, alpha: 1, duration: 220, ease: 'Back.easeOut',

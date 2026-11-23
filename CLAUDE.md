@@ -170,3 +170,10 @@ Scenes: `BootScene` (generates textures) → `MenuScene` → `TeamSelectScene` (
 - Scene teardown: `MatchScene.onShutdown` (bound to the `SHUTDOWN` event) removes keyboard and game listeners. `MenuNavigator` unbinds itself on shutdown.
 - **Encoding:** source files are UTF-8 and some contain non-ASCII characters (—, ◀, ↑). Edit them with the Edit/Write tools. PowerShell 5.1 `Get-Content`/`Set-Content` round-trips corrupt them.
 - **Git:** repository on branch `main`, remote `origin` on GitHub (see Distribution; pushing publishes the site). Git is installed at `C:\Program Files\Git\cmd` and may not be on the PATH: prefix with `$env:Path = "C:\Program Files\Git\cmd;$env:Path";`. The commit author is configured locally as "RetroFootball Dev <dev@retrofootball.local>". Pass multi-line commit messages with `git commit -F <file>`; a PowerShell here-string piped to `-F -` doesn't work. `README.zip` in the root is the user's file; it is listed in `.gitignore`.
+
+## Pixel font (branch `pixel-font`, awaiting the user's test)
+
+- `assets/PixelFontGlyphs.ts`: hand-drawn 5-px glyphs (ASCII, Polish letters, arrows, ◀ ▶, — •), loosely inspired by Ubuntu.
+- `assets/PixelFont.ts` builds a TrueType font from them in memory and registers it as `RetroGala` (FontFace API, normal and bold), so all Phaser texts keep colours, strokes and sizes. No font file ships. `BootScene` waits for it before the first text; if the browser rejects it, monospace is used.
+- `Theme.UI.font` = `RetroGala, monospace`. One font pixel = 1/10 em, and **every font size is snapped** (`pixelFontSize`: 10, 20, 30…) so a font pixel is exactly 1, 2, 3… game pixels, on the sprites' grid. Strokes use `pixelStroke` (one font pixel). The user found unsnapped sizes "too high resolution", without pixel-art charm. Use `textStyle`/`titleStyle`/Button `fontSize` (all snapped); call `pixelFontSize` for any `setFontSize`.
+- `tests/PixelFont.test.ts` checks that every UI character has a glyph and that the font file is structurally valid (checksum).

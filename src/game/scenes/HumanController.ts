@@ -18,7 +18,7 @@ import { pickPlayerForBall, pickPlayerInDirection } from '../logic/PlayerSelecti
 import type { ActionSystem } from '../systems/ActionSystem';
 import type { InputSystem } from '../systems/InputSystem';
 import type { MatchState } from '../systems/MatchSystem';
-import { textStyle } from '../ui/Theme';
+import { pixelStroke, textStyle } from '../ui/Theme';
 
 export type ChargeKind = 'pass' | 'shoot' | 'lob';
 
@@ -58,7 +58,7 @@ export class HumanController {
     this.keeperTimer = ctx.scene.add.text(0, 0, '', {
       ...textStyle(11, '#ffffff', true),
       stroke: '#000000',
-      strokeThickness: 3,
+      strokeThickness: pixelStroke(11),
     }).setOrigin(0.5, 1).setDepth(61).setVisible(false);
   }
 

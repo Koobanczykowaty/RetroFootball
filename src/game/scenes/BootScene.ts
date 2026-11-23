@@ -5,6 +5,7 @@
 
 import Phaser from 'phaser';
 import { AssetGenerator } from '../assets/AssetGenerator';
+import { loadPixelFont } from '../assets/PixelFont';
 import { DIFFICULTIES, Difficulty } from '../config/GameplayConfig';
 import { settings } from '../config/Settings';
 import { initSimGlobal } from '../debug/SimReport';
@@ -17,6 +18,11 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Texts may only be created once the pixel font is ready
+    void loadPixelFont().then(() => this.start());
+  }
+
+  private start(): void {
     AssetGenerator.generateAll(this);
 
     const params = new URLSearchParams(window.location.search);
