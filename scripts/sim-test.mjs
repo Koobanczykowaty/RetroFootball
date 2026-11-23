@@ -79,6 +79,8 @@ if (!url) {
 }
 
 const failures = [];
+// Headers / volleys over the whole run (rare in a single short AI match)
+let aerialTotal = 0;
 
 async function runSim(label, human, twoPlayer = false) {
   // Each match: real minutes + kickoff/halftime/goal pauses (each goal adds ~3.5 s)
@@ -146,6 +148,11 @@ async function runSim(label, human, twoPlayer = false) {
       if (!total(e)) failures.push(`[${label}] "${e}" never happened`);
     }
   }
+  // Headers / volleys must happen somewhere in the run (AI or human)
+  const aerials = total('aiAerial') + total('humanHeader') + total('humanVolley');
+  aerialTotal += aerials;
+  console.log(`  aerial strikes: AI ${total('aiAerial')}, human headers ${total('humanHeader')}, volleys ${total('humanVolley')}`);
+
   // Same for AI passers (support run)
   const aiN = total('aiPasserForward') + total('aiPasserBack');
   if (aiN && total('aiPasserBack') > total('aiPasserForward')) {
@@ -189,6 +196,7 @@ await runSim('bot as human', true);
 await runSim('2 players (two bots)', false, true);
 await server.close();
 
+if (!aerialTotal) failures.push('no header or volley was struck in the whole run');
 if (failures.length) {
   console.error(`FAIL\n- ${failures.join('\n- ')}`);
   process.exit(1);

@@ -14,7 +14,7 @@ import {
 } from '../logic/PitchGeometry';
 
 export type { PlayerRole };
-export type Pose = 'none' | 'kick' | 'tackle' | 'dive' | 'celebrate';
+export type Pose = 'none' | 'kick' | 'tackle' | 'dive' | 'celebrate' | 'header';
 
 /** Spritesheet frame indices (see AssetGenerator). */
 export const PLAYER_FRAME = {
@@ -357,6 +357,11 @@ export class Player {
         this.celebrateTime += ms;
         frame = PLAYER_FRAME.celebrate;
         offsetY = -Math.abs(Math.sin(this.celebrateTime / 120)) * 4;
+        break;
+      case 'header':
+        // Jump with arms up (the celebrate frame), highest in the middle
+        frame = PLAYER_FRAME.celebrate;
+        offsetY = -Math.round(Math.sin(Math.min(1, this.poseTimer / 300) * Math.PI) * 5);
         break;
       case 'dive':
         frame = PLAYER_FRAME.dive;

@@ -39,6 +39,7 @@ function sections(): Array<{ title: string; rows: Row[] }> {
       rows: [
         { keys: 'A', pad: 'X', action: s.actTackle },
         { keys: 'S', pad: 'A', action: s.actSwitchBest },
+        { keys: 'D / S', pad: 'B / A', action: s.actAerial },
       ],
     },
     {
@@ -90,7 +91,7 @@ export function createControlsPanel(scene: Phaser.Scene, cx: number, top: number
       c.add(scene.add.text(keyX + keyW / 2, y + 9, row.keys, textStyle(12, UI.textHighlight, true)).setOrigin(0.5));
       c.add(scene.add.text(padX + padW / 2, y + 9, row.pad, textStyle(12, '#9fe0a0', true)).setOrigin(0.5));
       c.add(scene.add.text(actionX, y + 9, row.action, textStyle(13, UI.textSoft)).setOrigin(0, 0.5));
-      y += 24;
+      y += 22;
     }
     y += 6;
   }

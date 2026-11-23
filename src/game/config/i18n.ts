@@ -64,6 +64,7 @@ export interface Strings {
   actLob: string;
   actTackle: string;
   actSwitchBest: string;
+  actAerial: string;
   actPause: string;
   actMute: string;
   // Pause menu
@@ -147,6 +148,7 @@ const EN: Strings = {
   actLob: 'Lob toward arrow — hold = further',
   actTackle: 'Tackle',
   actSwitchBest: 'Switch to best-placed player',
+  actAerial: 'Header / volley (ball in the air)',
   actPause: 'Pause',
   actMute: 'Mute sound',
   paused: 'PAUSED',
@@ -230,6 +232,7 @@ const PL: Strings = {
   actLob: 'Lob za strzałką — dłużej = dalej',
   actTackle: 'Wślizg',
   actSwitchBest: 'Zmiana na najlepiej ustawionego',
+  actAerial: 'Główka / wolej (piłka w górze)',
   actPause: 'Pauza',
   actMute: 'Wycisz dźwięk',
   paused: 'PAUZA',

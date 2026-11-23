@@ -5,9 +5,10 @@
 // ============================================================
 
 import {
-  AIProfile, AI_SPACING, ATTACK_PUSH, GOALKEEPER, PITCH, PLAYER,
+  AERIAL, AIProfile, AI_SPACING, ATTACK_PUSH, GOALKEEPER, PITCH, PLAYER,
 } from '../config/GameplayConfig';
 import type { Player } from '../entities/Player';
+import { canStrikeNow } from '../logic/Aerial';
 import { ballOwner, MatchWorld } from '../logic/MatchWorld';
 import {
   GOAL_BOTTOM, GOAL_TOP, PITCH_BOTTOM, PITCH_CX, PITCH_CY, PITCH_LEFT, PITCH_RIGHT, PITCH_TOP,
@@ -32,6 +33,8 @@ interface Mind {
   lastReadAt: number;
   /** > 0 while fooled by a feint (ms). */
   fooledMs: number;
+  /** Ball flight (Ball.kickId) this player already decided about in the air. */
+  aerialKick: number;
 }
 
 export class AISystem {
@@ -39,6 +42,8 @@ export class AISystem {
   private chasers: [Player | null, Player | null] = [null, null];
   /** How many times a presser fell for a feint (sim metric). */
   public feintBites = 0;
+  /** Headers / volleys struck by AI players (sim metric). */
+  public aerialStrikes = 0;
   /** AI clock (ms), advanced once per frame. */
   private clockMs = 0;
   /** Called after an AI field player passes or lobs to a teammate. */
@@ -67,6 +72,7 @@ export class AISystem {
       if (p === controlled) continue;
 
       if (p.role === 'goalkeeper') this.updateGoalkeeper(p, dt, profile);
+      else if (this.tryAerial(p, profile)) continue;
       else if (p.hasBall) this.updateCarrier(p, dt, profile);
       else this.updateOffBall(p, dt, profile, p === chaser);
     }
@@ -108,6 +114,34 @@ export class AISystem {
     this.chasers[team] = best;
     // If the human's player is the closest, no AI teammate chases
     return best === controlled ? null : best;
+  }
+
+  // ------------------------------------------------------ headers / volleys
+
+  /**
+   * A free ball at head or knee height in reach: once per flight the player
+   * decides (profile.aerialChance) to strike it. Near the opponent's goal he
+   * shoots, elsewhere he heads / volleys it on to a teammate ahead (or into
+   * space ahead: a clearance in his own half). Returns true if he struck it.
+   */
+  private tryAerial(p: Player, profile: AIProfile): boolean {
+    const ball = this.world.ball;
+    if (!ball.isFree || ball.z < AERIAL.volleyMinZ || !canStrikeNow(ball, p.x, p.y)) return false;
+    const m = this.mind(p);
+    if (m.aerialKick === ball.kickId) return false;
+    m.aerialKick = ball.kickId;
+    if (Math.random() >= profile.aerialChance) return false;
+
+    const quality = profile.aerialSkill + Math.random() * (1 - profile.aerialSkill);
+    const fwd = attackDir(p.teamIndex);
+    const nearGoal = distance(p.x, p.y, opponentGoalX(p.teamIndex), PITCH_CY) < profile.shootRange * 1.1;
+    const kind = nearGoal ? 'shot' : 'pass';
+    const aimY = (Math.random() - 0.5) * 1.6;
+    const zone = this.actions.aerial(p, kind, quality, aimY, nearGoal ? 0 : fwd, 0, profile.shotAccuracy);
+    if (!zone) return false;
+    if (kind === 'pass') this.onFieldPass?.(p);
+    this.aerialStrikes++;
+    return true;
   }
 
   // ---------------------------------------------------------- off the ball
@@ -496,7 +530,7 @@ export class AISystem {
     let m = this.minds.get(p.id);
     if (!m) {
       m = {
-        timer: 0, tx: p.homeX, ty: p.homeY, sprint: false, thinkTimer: 0, seenVx: 0, seenVy: 0, readMs: 0, fooledMs: 0, lastReadAt: -1e9,
+        timer: 0, tx: p.homeX, ty: p.homeY, sprint: false, thinkTimer: 0, seenVx: 0, seenVy: 0, readMs: 0, fooledMs: 0, lastReadAt: -1e9, aerialKick: -1,
       };
       this.minds.set(p.id, m);
     }

@@ -45,6 +45,8 @@ export class Ball {
   public isShot = false;
   /** Time since the last kick while the ball is free (ms); used for keeper reaction time. */
   public kickAgeMs = 0;
+  /** Increments on every kick: identifies one flight of the ball. */
+  public kickId = 0;
 
   private rollDistance = 0;
 
@@ -98,6 +100,7 @@ export class Ball {
   }
 
   kick(vx: number, vy: number, opts: KickOptions = {}): void {
+    this.kickId++;
     this.release();
     const speed = Math.hypot(vx, vy);
     const scale = speed > BALL.maxSpeed ? BALL.maxSpeed / speed : 1;

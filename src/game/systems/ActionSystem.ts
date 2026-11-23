@@ -3,8 +3,9 @@
 // the human player and the AI so both play by the same rules.
 // ============================================================
 
-import { BALL, PITCH, ROLE_TRAITS } from '../config/GameplayConfig';
+import { AERIAL, BALL, PITCH, ROLE_TRAITS } from '../config/GameplayConfig';
 import type { Player } from '../entities/Player';
+import { AerialZone, canStrikeNow } from '../logic/Aerial';
 import type { MatchWorld } from '../logic/MatchWorld';
 import {
   PITCH_CY, attackDir, clamp, distance, laneClearance, normalize, opponentGoalX,
@@ -193,6 +194,83 @@ export class ActionSystem {
   }
 
   // ----------------------------------------------------------------- tackle
+
+  // ------------------------------------------------------- headers / volleys
+
+  /**
+   * Header or volley on a free ball in the air within the player's reach
+   * (zone from the ball height: logic/Aerial.ts). Human and AI use it alike.
+   * @param kind 'shot' at goal, or 'pass' to a teammate in the direction
+   * @param quality 0..1 timing quality: power and accuracy
+   * @param aimY -1 (top corner) .. 1 (bottom corner), shots only
+   * @param dirX/dirY input direction; a shot with the input pointing back
+   *   toward your own goal is struck along it (clearance), like shoot()
+   * @param accuracy base accuracy 0..1 (human 0.85, AI its profile)
+   * @returns the zone used, or null if the ball was not playable
+   */
+  aerial(
+    p: Player, kind: 'shot' | 'pass', quality: number, aimY: number, dirX: number, dirY: number, accuracy: number,
+  ): AerialZone | null {
+    const ball = this.world.ball;
+    if (!ball.isFree || !p.canKick() || p.role === 'goalkeeper') return null;
+    const zone = canStrikeNow(ball, p.x, p.y);
+    if (!zone) return null;
+    quality = clamp(quality, 0, 1);
+    const header = zone === 'header';
+    const traits = ROLE_TRAITS[p.role];
+    const input = normalize(dirX, dirY);
+    const fwd = attackDir(p.teamIndex);
+
+    let vx: number;
+    let vy: number;
+    let vz: number;
+    let target: Player | null = null;
+    if (kind === 'shot') {
+      let angle: number;
+      if (input.len > 0 && input.x * fwd < -0.3) {
+        angle = Math.atan2(input.y, input.x); // clearance along the input
+      } else {
+        const goalX = opponentGoalX(p.teamIndex);
+        const halfMouth = PITCH.goalWidth / 2 - 8;
+        const acc = Math.min(1, accuracy * (0.5 + 0.5 * quality) + traits.shotAccuracy);
+        const dist = distance(p.x, p.y, goalX, PITCH_CY);
+        const error = (1 - acc * 0.85) * halfMouth * (0.6 + dist / 400);
+        const ty = PITCH_CY + clamp(aimY, -1, 1) * halfMouth * 0.85 + (Math.random() - 0.5) * 2 * error;
+        angle = Math.atan2(ty - p.y, goalX - p.x);
+      }
+      const speed = (header
+        ? AERIAL.headerSpeedMin + (AERIAL.headerSpeedMax - AERIAL.headerSpeedMin) * quality
+        : AERIAL.volleySpeedMin + (AERIAL.volleySpeedMax - AERIAL.volleySpeedMin) * quality) * traits.shotSpeed;
+      vx = Math.cos(angle) * speed;
+      vy = Math.sin(angle) * speed;
+      vz = header ? AERIAL.headerVz : AERIAL.volleyMissLift * (1 - quality);
+    } else {
+      const dir = this.resolveDir(p, dirX, dirY);
+      target = this.findTargetInCone(p, dir.x, dir.y, 25, 380, 0.35, false);
+      const aim = target ? normalize(target.x - p.x, target.y - p.y) : dir;
+      const speed = (header ? AERIAL.headerPassSpeed : AERIAL.volleyPassSpeed) * (0.85 + 0.15 * quality);
+      vx = aim.x * speed;
+      vy = aim.y * speed;
+      vz = header ? AERIAL.headerVz * 0.5 : AERIAL.volleyPassLift;
+    }
+
+    p.startKickCooldown();
+    if (header) p.setPose('header', 300);
+    ball.kick(vx, vy, { lift: vz, power: kind === 'shot' && !header && quality > 0.85 });
+    ball.lastKickerId = p.id;
+    ball.lastTouchTeam = p.teamIndex;
+    if (kind === 'shot') {
+      ball.isShot = true;
+      this.world.stats.shots[p.teamIndex]++;
+    } else {
+      ball.passTargetId = target ? target.id : null;
+      this.world.stats.passes[p.teamIndex]++;
+    }
+    if (header) soundManager.header();
+    else if (kind === 'shot') soundManager.shoot();
+    else soundManager.kick();
+    return zone;
+  }
 
   /** Start a tackle dash toward the ball. Resolved by CollisionSystem. */
   tackle(p: Player): boolean {

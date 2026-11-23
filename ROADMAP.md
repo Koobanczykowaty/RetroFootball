@@ -10,7 +10,7 @@ Gra celowo nie ma autów, rzutów rożnych, spalonych ani fauli (piłka odbija s
 
 1. **Test gry na dwa pady** na prawdziwym sprzęcie.
 2. ~~**Lepsza czytelność akcji**: krótkie spowolnienie po golu.~~ Zrobione w v0.3.0 (slow-mo z przybliżeniem).
-3. **Główki i woleje**: piłka w powietrzu na wysokości głowy, przycisk strzału przy górnej piłce.
+3. ~~**Główki i woleje**~~ Zrobione: D / S przy piłce w powietrzu, z wyczuciem czasu.
 4. **Własna czcionka pixel art** (wbudowana, np. bitmap font generowany jak sprite'y), aby UI wyglądało tak samo na każdym systemie.
 5. **Code-splitting Phasera**, żeby zmniejszyć ostrzeżenie o rozmiarze paczki.
 

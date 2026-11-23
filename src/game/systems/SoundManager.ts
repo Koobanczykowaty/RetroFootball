@@ -249,6 +249,15 @@ export class SoundManager {
     });
   }
 
+  /** Header: a short hollow "bonk". */
+  header(): void {
+    this.play((ctx, out, t) => {
+      this.chirp('triangle', 420, 180, 0.09, 0.32, 3)(ctx, out, t);
+      this.noise(0.04, 0.12, { freq: 1200 })(ctx, out, t);
+    });
+    this.crowdSwell(0.08, 0.5);
+  }
+
   bounce(): void {
     this.play(this.chirp('triangle', 300, 200, 0.06, 0.28, 2));
   }

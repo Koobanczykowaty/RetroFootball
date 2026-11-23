@@ -34,6 +34,39 @@ export const PITCH = {
   crossbarHeight: 22,
 };
 
+// ---- Headers and volleys ----
+/**
+ * Striking an airborne ball (logic/Aerial.ts). The human presses shoot (D)
+ * or pass (S) while the ball is on its way; the player strikes it when it
+ * arrives. The later the press (closer to the contact), the better the
+ * timing quality, which sets power and accuracy.
+ */
+export const AERIAL = {
+  /** Ball height (px) from which it is a volley (below = at the feet). */
+  volleyMinZ: 9,
+  /** From here on it is a header… */
+  headerMinZ: 18,
+  /** …up to here (higher flies over the player). */
+  headerMaxZ: 34,
+  /** Horizontal reach to the ball (px). */
+  reach: 20,
+  /** A press counts if the ball will be in reach within this time (s). */
+  pressWindowSec: 0.45,
+  /** Quality of a press at the very start of the window. */
+  minQuality: 0.35,
+  headerSpeedMin: 240,
+  headerSpeedMax: 400,
+  /** A header is pushed down (keeps it under the bar). */
+  headerVz: -70,
+  volleySpeedMin: 380,
+  volleySpeedMax: 580,
+  /** Upward speed of a volley at quality 0; badly timed volleys fly over. */
+  volleyMissLift: 170,
+  headerPassSpeed: 260,
+  volleyPassSpeed: 330,
+  volleyPassLift: 60,
+};
+
 // ---- Stadiums ----
 /**
  * Where a match is played; picked at random for every match. Only the look
@@ -210,6 +243,10 @@ export interface AIProfile {
   feintReactionMs: number;
   feintBite: number;
   feintCommitMs: number;
+  /** Chance that a field player goes for a header / volley when the ball comes to him in the air. */
+  aerialChance: number;
+  /** Lowest timing quality of those strikes (0..1; the rest is random up to 1). */
+  aerialSkill: number;
 }
 
 export const AI_PROFILES: Record<Difficulty, AIProfile> = {
@@ -228,6 +265,8 @@ export const AI_PROFILES: Record<Difficulty, AIProfile> = {
     feintReactionMs: 260,
     feintBite: 0.55,
     feintCommitMs: 550,
+    aerialChance: 0.45,
+    aerialSkill: 0.35,
   },
   normal: {
     decisionInterval: 500,
@@ -243,6 +282,8 @@ export const AI_PROFILES: Record<Difficulty, AIProfile> = {
     feintReactionMs: 170,
     feintBite: 0.3,
     feintCommitMs: 400,
+    aerialChance: 0.7,
+    aerialSkill: 0.5,
   },
   // Quick, aggressive pressing, accurate finishing, strong keeper
   hard: {
@@ -260,6 +301,8 @@ export const AI_PROFILES: Record<Difficulty, AIProfile> = {
     feintReactionMs: 0,
     feintBite: 0,
     feintCommitMs: 0,
+    aerialChance: 0.9,
+    aerialSkill: 0.7,
   },
 };
 

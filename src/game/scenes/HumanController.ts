@@ -11,6 +11,7 @@ import type { MarkerId } from '../assets/AssetGenerator';
 import { BALL, GOALKEEPER } from '../config/GameplayConfig';
 import type { SimReport } from '../debug/SimReport';
 import type { Player } from '../entities/Player';
+import { predictAerialContact, timingQuality } from '../logic/Aerial';
 import { ballOwner, MatchWorld } from '../logic/MatchWorld';
 import { attackDir } from '../logic/PitchGeometry';
 import { pickPlayerForBall, pickPlayerInDirection } from '../logic/PlayerSelection';
@@ -38,6 +39,12 @@ export class HumanController {
   chargeMs = 0;
   /** Direction held this frame (for the hint arrows). */
   private heldDir = { x: 0, y: 0 };
+  /** Header / volley waiting for the ball to arrive (see updateAerial). */
+  private pendingAerial: {
+    kind: 'shot' | 'pass'; quality: number; kickId: number; player: Player; deadlineMs: number;
+  } | null = null;
+  /** Match time seen by this controller (ms), for the aerial deadline. */
+  private clockMs = 0;
   /** Countdown above our keeper while he holds the ball. */
   private readonly keeperTimer: Phaser.GameObjects.Text;
 
@@ -64,6 +71,7 @@ export class HumanController {
   update(dt: number): void {
     const { actions } = this.ctx;
     const input = this.input.update(dt * 1000);
+    this.clockMs += dt * 1000;
     this.heldDir = { x: input.moveX, y: input.moveY };
     // No switching while our player has the ball (W / pad LB do nothing then)
     if (input.switchPressed && !this.controlled?.hasBall) this.switchPlayer(false, input.moveX, input.moveY);
@@ -111,6 +119,8 @@ export class HumanController {
       }
     } else {
       this.chargeKind = null;
+      // Header / volley: D or S pressed while the ball comes in the air
+      if (this.updateAerial(p, input.shootPressed, input.passPressed, input.moveY, dirX, dirY)) return;
       // Without the ball the lob button tackles (keyboard A, pad X)
       if (input.lobPressed) {
         if (actions.tackle(p)) this.ctx.sim()?.event('humanTackle');
@@ -123,6 +133,55 @@ export class HumanController {
         this.switchPlayer(true, dirX, dirY);
       }
     }
+  }
+
+  /**
+   * Headers and volleys. A press of D (shot) or S (pass) while a free ball
+   * will come into reach at head or knee height within AERIAL.pressWindowSec
+   * is remembered; the strike happens when the ball arrives. Timing quality
+   * comes from how early the press was. Returns true if the press was used
+   * for that (so S does not also switch player).
+   */
+  private updateAerial(
+    p: Player, shootPressed: boolean, passPressed: boolean, aimY: number, dirX: number, dirY: number,
+  ): boolean {
+    const { world, actions } = this.ctx;
+    const ball = world.ball;
+    let used = false;
+    if ((shootPressed || passPressed) && ball.isFree && p.role !== 'goalkeeper') {
+      const contact = predictAerialContact(ball, p);
+      if (contact) {
+        this.pendingAerial = {
+          kind: shootPressed ? 'shot' : 'pass',
+          quality: timingQuality(contact.t),
+          kickId: ball.kickId,
+          player: p,
+          deadlineMs: this.clockMs + contact.t * 1000 + 200,
+        };
+        if (shootPressed) this.input.consumeShoot();
+        if (passPressed) this.input.consumePass();
+        used = true;
+      }
+    }
+
+    const pending = this.pendingAerial;
+    if (!pending) return used;
+    if (pending.player !== p || ball.kickId !== pending.kickId || !ball.isFree || this.clockMs > pending.deadlineMs) {
+      this.pendingAerial = null; // swung and missed, or the moment is gone
+      return used;
+    }
+    const zone = actions.aerial(p, pending.kind, pending.quality, aimY, dirX, dirY, 0.85);
+    if (zone) {
+      this.pendingAerial = null;
+      const sim = this.ctx.sim();
+      sim?.event(zone === 'header' ? 'humanHeader' : 'humanVolley');
+      if (pending.kind === 'pass') {
+        this.ctx.startSupportRun(p);
+        const receiver = world.teams[this.team].find((q) => q.id === ball.passTargetId);
+        if (receiver) this.setControlled(receiver);
+      }
+    }
+    return true;
   }
 
   private fireCharged(p: Player, kind: ChargeKind, charge: number, aimY: number, dirX: number, dirY: number): void {
@@ -295,6 +354,17 @@ export class HumanController {
         // Blue hint: who a switch would select
         const t = this.switchTarget(false, this.heldDir.x, this.heldDir.y);
         if (t && t !== p) drawHintArrow(g, t, 0x7fd8ff);
+        // Header / volley chance: a small marker above the head (cyan header,
+        // green volley; white once D or S was pressed for it)
+        const ball = this.ctx.world.ball;
+        const contact = ball.isFree && p.role !== 'goalkeeper' ? predictAerialContact(ball, p) : null;
+        if (contact || this.pendingAerial) {
+          const color = this.pendingAerial ? 0xffffff : contact?.zone === 'header' ? 0x5fe0ff : 0x7dff6a;
+          g.fillStyle(0x000000, 0.8);
+          g.fillTriangle(x - 5, y - 26, x + 5, y - 26, x, y - 33);
+          g.fillStyle(color, 1);
+          g.fillTriangle(x - 3, y - 27, x + 3, y - 27, x, y - 31);
+        }
       }
     }
   }

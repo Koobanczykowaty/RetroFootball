@@ -583,6 +583,7 @@ export class MatchScene extends Phaser.Scene {
 
     if (this.sim) {
       if (this.ai.feintBites) this.sim.add('feintBites', this.ai.feintBites);
+      if (this.ai.aerialStrikes) this.sim.add('aiAerial', this.ai.aerialStrikes);
       const more = recordSimMatch(this.sim, d.score, s);
       const total = this.sceneData.simMatches ?? 1;
       const next = (this.sceneData.simIndex ?? 0) + 1;

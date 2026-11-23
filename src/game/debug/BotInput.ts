@@ -5,6 +5,7 @@
 // tackles, player switching) gets exercised automatically.
 // ============================================================
 
+import { predictAerialContact } from '../logic/Aerial';
 import type { MatchWorld } from '../logic/MatchWorld';
 import { PITCH_CY, attackDir, distance, normalize, opponentGoalX } from '../logic/PitchGeometry';
 import { EMPTY_RAW, InputSource, RawInput } from '../systems/InputSystem';
@@ -16,6 +17,8 @@ export class BotInput implements InputSource {
   private keeperFrames = 0;
   private keeperHoldShoot = false;
   private lastShoot = false;
+  /** Ball flight (Ball.kickId) the bot already went for in the air. */
+  private aerialKick = -1;
 
   constructor(
     private readonly getWorld: () => MatchWorld | null,
@@ -93,6 +96,21 @@ export class BotInput implements InputSource {
 
     this.shootHold = 0;
     this.lobHoldLeft = 0;
+
+    // Header / volley: press shortly before an airborne ball arrives (once per
+    // flight): shoot near the opponent's goal, otherwise pass it on
+    if (ball.isFree && p.role !== 'goalkeeper' && this.aerialKick !== ball.kickId) {
+      const contact = predictAerialContact(ball, p);
+      if (contact && contact.t < 0.2) {
+        this.aerialKick = ball.kickId;
+        const nearGoal = distance(p.x, p.y, opponentGoalX(p.teamIndex), PITCH_CY) < 260;
+        if (nearGoal) r.shoot = true;
+        else r.pass = true;
+        r.moveX = attackDir(p.teamIndex);
+        return r;
+      }
+    }
+
     const toBall = normalize(ball.x - p.x, ball.y - p.y);
     r.moveX = toBall.x;
     r.moveY = toBall.y;

@@ -141,6 +141,13 @@ Scenes: `BootScene` (generates textures and animations) → `MenuScene` → `Tea
   - Menu scenes call `playMusic('menu')`; it does nothing if that track is already playing. `MatchScene` plays `'match'` quietly plus the crowd (`startCrowd`/`stopCrowd`: murmur that swells on shots, saves and goals; no periodic chant, the user found it distracting).
   - At full time the music stops and a result jingle plays.
   - The AudioContext resumes on the first key or click; browsers block audio until then.
+- **Headers and volleys** (`logic/Aerial.ts`, pure and unit-tested; tunables in `AERIAL`):
+  - Ball height zones: below `volleyMinZ` (= `BALL.playerReachHeight`) is normal ground control, then volley, then header up to `headerMaxZ`.
+  - A lob crosses these zones in ~0.06–0.1 s, too short to hit a key on. So the human presses D (shot) or S (pass) while the ball is on its way: `predictAerialContact` looks `pressWindowSec` ahead, and `HumanController.updateAerial` keeps a pending strike that fires when the ball is in reach. `timingQuality` rewards late presses.
+  - `ActionSystem.aerial` is shared by human and AI: headers are weaker and pushed down, a badly timed volley rises over the bar. With the ball in the air, S becomes a header pass instead of a switch.
+  - The AI (`AISystem.tryAerial`) decides once per ball flight (`Ball.kickId`) with `aerialChance` / `aerialSkill` per profile.
+  - A marker above the controlled player's head shows the chance: cyan for a header, green for a volley, white once pressed.
+  - The bot presses too. The sim fails if no header or volley happens in the whole run (`aiAerial`, `humanHeader`, `humanVolley`).
 - **Stadiums** (`STADIUMS` in GameplayConfig) are picked at random every match (the user's choice): `narodowy` (the original stadium) and `blokowisko` (housing estate). The estate has worn grass with bald patches, chalk lines, prefab blocks, a fence, a carpet beater, benches, trees and pipe goals, drawn in `Pitch.drawEstate`, and it uses the rag ball texture `ball_rag`.
   - Only the look differs: geometry and physics are identical (the user wanted the rag ball to look different only).
   - The kickoff banner shows the stadium name.
