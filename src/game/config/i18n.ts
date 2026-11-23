@@ -88,7 +88,6 @@ export interface Strings {
   statPasses: string;
   statTackles: string;
   rematch: string;
-  hudPause: string;
   hudMuted: string;
   hudCpu: (d: Difficulty) => string;
   hudHalf: (half: number) => string;
@@ -168,7 +167,6 @@ const EN: Strings = {
   statPasses: 'PASSES',
   statTackles: 'TACKLES WON',
   rematch: 'REMATCH',
-  hudPause: 'ESC  PAUSE',
   hudMuted: 'SOUND OFF (M)',
   hudCpu: (d) => `CPU: ${d.toUpperCase()}`,
   hudHalf: (h) => (h === 1 ? '1ST' : '2ND'),
@@ -250,7 +248,6 @@ const PL: Strings = {
   statPasses: 'PODANIA',
   statTackles: 'ODBIORY',
   rematch: 'REWANŻ',
-  hudPause: 'ESC  PAUZA',
   hudMuted: 'WYCISZONO (M)',
   hudCpu: (d) => `CPU: ${PL_DIFFICULTY[d]}`,
   hudHalf: (h) => (h === 1 ? '1 POŁ.' : '2 POŁ.'),

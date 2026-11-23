@@ -55,15 +55,11 @@ export class HUD {
     this.halfText = scene.add.text(cx + 62, 12, t().hudHalf(1), textStyle(12, '#cfe3ff', true)).setOrigin(0.5, 0);
     this.container.add([this.scoreText, this.timeText, this.halfText]);
 
-    // Corner hints
-    const hintBg = scene.add.graphics();
-    hintBg.fillStyle(UI.outline, 0.75);
-    hintBg.fillRect(GAME_WIDTH - 96, 3, 93, 31);
-    this.container.add(hintBg);
-    const hint = scene.add.text(GAME_WIDTH - 8, 6, t().hudPause, textStyle(10, '#d0d8e8', true)).setOrigin(1, 0);
-    hint.setAlpha(0.8);
-    this.muteText = scene.add.text(GAME_WIDTH - 8, 20, t().hudMuted, textStyle(10, '#ff8877', true)).setOrigin(1, 0);
-    this.container.add([hint, this.muteText]);
+    // Mute indicator in the corner (only while muted)
+    this.muteText = scene.add.text(GAME_WIDTH - 8, 6, t().hudMuted, {
+      ...textStyle(10, '#ff8877', true), stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(1, 0);
+    this.container.add(this.muteText);
 
     if (difficulty) {
       const colors: Record<string, string> = { easy: '#66ff88', normal: '#ffe14d', hard: '#ff7766' };

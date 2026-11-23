@@ -122,6 +122,11 @@ Scenes: `BootScene` (generates textures and animations) → `MenuScene` → `Tea
 - Time units: the systems take `dt` in **seconds**. Player timers and config durations are in **ms**. `MatchSystem.update` takes ms. `MatchScene` clamps a frame to 50 ms.
 - Match clock: `MATCH.fullTimeMinutes` (90) of game time over `settings.matchMinutes` real minutes. Half time is at 45.
 - State transitions are handled in `MatchScene.onStateChange` (kickoff → reset positions, half time, full time). Goals are handled immediately in `onGoal`. Pause and resume are not treated as transitions.
+- **Main menu background** (`MenuScene.drawBackground`), Polish accents at the user's request:
+  - Warsaw's National Stadium (`drawNationalStadium`): an oval bowl with horizontal white-red facade bands, every other panel column shifted by 30% of a band. It has a crown of masts with a cable roof, a spire with a waving white-red flag (`addSpireFlag`) and a grass embankment sloping down behind the stands.
+  - The Palace of Culture and Science (`drawPalaceOfCulture`) has flickering windows. These are separate rectangles, so `standTopAt(x)` leaves out windows the stands would cover.
+  - Proportions follow the real buildings. Don't use the national emblem.
+- In-match HUD: no "ESC pause" corner box (the user found it tacky). Only the mute indicator appears there, and only while muted.
 - Depth layers: pitch 0, ball shadow 3, selection ring 4, players and low ball 5 + y·0.001, ball trail 9, high ball 10, fx bars 60, HUD 100, banners 190–201, panels 300, pause 400.
 - Scene teardown: `MatchScene.onShutdown` (bound to the `SHUTDOWN` event) removes keyboard and game listeners. `MenuNavigator` unbinds itself on shutdown.
 - **Encoding:** source files are UTF-8 and some contain non-ASCII characters (—, ◀, ↑). Edit them with the Edit/Write tools. PowerShell 5.1 `Get-Content`/`Set-Content` round-trips corrupt them.
