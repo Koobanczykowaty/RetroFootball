@@ -553,5 +553,6 @@ export const INPUT_MAP = {
 
 // ---- Audio ----
 export const AUDIO = {
-  defaultVolume: 0.5,
+  /** Volume for new players (0..1); a saved volume is kept. */
+  defaultVolume: 0.1,
 };
