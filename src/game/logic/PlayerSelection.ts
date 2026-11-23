@@ -67,6 +67,8 @@ export function pickPlayerInDirection<P extends SelectablePlayer>(
 
 /** Extra "distance" for a defender who is behind the carrier (chasing). */
 const BEHIND_PENALTY = 140;
+/** Carrier speed toward our goal (px/s) at which that penalty applies in full. */
+const BEHIND_FULL_SPEED = 120;
 
 export function pickPlayerForBall<P extends SelectablePlayer>(
   candidates: readonly P[],
@@ -93,6 +95,14 @@ export function pickPlayerForBall<P extends SelectablePlayer>(
   }
 
   const dir = attackDir(team);
+  // Chasing from behind is hopeless only against a carrier running at our
+  // goal. Against one who stands or dribbles on the spot, a player right
+  // behind him can still win the ball, so the penalty shrinks (to 25%).
+  let behindWeight = 1;
+  if (opponentCarrier) {
+    const goalward = -opponentCarrier.vx * dir; // speed toward our goal
+    behindWeight = Math.min(1, Math.max(0.25, goalward / BEHIND_FULL_SPEED));
+  }
   let best: P | null = null;
   let bestScore = Infinity;
   for (const p of field) {
@@ -100,7 +110,7 @@ export function pickPlayerForBall<P extends SelectablePlayer>(
     if (opponentCarrier) {
       // >0 means the player is further up the pitch than the carrier = behind the play
       const behind = (p.x - opponentCarrier.x) * dir;
-      if (behind > 10) score += BEHIND_PENALTY + behind * 0.5;
+      if (behind > 10) score += (BEHIND_PENALTY + behind * 0.5) * behindWeight;
     }
     if (score < bestScore) {
       bestScore = score;

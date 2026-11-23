@@ -17,6 +17,15 @@ describe('pickPlayerForBall', () => {
     expect(picked).toBe(goalSide);
   });
 
+  it('picks a player right behind a carrier who is not running at goal', () => {
+    // Carrier stands still (e.g. feinting): the chaser next to him can tackle,
+    // a far goal-side defender would only lose time
+    const carrier = player(PITCH_CX, PITCH_CY, 'forward', 1);
+    const chaser = player(carrier.x + 25, PITCH_CY + 15);
+    const deepDefender = player(PITCH_CX - 280, PITCH_CY + 10);
+    expect(pickPlayerForBall([chaser, deepDefender], 0, carrier, carrier)).toBe(chaser);
+  });
+
   it('still picks the nearest player when nobody is goal-side', () => {
     const carrier = player(PITCH_CX - 300, PITCH_CY, 'forward', 1);
     const near = player(carrier.x + 30, PITCH_CY);

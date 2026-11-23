@@ -65,7 +65,8 @@ export class HumanController {
     const { actions } = this.ctx;
     const input = this.input.update(dt * 1000);
     this.heldDir = { x: input.moveX, y: input.moveY };
-    if (input.switchPressed) this.switchPlayer(false, input.moveX, input.moveY);
+    // No switching while our player has the ball (W / pad LB do nothing then)
+    if (input.switchPressed && !this.controlled?.hasBall) this.switchPlayer(false, input.moveX, input.moveY);
 
     // The human only controls the keeper while he holds the ball
     if (this.controlled?.role === 'goalkeeper' && !this.controlled.hasBall) this.switchPlayer(false);
@@ -176,6 +177,13 @@ export class HumanController {
     this.ctx.sim()?.event(dirX !== 0 || dirY !== 0 ? 'switchDirectional' : 'switch');
     const target = this.switchTarget(includeCurrent, dirX, dirY);
     if (target) this.setControlled(target);
+    // Sim metric: how far the selected player is from the opponent's ball carrier
+    const sim = this.ctx.sim();
+    const carrier = ballOwner(this.ctx.world);
+    if (sim && target && carrier && carrier.teamIndex !== this.team && carrier.role !== 'goalkeeper') {
+      sim.add('defSwitchDist', Math.round(target.distanceTo(carrier.x, carrier.y)));
+      sim.event('defSwitchN');
+    }
   }
 
   /** Who switchPlayer() would select right now (no side effects). */
