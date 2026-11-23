@@ -3,7 +3,8 @@
 // ============================================================
 
 import Phaser from 'phaser';
-import { TEAMS, GAME_WIDTH } from '../config/GameplayConfig';
+import { TEAMS, GAME_WIDTH, type Difficulty } from '../config/GameplayConfig';
+import { t } from '../config/i18n';
 import type { MatchData } from '../systems/MatchSystem';
 import { UI, hexColor, textStyle } from './Theme';
 
@@ -19,7 +20,7 @@ export class HUD {
    * @param playerTags which team each human plays ('P1', 'P2'); empty in AI-only sims
    * @param difficulty CPU level, shown in single-player matches
    */
-  constructor(scene: Phaser.Scene, playerTags: Array<{ team: number; label: string }>, difficulty?: string) {
+  constructor(scene: Phaser.Scene, playerTags: Array<{ team: number; label: string }>, difficulty?: Difficulty) {
     this.container = scene.add.container(0, 0).setDepth(100);
     const cx = GAME_WIDTH / 2;
 
@@ -51,7 +52,7 @@ export class HUD {
 
     this.scoreText = scene.add.text(cx, 6, '0 - 0', textStyle(20, UI.text, true)).setOrigin(0.5, 0);
     this.timeText = scene.add.text(cx - 62, 12, '00:00', textStyle(12, '#cfe3ff', true)).setOrigin(0.5, 0);
-    this.halfText = scene.add.text(cx + 62, 12, '1ST', textStyle(12, '#cfe3ff', true)).setOrigin(0.5, 0);
+    this.halfText = scene.add.text(cx + 62, 12, t().hudHalf(1), textStyle(12, '#cfe3ff', true)).setOrigin(0.5, 0);
     this.container.add([this.scoreText, this.timeText, this.halfText]);
 
     // Corner hints
@@ -59,9 +60,9 @@ export class HUD {
     hintBg.fillStyle(UI.outline, 0.75);
     hintBg.fillRect(GAME_WIDTH - 96, 3, 93, 31);
     this.container.add(hintBg);
-    const hint = scene.add.text(GAME_WIDTH - 8, 6, 'ESC  PAUSE', textStyle(10, '#d0d8e8', true)).setOrigin(1, 0);
+    const hint = scene.add.text(GAME_WIDTH - 8, 6, t().hudPause, textStyle(10, '#d0d8e8', true)).setOrigin(1, 0);
     hint.setAlpha(0.8);
-    this.muteText = scene.add.text(GAME_WIDTH - 8, 20, 'SOUND OFF (M)', textStyle(10, '#ff8877', true)).setOrigin(1, 0);
+    this.muteText = scene.add.text(GAME_WIDTH - 8, 20, t().hudMuted, textStyle(10, '#ff8877', true)).setOrigin(1, 0);
     this.container.add([hint, this.muteText]);
 
     if (difficulty) {
@@ -69,7 +70,7 @@ export class HUD {
       const bgDiff = scene.add.graphics();
       bgDiff.fillStyle(UI.outline, 0.75);
       bgDiff.fillRect(3, 3, 86, 18);
-      const diff = scene.add.text(8, 6, `CPU: ${difficulty.toUpperCase()}`, textStyle(10, colors[difficulty] ?? UI.text, true));
+      const diff = scene.add.text(8, 6, t().hudCpu(difficulty), textStyle(10, colors[difficulty] ?? UI.text, true));
       this.container.add([bgDiff, diff]);
     }
   }
@@ -86,7 +87,7 @@ export class HUD {
       this.lastScore = score;
     }
     this.timeText.setText(formattedTime);
-    this.halfText.setText(data.half === 1 ? '1ST' : '2ND');
+    this.halfText.setText(t().hudHalf(data.half));
     this.muteText.setVisible(muted);
   }
 

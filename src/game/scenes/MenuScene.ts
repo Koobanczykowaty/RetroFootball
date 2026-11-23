@@ -5,6 +5,7 @@
 
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, GAME_VERSION } from '../config/GameplayConfig';
+import { t } from '../config/i18n';
 import { Button } from '../ui/Button';
 import { MenuNavigator } from '../ui/MenuNavigator';
 import { UI, textStyle, titleStyle } from '../ui/Theme';
@@ -51,21 +52,22 @@ export class MenuScene extends Phaser.Scene {
     // Buttons
     const y0 = 232;
     const gap = 50;
+    const s = t();
     const buttons = [
-      new Button(this, GAME_WIDTH / 2, y0, 'PLAY', () => this.scene.start('TeamSelectScene', { mode: '1p' }), {
+      new Button(this, GAME_WIDTH / 2, y0, s.play, () => this.scene.start('TeamSelectScene', { mode: '1p' }), {
         width: 220, height: 42, fontSize: 20,
       }),
-      new Button(this, GAME_WIDTH / 2, y0 + gap, '2 PLAYERS', () => this.scene.start('TeamSelectScene', { mode: '2p' }), {
+      new Button(this, GAME_WIDTH / 2, y0 + gap, s.twoPlayers, () => this.scene.start('TeamSelectScene', { mode: '2p' }), {
         width: 220,
       }),
-      new Button(this, GAME_WIDTH / 2, y0 + gap * 2, 'CONTROLS', () => this.scene.start('ControlsScene'), { width: 220 }),
-      new Button(this, GAME_WIDTH / 2, y0 + gap * 3, 'SETTINGS', () => this.scene.start('SettingsScene'), { width: 220 }),
+      new Button(this, GAME_WIDTH / 2, y0 + gap * 2, s.controls, () => this.scene.start('ControlsScene'), { width: 220 }),
+      new Button(this, GAME_WIDTH / 2, y0 + gap * 3, s.settings, () => this.scene.start('SettingsScene'), { width: 220 }),
     ];
     new MenuNavigator(this, buttons).activate(0);
 
-    this.add.text(GAME_WIDTH / 2, y0 + gap * 3 + 40, '↑↓ choose   ENTER select', textStyle(11, UI.textMuted)).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, y0 + gap * 3 + 40, s.menuHint, textStyle(11, UI.textMuted)).setOrigin(0.5);
     this.add.text(GAME_WIDTH - 10, GAME_HEIGHT - 14, `v${GAME_VERSION}`, textStyle(10, '#7788aa')).setOrigin(1, 0.5);
-    this.add.text(10, GAME_HEIGHT - 14, 'QUICK MATCH  •  6 v 6', textStyle(10, '#7788aa')).setOrigin(0, 0.5);
+    this.add.text(10, GAME_HEIGHT - 14, s.menuFooter, textStyle(10, '#7788aa')).setOrigin(0, 0.5);
   }
 
   private drawBackground(): void {

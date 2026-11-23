@@ -5,6 +5,7 @@
 
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/GameplayConfig';
+import { t } from '../config/i18n';
 import { Button } from './Button';
 import { MenuNavigator } from './MenuNavigator';
 import { UI, drawPanel, textStyle, titleStyle } from './Theme';
@@ -48,7 +49,7 @@ export class MatchOverlay {
   }
 
   showGoal(teamName: string): void {
-    this.showBanner('GOAL!', teamName, UI.accent, 72);
+    this.showBanner(t().goal, teamName, UI.accent, 72);
     this.scene.tweens.add({
       targets: this.banner,
       scaleX: 1.15,
@@ -92,8 +93,8 @@ export class MatchOverlay {
       y += 20;
     }
 
-    const rematch = new Button(s, CX - 105, top + h - 36, 'REMATCH', onRematch, { width: 180, height: 36, fontSize: 16 });
-    const menu = new Button(s, CX + 105, top + h - 36, 'MAIN MENU', onMenu, { width: 180, height: 36, fontSize: 16 });
+    const rematch = new Button(s, CX - 105, top + h - 36, t().rematch, onRematch, { width: 180, height: 36, fontSize: 16 });
+    const menu = new Button(s, CX + 105, top + h - 36, t().mainMenu, onMenu, { width: 180, height: 36, fontSize: 16 });
     c.add([rematch, menu]);
     this.panel = c;
 

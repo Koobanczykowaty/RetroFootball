@@ -8,6 +8,7 @@ import {
   DIFFICULTIES, Difficulty, FORMATION_IDS, FormationId, GAME_WIDTH, GAME_HEIGHT, MATCH, TEAMS,
 } from '../config/GameplayConfig';
 import { saveSettings, settings } from '../config/Settings';
+import { t } from '../config/i18n';
 import { soundManager } from '../systems/SoundManager';
 import { Button, Focusable } from '../ui/Button';
 import { MenuNavigator } from '../ui/MenuNavigator';
@@ -90,18 +91,18 @@ class TeamPicker implements Focusable {
       if (sel) {
         g.fillStyle(this.focused ? 0xffe14d : 0xffcc00, 1);
         g.fillRect(x - 55, 170 - 90, 110, 18);
-        this.tags[i].setText(this.twoPlayer ? 'PLAYER 1' : 'YOUR TEAM');
+        this.tags[i].setText(this.twoPlayer ? t().player1 : t().yourTeam);
       } else if (this.twoPlayer) {
         g.fillStyle(0x6dff7a, 1); // P2 colour
         g.fillRect(x - 55, 170 - 90, 110, 18);
-        this.tags[i].setText('PLAYER 2');
+        this.tags[i].setText(t().player2);
       }
       this.tags[i].setVisible(sel || this.twoPlayer);
     });
   }
 }
 
-const formationLabel = (v: FormationId) => (v === '2-3' ? '2-3 ATT' : '3-2 DEF');
+const formationLabel = (v: FormationId) => t().formationValue(v);
 
 /**
  * Match setup. Quick Match (1p): team, length, difficulty, formation.
@@ -125,7 +126,7 @@ export class TeamSelectScene extends Phaser.Scene {
     bg.fillStyle(UI.background, 1);
     bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    this.add.text(GAME_WIDTH / 2, 44, twoPlayer ? '2 PLAYERS' : 'QUICK MATCH', titleStyle(30)).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, 44, twoPlayer ? t().twoPlayers : t().quickMatch, titleStyle(30)).setOrigin(0.5);
 
     const picker = new TeamPicker(this, settings.playerTeam, (i) => {
       settings.playerTeam = i;
@@ -133,7 +134,7 @@ export class TeamSelectScene extends Phaser.Scene {
     }, twoPlayer);
 
     const length = new OptionSelector<number>(
-      this, GAME_WIDTH / 2, 288, 'MATCH LENGTH',
+      this, GAME_WIDTH / 2, 288, t().matchLength,
       MATCH.durationOptions, Math.max(0, MATCH.durationOptions.indexOf(settings.matchMinutes)),
       (v) => `${v} MIN`,
       (v) => {
@@ -145,7 +146,7 @@ export class TeamSelectScene extends Phaser.Scene {
     let rows: Focusable[];
     if (twoPlayer) {
       const p1 = new OptionSelector<FormationId>(
-        this, GAME_WIDTH / 2, 328, 'P1 FORMATION',
+        this, GAME_WIDTH / 2, 328, t().playerFormation(1),
         FORMATION_IDS, Math.max(0, FORMATION_IDS.indexOf(settings.formation)), formationLabel,
         (v) => {
           settings.formation = v;
@@ -153,7 +154,7 @@ export class TeamSelectScene extends Phaser.Scene {
         },
       );
       const p2 = new OptionSelector<FormationId>(
-        this, GAME_WIDTH / 2, 368, 'P2 FORMATION',
+        this, GAME_WIDTH / 2, 368, t().playerFormation(2),
         FORMATION_IDS, Math.max(0, FORMATION_IDS.indexOf(settings.formationP2)), formationLabel,
         (v) => {
           settings.formationP2 = v;
@@ -167,9 +168,9 @@ export class TeamSelectScene extends Phaser.Scene {
       const refresh = () => {
         const pads = connectedPads().length;
         let text: string;
-        if (pads >= 2) text = 'P1: KEYBOARD + PAD 1   •   P2: PAD 2';
-        else if (pads === 1) text = 'P1: KEYBOARD   •   P2: PAD 1';
-        else text = 'P1: KEYBOARD   •   P2: CONNECT AN XBOX CONTROLLER AND PRESS ANY BUTTON';
+        if (pads >= 2) text = t().padsTwo;
+        else if (pads === 1) text = t().padsOne;
+        else text = t().padsNone;
         status.setText(text).setColor(pads > 0 ? '#6dff7a' : '#ff9977');
       };
       refresh();
@@ -182,16 +183,16 @@ export class TeamSelectScene extends Phaser.Scene {
       });
     } else {
       const difficulty = new OptionSelector<Difficulty>(
-        this, GAME_WIDTH / 2, 328, 'DIFFICULTY',
+        this, GAME_WIDTH / 2, 328, t().difficulty,
         DIFFICULTIES, Math.max(0, DIFFICULTIES.indexOf(settings.difficulty)),
-        (v) => v.toUpperCase(),
+        (v) => t().difficultyName(v),
         (v) => {
           settings.difficulty = v;
           saveSettings();
         },
       );
       const formation = new OptionSelector<FormationId>(
-        this, GAME_WIDTH / 2, 368, 'FORMATION',
+        this, GAME_WIDTH / 2, 368, t().formation,
         FORMATION_IDS, Math.max(0, FORMATION_IDS.indexOf(settings.formation)), formationLabel,
         (v) => {
           settings.formation = v;
@@ -201,17 +202,17 @@ export class TeamSelectScene extends Phaser.Scene {
       rows = [difficulty, formation];
     }
 
-    const start = new Button(this, GAME_WIDTH / 2, 425, 'KICK OFF!', () => this.startMatch(), {
+    const start = new Button(this, GAME_WIDTH / 2, 425, t().kickOffButton, () => this.startMatch(), {
       width: 240, height: 44, fontSize: 20, color: 0x2a8a4a, focusColor: 0x3fb066,
     });
-    const back = new Button(this, GAME_WIDTH / 2, 478, 'BACK', () => this.scene.start('MenuScene'), {
+    const back = new Button(this, GAME_WIDTH / 2, 478, t().back, () => this.scene.start('MenuScene'), {
       width: 140, height: 30, fontSize: 14,
     });
 
     new MenuNavigator(this, [picker, length, ...rows, start, back], () => this.scene.start('MenuScene'))
       .activate(4);
 
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, '←→ change   ↑↓ move   ENTER confirm   ESC back', textStyle(11, UI.textMuted))
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, t().setupHint, textStyle(11, UI.textMuted))
       .setOrigin(0.5);
   }
 

@@ -61,7 +61,8 @@ Scenes: `BootScene` (generates textures and animations) → `MenuScene` → `Tea
 6. `Ball.checkGoal()`.
 
 - [config/GameplayConfig.ts](src/game/config/GameplayConfig.ts) holds **every tunable value**: speeds, ball physics, keeper, match timing, `AI_PROFILES` per difficulty, teams, formation, input map. Balance changes go here.
-- `config/Settings.ts` holds persisted user prefs (localStorage, wrapped in try/catch).
+- `config/Settings.ts` holds persisted user prefs (localStorage, wrapped in try/catch), including `language` ('pl' | 'en'; default from the browser language, switchable in SETTINGS).
+- `config/i18n.ts` holds every UI string in Polish and English (`t()` returns the current language's `Strings`). **Never hard-code user-facing text**: add a key to both tables. Texts are read when created, so a language change restarts `SettingsScene`. Team names and the RETRO GAŁA logo are not translated. In Polish, the start button and the kickoff banner say "HARATAJMY!" (user's choice). For screenshots in a given language, run Edge with `--lang=pl-PL` and a fresh `--user-data-dir`.
 - `logic/PitchGeometry.ts` contains pure helpers: pitch bounds, `attackDir`, goal X, lane clearance, line-crossing prediction, formation and kickoff positions. It has no Phaser import, so it is unit-testable. `systems/MatchSystem.ts` is also pure.
 - `systems/ActionSystem.ts` implements pass, passTo, lob, lobTo, shoot and tackle. **Human and AI use the same actions.** Stats and sounds are updated here.
 - `systems/CollisionSystem.ts` is the single place that changes possession (`givePossession`). It fires `onPossession`, `onSave` and `onTackle` callbacks.

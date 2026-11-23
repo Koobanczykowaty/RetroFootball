@@ -11,6 +11,7 @@ import {
   AI_PROFILES, AIProfile, FORMATION_IDS, FORMATIONS, FormationId, MATCH, PLAYER, TEAMMATE_PROFILE, TEAMS,
 } from '../config/GameplayConfig';
 import { saveSettings, settings } from '../config/Settings';
+import { t } from '../config/i18n';
 import { Ball } from '../entities/Ball';
 import { Pitch } from '../entities/Pitch';
 import { Player } from '../entities/Player';
@@ -207,7 +208,7 @@ export class MatchScene extends Phaser.Scene {
       onRestart: () => this.restartMatch(),
       onMainMenu: () => this.scene.start('MenuScene'),
       formations: this.humans.map((h, i) => ({
-        label: this.mode === '2p' ? `P${i + 1} FORMATION` : 'FORMATION',
+        label: this.mode === '2p' ? t().playerFormation(i + 1) : t().formation,
         value: this.formations[h.team],
         onChange: (id: FormationId) => {
           this.changeFormation(h.team, id);
@@ -234,7 +235,7 @@ export class MatchScene extends Phaser.Scene {
 
     this.resetPositions();
     this.match.startKickoff();
-    this.overlay.showBanner('KICK OFF');
+    this.overlay.showBanner(t().kickOffBanner);
     soundManager.whistle();
   }
 
@@ -387,7 +388,7 @@ export class MatchScene extends Phaser.Scene {
           this.sim.event(inOwnHalf && keeper0Right ? 'swapOk' : 'swapWrong');
         }
         this.overlay.setDim(0);
-        this.overlay.showBanner('KICK OFF', from === 'halftime' ? 'SECOND HALF' : '');
+        this.overlay.showBanner(t().kickOffBanner, from === 'halftime' ? t().secondHalf : '');
         soundManager.whistle();
         break;
       case 'playing':
@@ -397,7 +398,7 @@ export class MatchScene extends Phaser.Scene {
       case 'halftime': {
         const [a, b] = this.match.data.score;
         this.overlay.setDim(0.35);
-        this.overlay.showBanner('HALF TIME', `${TEAMS[0].shortName} ${a} - ${b} ${TEAMS[1].shortName}`);
+        this.overlay.showBanner(t().halfTime, `${TEAMS[0].shortName} ${a} - ${b} ${TEAMS[1].shortName}`);
         soundManager.whistleLong();
         break;
       }
@@ -420,7 +421,7 @@ export class MatchScene extends Phaser.Scene {
 
     soundManager.goal();
     this.overlay.setDim(0.2);
-    this.overlay.showGoal(ownGoal ? `OWN GOAL — ${TEAMS[scoringTeam].name}` : TEAMS[scoringTeam].name);
+    this.overlay.showGoal(ownGoal ? t().ownGoal(TEAMS[scoringTeam].name) : TEAMS[scoringTeam].name);
     this.cameras.main.shake(300, 0.008);
     this.cameras.main.flash(180, 255, 255, 255);
     for (const h of this.humans) h.chargeKind = null;
@@ -454,37 +455,37 @@ export class MatchScene extends Phaser.Scene {
     let resultText: string;
     let resultColor = '#ffffff';
     if (this.mode === '2p') {
-      if (winner === -1) resultText = 'DRAW';
+      if (winner === -1) resultText = t().draw;
       else {
-        resultText = `P${this.humanTeams.indexOf(winner) + 1} WINS — ${TEAMS[winner].name.toUpperCase()}`;
+        resultText = t().playerWins(this.humanTeams.indexOf(winner) + 1, TEAMS[winner].name);
         resultColor = '#66ff88';
       }
     } else if (this.humans.length > 0) {
-      if (winner === -1) resultText = 'DRAW';
+      if (winner === -1) resultText = t().draw;
       else if (winner === this.humans[0].team) {
-        resultText = 'YOU WIN!';
+        resultText = t().youWin;
         resultColor = '#66ff88';
       } else {
-        resultText = 'YOU LOSE';
+        resultText = t().youLose;
         resultColor = '#ff7766';
       }
     } else {
-      resultText = winner === -1 ? 'DRAW' : `${TEAMS[winner].name} WIN`;
+      resultText = winner === -1 ? t().draw : t().teamWins(TEAMS[winner].name);
     }
 
     const totalPoss = s.possessionMs[0] + s.possessionMs[1] || 1;
     const poss0 = Math.round((s.possessionMs[0] / totalPoss) * 100);
     const info: FulltimeInfo = {
-      title: 'FULL TIME',
+      title: t().fullTime,
       scoreLine: `${TEAMS[0].shortName}  ${d.score[0]} - ${d.score[1]}  ${TEAMS[1].shortName}`,
       resultText,
       resultColor,
       statLines: [
-        [`${poss0}%`, 'POSSESSION', `${100 - poss0}%`],
-        [`${s.shots[0]}`, 'SHOTS', `${s.shots[1]}`],
-        [`${s.onTarget[0]}`, 'ON TARGET', `${s.onTarget[1]}`],
-        [`${s.passes[0]}`, 'PASSES', `${s.passes[1]}`],
-        [`${s.tackles[0]}`, 'TACKLES WON', `${s.tackles[1]}`],
+        [`${poss0}%`, t().statPossession, `${100 - poss0}%`],
+        [`${s.shots[0]}`, t().statShots, `${s.shots[1]}`],
+        [`${s.onTarget[0]}`, t().statOnTarget, `${s.onTarget[1]}`],
+        [`${s.passes[0]}`, t().statPasses, `${s.passes[1]}`],
+        [`${s.tackles[0]}`, t().statTackles, `${s.tackles[1]}`],
       ],
     };
     this.overlay.showFulltime(info, () => this.restartMatch(), () => this.scene.start('MenuScene'));

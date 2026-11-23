@@ -5,6 +5,7 @@
 
 import Phaser from 'phaser';
 import { FORMATION_IDS, FormationId, GAME_WIDTH, GAME_HEIGHT } from '../config/GameplayConfig';
+import { t } from '../config/i18n';
 import { Button } from './Button';
 import { CONTROLS_PANEL_HEIGHT, createControlsPanel } from './ControlsPanel';
 import { MenuNavigator } from './MenuNavigator';
@@ -49,7 +50,7 @@ export class PauseMenu {
     const g = scene.add.graphics();
     drawPanel(g, CX - 180, top, 360, panelH);
     this.main.add(g);
-    this.main.add(scene.add.text(CX, top + 34, 'PAUSED', titleStyle(30)).setOrigin(0.5));
+    this.main.add(scene.add.text(CX, top + 34, t().paused, titleStyle(30)).setOrigin(0.5));
 
     const opts = { width: 220, height: 38, fontSize: 16 };
     let y = top + 90;
@@ -59,14 +60,14 @@ export class PauseMenu {
       return current;
     };
     const items = [
-      new Button(scene, CX, next(), 'RESUME', handlers.onResume, opts),
+      new Button(scene, CX, next(), t().resume, handlers.onResume, opts),
       ...handlers.formations.map((f) => new OptionSelector<FormationId>(
         scene, CX, next(), f.label, FORMATION_IDS, Math.max(0, FORMATION_IDS.indexOf(f.value)),
         (v) => v, f.onChange, 320,
       )),
-      new Button(scene, CX, next(), 'RESTART MATCH', handlers.onRestart, opts),
-      new Button(scene, CX, next(), 'CONTROLS', () => this.showControls(true), opts),
-      new Button(scene, CX, next(), 'MAIN MENU', handlers.onMainMenu, opts),
+      new Button(scene, CX, next(), t().restartMatch, handlers.onRestart, opts),
+      new Button(scene, CX, next(), t().controls, () => this.showControls(true), opts),
+      new Button(scene, CX, next(), t().mainMenu, handlers.onMainMenu, opts),
     ];
     this.main.add(items);
     this.mainNav = new MenuNavigator(scene, items, handlers.onResume);
@@ -76,7 +77,7 @@ export class PauseMenu {
     const controlsTop = 30;
     this.controls.add(createControlsPanel(scene, CX, controlsTop));
     const back = new Button(
-      scene, CX, controlsTop + CONTROLS_PANEL_HEIGHT + 40, 'BACK', () => this.showControls(false), opts,
+      scene, CX, controlsTop + CONTROLS_PANEL_HEIGHT + 40, t().back, () => this.showControls(false), opts,
     );
     this.controls.add(back);
     this.controlsNav = new MenuNavigator(scene, [back], () => this.showControls(false));

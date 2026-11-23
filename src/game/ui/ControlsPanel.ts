@@ -4,6 +4,7 @@
 // ============================================================
 
 import Phaser from 'phaser';
+import { t } from '../config/i18n';
 import { UI, drawPanel, textStyle } from './Theme';
 
 interface Row {
@@ -12,39 +13,43 @@ interface Row {
   action: string;
 }
 
-const SECTIONS: Array<{ title: string; rows: Row[] }> = [
-  {
-    title: 'MOVEMENT',
-    rows: [
-      { keys: 'ARROWS', pad: 'L-STICK / D-PAD', action: 'Move (8 directions)' },
-      { keys: 'SHIFT', pad: 'RT', action: 'Sprint (uses stamina)' },
-      { keys: 'W (+ARROW)', pad: 'LB (+STICK)', action: 'Switch player (toward arrow)' },
-    ],
-  },
-  {
-    title: 'WITH THE BALL',
-    rows: [
-      { keys: 'S (hold)', pad: 'A (hold)', action: 'Pass — longer hold = faster' },
-      { keys: 'D (hold)', pad: 'B (hold)', action: 'Shoot — hold longer for power' },
-      { keys: '↑ / ↓ + D', pad: '↑ / ↓ + B', action: 'Aim at top / bottom corner' },
-      { keys: 'A (hold)', pad: 'X (hold)', action: 'Lob toward arrow — hold = further' },
-    ],
-  },
-  {
-    title: 'WITHOUT THE BALL',
-    rows: [
-      { keys: 'A', pad: 'X', action: 'Tackle' },
-      { keys: 'S', pad: 'A', action: 'Switch to best-placed player' },
-    ],
-  },
-  {
-    title: 'MATCH',
-    rows: [
-      { keys: 'ESC / P', pad: 'MENU', action: 'Pause' },
-      { keys: 'M', pad: 'VIEW', action: 'Mute sound' },
-    ],
-  },
-];
+/** Control reference in the current language. */
+function sections(): Array<{ title: string; rows: Row[] }> {
+  const s = t();
+  return [
+    {
+      title: s.secMovement,
+      rows: [
+        { keys: s.keyArrows, pad: 'L-STICK / D-PAD', action: s.actMove },
+        { keys: 'SHIFT', pad: 'RT', action: s.actSprint },
+        { keys: s.keyWithArrow('W'), pad: s.padWithStick('LB'), action: s.actSwitchToward },
+      ],
+    },
+    {
+      title: s.secWithBall,
+      rows: [
+        { keys: s.keyHold('S'), pad: s.keyHold('A'), action: s.actPass },
+        { keys: s.keyHold('D'), pad: s.keyHold('B'), action: s.actShoot },
+        { keys: '↑ / ↓ + D', pad: '↑ / ↓ + B', action: s.actAim },
+        { keys: s.keyHold('A'), pad: s.keyHold('X'), action: s.actLob },
+      ],
+    },
+    {
+      title: s.secWithoutBall,
+      rows: [
+        { keys: 'A', pad: 'X', action: s.actTackle },
+        { keys: 'S', pad: 'A', action: s.actSwitchBest },
+      ],
+    },
+    {
+      title: s.secMatch,
+      rows: [
+        { keys: 'ESC / P', pad: 'MENU', action: s.actPause },
+        { keys: 'M', pad: 'VIEW', action: s.actMute },
+      ],
+    },
+  ];
+}
 
 export const CONTROLS_PANEL_HEIGHT = 408;
 
@@ -63,8 +68,8 @@ export function createControlsPanel(scene: Phaser.Scene, cx: number, top: number
 
   // Column headers
   let y = top + 12;
-  c.add(scene.add.text(keyX + keyW / 2, y, 'KEYBOARD', textStyle(10, UI.textMuted, true)).setOrigin(0.5, 0));
-  c.add(scene.add.text(padX + padW / 2, y, 'XBOX PAD', textStyle(10, UI.textMuted, true)).setOrigin(0.5, 0));
+  c.add(scene.add.text(keyX + keyW / 2, y, t().colKeyboard, textStyle(10, UI.textMuted, true)).setOrigin(0.5, 0));
+  c.add(scene.add.text(padX + padW / 2, y, t().colPad, textStyle(10, UI.textMuted, true)).setOrigin(0.5, 0));
   y += 18;
 
   const badge = (x: number, w: number) => {
@@ -76,7 +81,7 @@ export function createControlsPanel(scene: Phaser.Scene, cx: number, top: number
     c.add(b);
   };
 
-  for (const section of SECTIONS) {
+  for (const section of sections()) {
     c.add(scene.add.text(keyX, y, section.title, textStyle(12, UI.accent, true)));
     y += 20;
     for (const row of section.rows) {
