@@ -10,6 +10,15 @@ import { Button } from '../ui/Button';
 import { MenuNavigator } from '../ui/MenuNavigator';
 import { UI, textStyle, titleStyle } from '../ui/Theme';
 
+/** Small deterministic PRNG (0..1) for fixed decorative patterns. */
+function rngWindows(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0xffffffff;
+  };
+}
+
 export class MenuScene extends Phaser.Scene {
   constructor() {
     super({ key: 'MenuScene' });
@@ -91,7 +100,9 @@ export class MenuScene extends Phaser.Scene {
     const standTop = GAME_HEIGHT - 190;
 
     // Warsaw's National Stadium on the horizon, behind the stands
-    this.drawNationalStadium(g, 185, standTop - 2);
+    this.drawNationalStadium(g, 190, standTop - 14);
+    // ...and the Palace of Culture and Science further away on the right
+    this.drawPalaceOfCulture(g, 780, standTop + 4);
     for (let x = 0; x < GAME_WIDTH; x += 16) {
       const h = 70 + Math.round(Math.sin(x * 0.012) * 14);
       g.fillStyle(0x1a2a44, 1);
@@ -102,6 +113,8 @@ export class MenuScene extends Phaser.Scene {
       g.fillStyle(colors[i % colors.length], 0.55);
       g.fillRect(Math.floor(Math.random() * GAME_WIDTH), standTop + 20 + Math.floor(Math.random() * 60), 2, 2);
     }
+    // Fans holding up a big white-red banner
+    this.drawTifo(g, 684, standTop + 30, 176, 26);
 
     // Floodlights
     for (const lx of [70, 300, 660, 890]) {
@@ -132,44 +145,170 @@ export class MenuScene extends Phaser.Scene {
    * @param cx centre x  @param baseY bottom of the facade
    */
   private drawNationalStadium(g: Phaser.GameObjects.Graphics, cx: number, baseY: number): void {
-    const halfW = 92;
-    const wallH = 54;
-    const roofY = baseY - wallH;
+    // Real proportions (approx.): 314 x 279 m bowl, masts 67 m, spire 108 m
+    const S = 1.3; // overall size
+    const halfW = Math.round(104 * S);
+    const facadeH = Math.round(34 * S); // front of the facade, base to rim
+    const ry = Math.round(7 * S); // rim ellipse half-height (seen from slightly above)
+    const rimY = baseY - facadeH - ry; // rim ellipse centre
+    const mastH = Math.round(16 * S);
+    const lean = Math.round(5 * S); // masts lean outwards
+    // Spire top / mast top ≈ 108 m / 67 m above the ground
+    const spireTop = Math.round(baseY - (baseY - (rimY - mastH)) * 1.6);
+    const cableY = rimY - mastH + 3; // central cable ring, a bit below the mast tops
 
-    // Cables from the spire tip down to the roof rim (drawn first, behind the bowl)
-    const tipY = roofY - 104;
-    g.lineStyle(1, 0xc8d0e0, 0.28);
-    for (let i = -4; i <= 4; i++) {
-      if (i === 0) continue;
-      g.lineBetween(cx, tipY + 10, cx + (i / 4) * (halfW - 6), roofY - 6 + Math.abs(i) * 1.5);
+    const masts: Array<{ bx: number; by: number; tx: number; ty: number; front: boolean }> = [];
+    const n = 44; // the real roof hangs from 72 masts
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2;
+      const bx = cx + Math.cos(a) * halfW;
+      const by = rimY + Math.sin(a) * ry;
+      masts.push({ bx, by, tx: cx + Math.cos(a) * (halfW + lean), ty: by - mastH, front: Math.sin(a) > 0 });
     }
 
-    // Facade: vertical white-red stripes, rounded shoulders like the oval bowl
-    for (let x = -halfW; x < halfW; x += 3) {
-      const t = (x + 1.5) / halfW;
-      const top = Math.round(roofY + (1 - Math.sqrt(Math.max(0, 1 - t * t))) * 18);
-      const red = Math.floor((x + halfW) / 3) % 2 === 1;
-      g.fillStyle(red ? 0xb3122f : 0xd9dde6, 1);
-      g.fillRect(cx + x, top, 3, baseY - top);
-      // Darker lower half, as if lit from the roof
-      g.fillStyle(0x0a1628, 0.25);
-      g.fillRect(cx + x, top + Math.round((baseY - top) * 0.7), 3, Math.round((baseY - top) * 0.3) + 1);
+    // Back masts and their cables (behind the roof)
+    g.lineStyle(1, 0xaab4c8, 0.5);
+    for (const m of masts) if (!m.front) g.lineBetween(m.bx, m.by, m.tx, m.ty);
+    g.lineStyle(1, 0xc8d0e0, 0.18);
+    for (const m of masts) if (!m.front) g.lineBetween(m.tx, m.ty, cx, cableY);
+
+    // Roof membrane with the open centre over the pitch
+    g.fillStyle(0xcfd6e2, 0.9);
+    g.fillEllipse(cx, rimY, halfW * 2, ry * 2);
+    g.fillStyle(0x223452, 1);
+    g.fillEllipse(cx, rimY + 1, halfW * 0.9, ry * 0.8);
+
+    // Facade: vertical red and silver strips (expanded-metal panels), every
+    // other band shifted by one strip like a woven basket; darker to the sides
+    const bandH = Math.round(9 * S);
+    for (let x = -halfW; x < halfW; x += 2) {
+      const t = (x + 1) / halfW;
+      const s = Math.sqrt(Math.max(0, 1 - t * t));
+      const top = Math.round(rimY + ry * s);
+      const bottom = Math.round(baseY + ry * s);
+      for (let y = top; y < bottom; y += bandH) {
+        const band = Math.floor((y - top) / bandH);
+        const red = (Math.floor((x + halfW) / 2) + band) % 2 === 0;
+        const h = Math.min(bandH, bottom - y);
+        g.fillStyle(red ? 0xc8102e : 0xd5dae4, 1);
+        g.fillRect(cx + x, y, 2, h);
+        g.fillStyle(0x000000, 0.18); // seam between bands
+        g.fillRect(cx + x, y + h - 1, 2, 1);
+      }
+      g.fillStyle(0x0a1628, 0.6 * t * t);
+      g.fillRect(cx + x, top, 2, bottom - top);
+    }
+    // Lit rim along the front
+    g.fillStyle(0xfff3c4, 0.85);
+    for (let x = -halfW + 6; x < halfW - 6; x += 2) {
+      const t = (x + 1) / halfW;
+      g.fillRect(cx + x, Math.round(rimY + ry * Math.sqrt(1 - t * t)) - 1, 2, 1);
     }
 
-    // Roof rim with a warm floodlight glow
-    g.fillStyle(0xffffaa, 0.08);
-    g.fillEllipse(cx, roofY - 2, halfW * 1.7, 22);
-    g.fillStyle(0xfff3c4, 0.9);
-    g.fillRect(cx - halfW * 0.62, roofY - 2, Math.round(halfW * 1.24), 2);
-    g.fillStyle(0x8a94a8, 1);
-    g.fillRect(cx - halfW * 0.7, roofY - 4, Math.round(halfW * 1.4), 2);
+    // Grass embankment the stadium stands on (the old 10th-Anniversary Stadium)
+    g.fillStyle(0x2a5a3c, 1);
+    g.fillEllipse(cx, baseY + 9 * S, halfW * 2.5, 26 * S);
+    g.fillStyle(0x1b3d2e, 1);
+    g.fillEllipse(cx, baseY + 12 * S, halfW * 2.45, 24 * S);
 
-    // Central spire with its yellow top light
+    // Spire: tapering needle on the central cable ring, red warning light on top
     g.fillStyle(0xb8c0d0, 1);
-    g.fillRect(cx - 1, tipY, 2, roofY - tipY - 3);
-    g.fillRect(cx - 2, tipY + 30, 4, 4);
-    g.fillStyle(0xffd23a, 1);
-    g.fillRect(cx - 1, tipY - 3, 2, 3);
+    const spireLen = cableY - spireTop;
+    for (let i = 0; i < spireLen; i++) {
+      const w = i < spireLen * 0.45 ? 1 : 2;
+      g.fillRect(cx - Math.floor(w / 2), spireTop + i, w, 1);
+    }
+    g.fillRect(cx - 1, cableY, 2, rimY - cableY); // hanger down to the roof
+    g.fillStyle(0xe8ecf4, 1);
+    g.fillRect(cx - 4, cableY - 1, 8, 2); // central ring
+    g.fillStyle(0xff3030, 1);
+    g.fillRect(cx, spireTop - 2, 1, 2);
+
+    // Front masts and their cables
+    g.lineStyle(1, 0xc8d0e0, 0.25);
+    for (const m of masts) if (m.front) g.lineBetween(m.tx, m.ty, cx, cableY);
+    g.lineStyle(1, 0xd8dee8, 1);
+    for (const m of masts) if (m.front) g.lineBetween(m.bx, m.by, m.tx, m.ty);
+  }
+
+  /**
+   * Distant silhouette of the Palace of Culture and Science in Warsaw: wide
+   * lower wings, a stepped tower with pinnacles at every setback, the clock
+   * level and the spire. Lit windows and a glowing clock for the night scene.
+   * @param cx centre x  @param baseY ground line (hidden by the stands)
+   */
+  private drawPalaceOfCulture(g: Phaser.GameObjects.Graphics, cx: number, baseY: number): void {
+    const body = 0x2b3a5a;
+    const edge = 0x3d4f75;
+    // [half width, top above the ground] from the wings up to the lantern
+    const tiers: Array<[number, number]> = [[58, 26], [30, 84], [24, 104], [18, 118], [13, 130], [8, 139]];
+    tiers.forEach(([hw, h], i) => {
+      const top = baseY - h;
+      g.fillStyle(body, 1);
+      g.fillRect(cx - hw, top, hw * 2, baseY - top);
+      g.fillStyle(edge, 1);
+      g.fillRect(cx - hw, top, hw * 2, 1); // lit cornice
+      // Pinnacles on the corners of every setback
+      if (i > 0) {
+        g.fillStyle(body, 1);
+        g.fillRect(cx - hw, top - 4, 2, 4);
+        g.fillRect(cx + hw - 2, top - 4, 2, 4);
+        if (hw > 14) {
+          g.fillRect(cx - hw / 2 - 1, top - 3, 2, 3);
+          g.fillRect(cx + hw / 2 - 1, top - 3, 2, 3);
+        }
+      }
+    });
+    // Side wings step down towards the ends
+    g.fillStyle(body, 1);
+    g.fillRect(cx - 74, baseY - 16, 16, 16);
+    g.fillRect(cx + 58, baseY - 16, 16, 16);
+
+    // Spire with a warning light
+    const lanternTop = baseY - 139;
+    g.fillStyle(edge, 1);
+    g.fillRect(cx - 1, lanternTop - 28, 2, 28);
+    g.fillRect(cx - 2, lanternTop - 10, 4, 10);
+    g.fillStyle(0xff3030, 1);
+    g.fillRect(cx - 1, lanternTop - 30, 2, 2);
+
+    // Clock faces on the clock level
+    g.fillStyle(0xf2e6b0, 0.9);
+    g.fillRect(cx - 4, baseY - 126, 8, 6);
+    g.fillStyle(body, 1);
+    g.fillRect(cx, baseY - 125, 1, 3);
+
+    // A few lit windows (fixed pattern, so the menu looks the same every time)
+    const lit = rngWindows(7);
+    g.fillStyle(0xffe9a0, 0.7);
+    for (let y = baseY - 80; y < baseY - 8; y += 5) {
+      for (let x = cx - 26; x < cx + 26; x += 4) if (lit() < 0.22) g.fillRect(x, y, 2, 2);
+    }
+    for (let y = baseY - 22; y < baseY - 4; y += 5) {
+      const reach = y < baseY - 15 ? 56 : 72; // the end wings are lower
+      for (let x = cx - reach; x < cx + reach - 2; x += 4) {
+        if (Math.abs(x - cx) > 30 && lit() < 0.2) g.fillRect(x, y, 2, 2);
+      }
+    }
+  }
+
+  /** Wavy white-red banner held up by the fans in the stands. */
+  private drawTifo(g: Phaser.GameObjects.Graphics, x0: number, y0: number, w: number, h: number): void {
+    for (let x = 0; x < w; x += 2) {
+      const dy = Math.round(Math.sin(x * 0.08) * 2);
+      const shade = 0.85 + Math.sin(x * 0.08 + 1.2) * 0.15; // folds catch the light
+      g.fillStyle(0x000000, 1);
+      g.fillRect(x0 + x, y0 + dy - 1, 2, h + 2);
+      g.fillStyle(Phaser.Display.Color.GetColor(255 * shade, 255 * shade, 255 * shade), 1);
+      g.fillRect(x0 + x, y0 + dy, 2, h / 2);
+      g.fillStyle(Phaser.Display.Color.GetColor(220 * shade, 20 * shade, 60 * shade), 1);
+      g.fillRect(x0 + x, y0 + dy + h / 2, 2, h / 2);
+    }
+    // Fans' raised hands along the bottom edge
+    g.fillStyle(0xf5c5a3, 0.8);
+    for (let x = 6; x < w - 4; x += 14) {
+      g.fillRect(x0 + x, y0 + h + Math.round(Math.sin(x * 0.08) * 2), 2, 3);
+    }
   }
 
   /** A player dribbling across the grass, chased by an opponent. */
