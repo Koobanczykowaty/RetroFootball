@@ -354,6 +354,10 @@ export class MatchScene extends Phaser.Scene {
     const sim = this.sim!;
     for (const team of this.world.teams) {
       const field = team.filter((q) => q.role !== 'goalkeeper');
+      // Defensive cover: are all of this team's defenders in the opponent's half?
+      const dir = attackDir(team[0].teamIndex);
+      const defenders = field.filter((q) => q.role === 'defender');
+      if (defenders.length > 0 && defenders.every((q) => (q.x - PITCH_CX) * dir > 20)) sim.event('backLineEmpty');
       for (const a of field) {
         let nearest = Infinity;
         for (const b of field) if (a !== b) nearest = Math.min(nearest, a.distanceTo(b.x, b.y));
@@ -377,6 +381,12 @@ export class MatchScene extends Phaser.Scene {
   private startSupportRun(passer: Player, by: 'human' | 'ai'): void {
     if (passer.hasBall || passer.role === 'goalkeeper') return; // pass didn't happen / keeper
     passer.supportRunTimer = PLAYER.supportRunMax;
+    // Only one defender joins the attack at a time: the others go back to the back line
+    if (passer.role === 'defender') {
+      for (const q of this.world.teams[passer.teamIndex]) {
+        if (q !== passer && q.role === 'defender') q.supportRunTimer = 0;
+      }
+    }
     if (this.sim) {
       // Test metric: 1 s later, has the passer moved forward (while his team still has the ball)?
       const x0 = passer.x;
@@ -408,6 +418,10 @@ export class MatchScene extends Phaser.Scene {
     switch (to) {
       case 'kickoff':
         if (from === 'halftime') this.changeEnds();
+        // Everyone gets their breath back for the restart after a goal or half time
+        if (from === 'goal_scored' || from === 'halftime') {
+          for (const q of this.world.players) q.stamina = 1;
+        }
         this.resetPositions();
         // Test check: the goal slow-motion zoom has ended before the restart
         if (this.sim && from === 'goal_scored') {

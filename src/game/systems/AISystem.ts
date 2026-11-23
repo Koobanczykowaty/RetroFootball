@@ -158,7 +158,10 @@ export class AISystem {
   private supportRun(p: Player, dt: number): void {
     const ball = this.world.ball;
     const dir = attackDir(p.teamIndex);
-    const limitX = opponentGoalX(p.teamIndex) - dir * (PITCH.penaltyAreaHeight * 0.6);
+    // Forwards may go up to the edge of the box; a defender only just past halfway
+    const limitX = p.role === 'defender'
+      ? PITCH_CX + dir * PLAYER.defenderSupportRunLimit
+      : opponentGoalX(p.teamIndex) - dir * (PITCH.penaltyAreaHeight * 0.6);
     let tx = Math.max((ball.x + dir * PLAYER.supportRunLead) * dir, (p.x + dir * 40) * dir) * dir;
     if ((tx - limitX) * dir > 0) tx = limitX;
     let ty = clamp(p.y, PITCH_TOP + 30, PITCH_BOTTOM - 30);

@@ -89,6 +89,12 @@ export const PLAYER = {
   supportRunMax: 6000,
   /** How far ahead of the ball the supporting runner aims (px). */
   supportRunLead: 70,
+  /**
+   * A defender's support run stops this far past the halfway line (px), and
+   * only one defender per team makes one at a time, so the back line is never
+   * left empty.
+   */
+  defenderSupportRunLimit: 70,
 };
 
 // ---- Ball ----
