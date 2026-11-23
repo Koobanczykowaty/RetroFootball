@@ -117,8 +117,8 @@ W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura dzia
 
 ## Zakres MVP (v0.2.0)
 
-- **Menu główne** z animowanym tłem stadionu: PLAY, CONTROLS, SETTINGS, wersja gry.
-- **Język polski / angielski**: menu i napisy w meczu. Domyślnie według języka przeglądarki (polska przeglądarka → polski, inaczej angielski); zmiana w SETTINGS / USTAWIENIA → JĘZYK / LANGUAGE, zapamiętywana. W wersji polskiej przycisk startu meczu i baner rozpoczęcia to „HARATAJMY!”.
+- **Menu główne** z animowanym tłem stadionu (na horyzoncie sylwetka Stadionu Narodowego w Warszawie): PLAY, CONTROLS, SETTINGS, wersja gry.
+- **Język polski / angielski**: menu i napisy w meczu. Domyślnie według języka przeglądarki (polska przeglądarka → polski, inaczej angielski); zmiana w SETTINGS / USTAWIENIA → JĘZYK / LANGUAGE, zapamiętywana. W wersji polskiej przycisk startu meczu i baner rozpoczęcia to „HARATAJMY!”, a karta przeglądarki nazywa się „Retro Gała”.
 - **Quick Match**: wybór jednej z dwóch drużyn (Czerwone Orły / Białe Bociany), długości meczu (2/4/6 min) i poziomu trudności. Ustawienia są zapamiętywane w przeglądarce.
 - **Poziomy trudności** (ekran QUICK MATCH lub SETTINGS; aktualny poziom widać w meczu w lewym górnym rogu jako `CPU: …`):
   - **EASY**: komputer wolniej reaguje i biega, rzadko i nieskutecznie atakuje wślizgiem, strzela niecelnie, bramkarz często puszcza;

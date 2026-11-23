@@ -89,6 +89,9 @@ export class MenuScene extends Phaser.Scene {
 
     // Stands silhouette with crowd specks
     const standTop = GAME_HEIGHT - 190;
+
+    // Warsaw's National Stadium on the horizon, behind the stands
+    this.drawNationalStadium(g, 185, standTop - 2);
     for (let x = 0; x < GAME_WIDTH; x += 16) {
       const h = 70 + Math.round(Math.sin(x * 0.012) * 14);
       g.fillStyle(0x1a2a44, 1);
@@ -120,6 +123,53 @@ export class MenuScene extends Phaser.Scene {
     }
     g.fillStyle(0xffffff, 0.8);
     g.fillRect(0, grassTop, GAME_WIDTH, 2);
+  }
+
+  /**
+   * Pixel-art silhouette of the National Stadium in Warsaw: a round bowl with
+   * a white-red striped facade, a lit roof rim and the central spire held by
+   * cables.
+   * @param cx centre x  @param baseY bottom of the facade
+   */
+  private drawNationalStadium(g: Phaser.GameObjects.Graphics, cx: number, baseY: number): void {
+    const halfW = 92;
+    const wallH = 54;
+    const roofY = baseY - wallH;
+
+    // Cables from the spire tip down to the roof rim (drawn first, behind the bowl)
+    const tipY = roofY - 104;
+    g.lineStyle(1, 0xc8d0e0, 0.28);
+    for (let i = -4; i <= 4; i++) {
+      if (i === 0) continue;
+      g.lineBetween(cx, tipY + 10, cx + (i / 4) * (halfW - 6), roofY - 6 + Math.abs(i) * 1.5);
+    }
+
+    // Facade: vertical white-red stripes, rounded shoulders like the oval bowl
+    for (let x = -halfW; x < halfW; x += 3) {
+      const t = (x + 1.5) / halfW;
+      const top = Math.round(roofY + (1 - Math.sqrt(Math.max(0, 1 - t * t))) * 18);
+      const red = Math.floor((x + halfW) / 3) % 2 === 1;
+      g.fillStyle(red ? 0xb3122f : 0xd9dde6, 1);
+      g.fillRect(cx + x, top, 3, baseY - top);
+      // Darker lower half, as if lit from the roof
+      g.fillStyle(0x0a1628, 0.25);
+      g.fillRect(cx + x, top + Math.round((baseY - top) * 0.7), 3, Math.round((baseY - top) * 0.3) + 1);
+    }
+
+    // Roof rim with a warm floodlight glow
+    g.fillStyle(0xffffaa, 0.08);
+    g.fillEllipse(cx, roofY - 2, halfW * 1.7, 22);
+    g.fillStyle(0xfff3c4, 0.9);
+    g.fillRect(cx - halfW * 0.62, roofY - 2, Math.round(halfW * 1.24), 2);
+    g.fillStyle(0x8a94a8, 1);
+    g.fillRect(cx - halfW * 0.7, roofY - 4, Math.round(halfW * 1.4), 2);
+
+    // Central spire with its yellow top light
+    g.fillStyle(0xb8c0d0, 1);
+    g.fillRect(cx - 1, tipY, 2, roofY - tipY - 3);
+    g.fillRect(cx - 2, tipY + 30, 4, 4);
+    g.fillStyle(0xffd23a, 1);
+    g.fillRect(cx - 1, tipY - 3, 2, 3);
   }
 
   /** A player dribbling across the grass, chased by an opponent. */
