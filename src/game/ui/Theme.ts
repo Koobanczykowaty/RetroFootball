@@ -5,7 +5,8 @@
 import Phaser from 'phaser';
 
 export const UI = {
-  font: 'monospace',
+  // The game's own pixel font (assets/PixelFont.ts), monospace as a fallback
+  font: "RetroGala, monospace",
   background: 0x0a1628,
   panel: 0x1a2a44,
   panelBorder: 0x4488cc,
