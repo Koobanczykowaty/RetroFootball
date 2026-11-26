@@ -133,6 +133,10 @@ export interface Strings {
   goldenGoal: string;
   nextGoalWins: string;
   continueButton: string;
+  // Desktop app
+  quitConfirm: string;
+  yes: string;
+  no: string;
   // Game settings
   gameSpeed: string;
   gameSpeedName: (v: GameSpeed) => string;
@@ -258,6 +262,9 @@ const EN: Strings = {
   goldenGoal: 'GOLDEN GOAL',
   nextGoalWins: 'NEXT GOAL WINS',
   continueButton: 'CONTINUE',
+  quitConfirm: 'QUIT THE GAME?',
+  yes: 'YES',
+  no: 'NO',
   gameSpeed: 'GAME SPEED',
   gameSpeedName: (v) => (v === 'slow' ? 'SLOW' : v === 'fast' ? 'FAST' : 'NORMAL'),
   passAssist: 'PASSES',
@@ -384,6 +391,9 @@ const PL: Strings = {
   goldenGoal: 'ZŁOTY GOL',
   nextGoalWins: 'NASTĘPNY GOL WYGRYWA',
   continueButton: 'DALEJ',
+  quitConfirm: 'WYJŚĆ Z GRY?',
+  yes: 'TAK',
+  no: 'NIE',
   gameSpeed: 'PRĘDKOŚĆ GRY',
   gameSpeedName: (v) => (v === 'slow' ? 'WOLNA' : v === 'fast' ? 'SZYBKA' : 'NORMALNA'),
   passAssist: 'PODANIA',

@@ -25,7 +25,10 @@ function inlineFavicon(): Plugin {
 export default defineConfig(({ mode }) => {
   // `vite build --mode single` → release/RetroFootball.html: everything in one
   // file that runs by double-click (no server, no install).
-  const single = mode === 'single';
+  // `vite build --mode desktop` → desktop/web/index.html: the same single file,
+  // loaded by the Electron app (it never touches release/).
+  const desktop = mode === 'desktop';
+  const single = mode === 'single' || desktop;
   return {
     // Relative paths: the build works from any sub-path (GitHub Pages serves
     // the game under /<repo>/) and from a local folder.
@@ -39,7 +42,7 @@ export default defineConfig(({ mode }) => {
     publicDir: single ? false : 'public',
     build: {
       target: 'es2020',
-      outDir: single ? 'release' : 'dist',
+      outDir: desktop ? 'desktop/web' : single ? 'release' : 'dist',
       assetsDir: 'assets',
       sourcemap: !single,
       emptyOutDir: true,

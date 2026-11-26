@@ -37,7 +37,8 @@ export class MenuNavigator {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly items: Focusable[],
-    private readonly onBack?: () => void,
+    /** Esc / Backspace / pad B; gets the key event (if any), e.g. to hand it to a dialog it opens. */
+    private readonly onBack?: (e?: KeyboardEvent) => void,
   ) {
     this.handler = (e) => this.onKey(e);
     items.forEach((item, i) => {
@@ -125,7 +126,7 @@ export class MenuNavigator {
         break;
       case 'Escape':
       case 'Backspace':
-        this.onBack?.();
+        this.onBack?.(e);
         break;
     }
   }

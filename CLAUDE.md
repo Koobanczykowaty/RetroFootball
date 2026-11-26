@@ -22,6 +22,9 @@ npm run build               # tsc type-check (noEmit) + vite build -> dist/
 npm test                    # Vitest unit tests in tests/
 npm run test:sim -- 2 1     # needs a build first: headless Chrome/Edge plays 2 matches of 1 min, AI-vs-AI and bot-as-human
 npm run build:single        # release/RetroFootball.html: the whole game in one file, runs by double-click (file://)
+npm run desktop             # build desktop/web and start the Electron app
+npm run build:desktop       # Windows installer + portable exe in release-desktop/
+npm run test:desktop        # one bot-as-human match inside Electron (-- --packaged: the built exe)
 ```
 
 **Distribution:**
@@ -30,6 +33,12 @@ npm run build:single        # release/RetroFootball.html: the whole game in one 
 - `--mode single` adds `vite-plugin-singlefile` plus an inline-favicon plugin and writes to `release/` (git-ignored). `scripts/rename-single.mjs` renames the output to RetroFootball.html.
 - `.github/workflows/deploy-pages.yml` runs unit tests, builds, runs `test:sim -- 2 1` (headless Chrome on the runner; `--no-sandbox` is added when `CI` is set) and only then deploys `dist/` to GitHub Pages on every push to `main`. A failing simulation blocks the deploy. The repo needs Pages → Source: GitHub Actions.
 - **Published:** remote `origin` = https://github.com/Koobanczykowaty/RetroFootball (public). The live game is https://koobanczykowaty.github.io/RetroFootball/ (Pages source: GitHub Actions). Every push to `main` redeploys it, so **pushing publishes**: only push when the user asks. **Testers play the Pages version**, not the single file. The version number is `GAME_VERSION` in GameplayConfig (shown in the menu) plus `package.json`/`package-lock.json` and the README heading; bump it only on request. The first push needed the user's interactive GitHub login; Claude's shell can't show that prompt.
+- **Desktop app (P3 stage 2, Electron, Windows only; the user's choices):** `desktop/main.cjs` (Electron main, plain CommonJS) loads `desktop/web/index.html`, the single-file build from `vite build --mode desktop` (same as `single` but written to `desktop/web/`, so it never touches `release/`). `electron-builder` (config in package.json `build`) writes `release-desktop/RetroFootball-Setup-<v>.exe` (NSIS, not one-click) and `RetroFootball-<v>-portable.exe`, both unsigned. Like the single file, **it is built only when the user asks**.
+  - Window 1280×720 (min 640×360), no menu bar, F11 toggles full screen, size/position/full screen saved in `<userData>/window.json`, single instance. localStorage lives in Electron's `<userData>`, separate from browsers. Navigation and new windows are blocked.
+  - The app icon `build/icon.png` is generated from `public/favicon.svg` by `scripts/desktop-icon.mjs` (pure Node PNG encoder); no image files are committed. `desktop/web/`, `build/`, `release-desktop/` are git-ignored.
+  - **Quit:** `desktop/preload.cjs` exposes `window.retroDesktop.quit()` (IPC `rf:quit`); `game/platform/Desktop.ts` `desktopApp()` returns it, or null in a browser. Only in the desktop app, the main menu has a red X button top-right (the user chose: main menu only, with confirmation). It is the last item of the menu navigator (↑ from the first button, pad), and Esc / pad B in the main menu ask the same question. `ui/ConfirmDialog` (YES / NO, NO focused, Esc = NO). Switching between menu and dialog waits one frame (`delayedCall(1)`) so the same Enter/Esc can't reach both.
+  - `RF_QUERY=?sim=...` makes the app load that query, print `RF_RESULT <json>` (and `RF_BRIDGE function` if the preload bridge works) and quit: `scripts/desktop-test.mjs` uses it. `RF_SCREENSHOT=<png>` (optionally `RF_KEYS=Escape,Enter`) shows the window, presses the keys and saves a screenshot: used to check the quit dialog. A hidden window doesn't run the game loop (rAF).
+  - Phaser is a devDependency on purpose: it is bundled by Vite, and as a dependency electron-builder packed all of node_modules/phaser (140 MB) into the app. The Pages workflow sets `ELECTRON_SKIP_BINARY_DOWNLOAD`.
 - Both builds were verified to run a full sim match: the single file from `file://`, and `dist/` served under `/RetroFootball/`.
 
 Run `npm test` from **PowerShell**: under the Git Bash tool, Vitest 5 fails every suite at load ("Cannot read properties of undefined (reading 'config')") even though the tests pass. Build and `test:sim` work from both shells.

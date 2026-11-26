@@ -4,6 +4,10 @@ node_modules/
 # Build output (recreated with `npm run build` / `npm run build:single`)
 dist/
 release/
+# Desktop app (npm run build:desktop): web bundle, generated icon, installers
+desktop/web/
+build/
+release-desktop/
 
 # User's local file, not part of the project
 README.zip

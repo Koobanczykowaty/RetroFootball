@@ -10,15 +10,49 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:sim": "node scripts/sim-test.mjs",
-    "build:single": "tsc && vite build --mode single && node scripts/rename-single.mjs"
-  },
-  "dependencies": {
-    "phaser": "^3.80.1"
+    "build:single": "tsc && vite build --mode single && node scripts/rename-single.mjs",
+    "desktop": "tsc && vite build --mode desktop && electron .",
+    "build:desktop": "tsc && vite build --mode desktop && node scripts/desktop-icon.mjs && electron-builder --win",
+    "test:desktop": "node scripts/desktop-test.mjs"
   },
   "devDependencies": {
+    "electron": "^45.5.0",
+    "electron-builder": "^26.18.0",
+    "phaser": "^3.90.0",
     "typescript": "^5.4.5",
     "vite": "^8.3.8",
     "vite-plugin-singlefile": "^2.3.4",
     "vitest": "^5.1.1"
+  },
+  "main": "desktop/main.cjs",
+  "build": {
+    "appId": "local.retrofootball.game",
+    "productName": "RetroFootball",
+    "directories": {
+      "output": "release-desktop",
+      "buildResources": "build"
+    },
+    "files": [
+      "desktop/main.cjs",
+      "desktop/preload.cjs",
+      "desktop/web/**",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "RetroFootball",
+      "artifactName": "RetroFootball-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "RetroFootball-${version}-portable.${ext}"
+    }
   }
 }

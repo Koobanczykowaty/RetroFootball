@@ -45,7 +45,7 @@ Model sieciowy, jeden dla LAN i online: jedna maszyna (gospodarz) liczy mecz, gr
 
 Etapy:
 1. **Rdzeń symulacji**: wydzielenie logiki meczu (zawodnicy, piłka, AI, kolizje, zegar) od renderowania, seedowany RNG. Gra wygląda tak samo; symulacje CI pilnują, że nic się nie zepsuło. Fundament pod wszystko dalej (patrz niżej). **Zrobione (przetestowane przez użytkownika, scalone do main):** rdzeń w `src/core` (bez Phasera, sterowanie człowieka też w rdzeniu), seedowany RNG, test determinizmu (cały mecz liczony w Node bez przeglądarki). Do dokończenia w kolejnych etapach: stan zmiany stron per mecz (serwer z kilkoma meczami naraz) i stały krok czasu (sieć, powtórki).
-2. **Aplikacja desktop** (Electron), jeszcze bez sieci. Electron, bo ma wbudowany Node (serwer LAN i wykrywanie gier w tym samym języku); Tauri jest lżejszy, ale sieć trzeba by pisać w Ruście.
+2. **Aplikacja desktop** (Electron), jeszcze bez sieci. **Zrobione:** Windows, instalator + wersja przenośna, budowane lokalnie na życzenie (`npm run build:desktop`), okno 1280×720 z F11, wyjście z gry czerwonym krzyżykiem w menu głównym (z potwierdzeniem). Electron, bo ma wbudowany Node (serwer LAN i wykrywanie gier w tym samym języku); Tauri jest lżejszy, ale sieć trzeba by pisać w Ruście.
 3. **Multiplayer LAN** na desktopie: gospodarz u jednego z graczy, automatyczne wykrywanie gier w sieci. Najprostsza sieć do przetestowania (mały ping, bez serwera).
 4. **Multiplayer online**: serwer w chmurze, pokoje prywatne i matchmaking; przeglądarka i desktop łączą się z tym samym serwerem.
 5. **System powtórek** (zapis wejść i deterministyczne odtworzenie; wynika z etapu 1).

@@ -46,6 +46,9 @@ Zawartość `dist/` to gotowa statyczna strona (index.html + jeden plik JS).
 | `npm test` | Testy jednostkowe (Vitest) |
 | `npm run test:sim -- [mecze] [minuty]` | Test integracyjny: rozgrywa mecze w headless Chrome/Edge (wymaga wcześniejszego `npm run build`) |
 | `npm run build:single` | Wersja na PC: cała gra w jednym pliku `release/RetroFootball.html` |
+| `npm run desktop` | Uruchamia aplikację desktop (Electron) do testów |
+| `npm run build:desktop` | Aplikacja desktop na Windows: instalator i wersja przenośna w `release-desktop/` |
+| `npm run test:desktop [-- --packaged]` | Rozgrywa mecz testowy w aplikacji desktop (`--packaged`: w zbudowanym `.exe`) |
 
 ## Udostępnianie gry testerom
 
@@ -56,6 +59,18 @@ npm run build:single
 ```
 
 Powstaje plik **`release/RetroFootball.html`** (~1,5 MB, ~370 KB po spakowaniu do ZIP). Wystarczy go wysłać – tester otwiera go **dwuklikiem** w Chrome, Edge lub Firefoxie. Nie trzeba nic instalować ani mieć internetu. Każdą nową wersję trzeba wysłać od nowa.
+
+### Aplikacja desktop (Windows)
+
+```bash
+npm run build:desktop
+```
+
+W folderze **`release-desktop/`** powstają:
+- **`RetroFootball-Setup-<wersja>.exe`**: instalator (skrót w menu Start i na pulpicie, odinstalowanie w ustawieniach Windows);
+- **`RetroFootball-<wersja>-portable.exe`**: jeden plik uruchamiany bez instalacji.
+
+Gra startuje w oknie 1280×720. **F11** albo przycisk PEŁNY EKRAN w USTAWIENIACH przełącza pełny ekran; rozmiar okna i tryb są zapamiętywane. Z gry wychodzi się **czerwonym krzyżykiem** w prawym górnym rogu menu głównego (albo Esc / B na padzie w menu głównym), po potwierdzeniu „WYJŚĆ Z GRY?” (domyślnie zaznaczone NIE). Z meczu: pauza → MENU GŁÓWNE → krzyżyk. Ustawienia i zapisany turniej są osobne niż w przeglądarce. Pliki nie są podpisane cyfrowo, więc Windows przy pierwszym uruchomieniu może pokazać ostrzeżenie SmartScreen („Więcej informacji” → „Uruchom mimo to”). Każdy plik ma ok. 110 MB, bo zawiera przeglądarkę Electron. Wersji desktop nie ma jeszcze z multiplayerem LAN (to następny etap).
 
 ### GitHub Pages (link w przeglądarce)
 

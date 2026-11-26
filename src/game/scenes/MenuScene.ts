@@ -7,6 +7,8 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, GAME_VERSION } from '../../core/config/GameplayConfig';
 import { t } from '../config/i18n';
 import { hasTournamentInProgress } from '../config/TournamentStore';
+import { desktopApp } from '../platform/Desktop';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { soundManager } from '../systems/SoundManager';
 import { PLAYER_FRAME } from '../view/PlayerView';
 import { Button } from '../ui/Button';
@@ -96,7 +98,26 @@ export class MenuScene extends Phaser.Scene {
     const buttons = entries.map(([label, action], i) => new Button(this, GAME_WIDTH / 2, y0 + gap * i, label, action, i === 0
       ? { width: 220, height: 40, fontSize: 20 }
       : { width: 220 }));
-    new MenuNavigator(this, buttons).activate(0);
+    // Desktop app: a red X in the top-right corner quits (after a YES / NO
+    // question). It is the last menu item, so ↑ from the first button and
+    // a gamepad reach it too; Esc / pad B ask the same question.
+    const desktop = desktopApp();
+    // Switching between the menu and the dialog waits for the next frame, so
+    // the Enter / Esc that did it can't also reach the other one.
+    let nav: MenuNavigator;
+    const nextFrame = (fn: () => void) => this.time.delayedCall(1, fn);
+    const askQuit = () => {
+      if (!desktop) return;
+      nav.deactivate();
+      nextFrame(() => new ConfirmDialog(this, s.quitConfirm, () => desktop.quit(),
+        () => nextFrame(() => nav.activate(buttons.length - 1))).show());
+    };
+    if (desktop) {
+      buttons.push(new Button(this, GAME_WIDTH - 26, 26, 'X', askQuit, {
+        width: 36, height: 36, fontSize: 20, color: 0xb02424, focusColor: 0xe03a3a,
+      }));
+    }
+    nav = new MenuNavigator(this, buttons, desktop ? askQuit : undefined).activate(0);
 
     this.add.text(GAME_WIDTH / 2, y0 + gap * (entries.length - 1) + 36, s.menuHint, textStyle(11, UI.textMuted))
       .setOrigin(0.5);
