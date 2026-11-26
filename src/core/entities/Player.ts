@@ -1,10 +1,9 @@
 // ============================================================
-// Player Entity — Individual footballer: movement, timers, animation.
-// Keeps its own x/y/velocity and copies them onto the sprite in update().
+// Player — One footballer's state and movement (core, no
+// rendering: the client's PlayerView draws him and picks the
+// animation frame from his pose and speed).
 // ============================================================
 
-import Phaser from 'phaser';
-import type { MarkerId } from '../assets/AssetGenerator';
 import {
   PLAYER, GOALKEEPER, FormationPosition, PlayerRole, ROLE_TRAITS,
 } from '../config/GameplayConfig';
@@ -16,24 +15,12 @@ import {
 export type { PlayerRole };
 export type Pose = 'none' | 'kick' | 'tackle' | 'dive' | 'celebrate' | 'header';
 
-/** Spritesheet frame indices (see AssetGenerator). */
-export const PLAYER_FRAME = {
-  idle: 0,
-  run1: 1,
-  run2: 2,
-  kick: 3,
-  dive: 4,
-  celebrate: 5,
-  idle2: 6,
-} as const;
-
 export class Player {
   public readonly id: number;
   public readonly teamIndex: number;
   /** Can change when the team switches formation mid-match (setFormationSlot). */
   public role: PlayerRole;
   public formation: FormationPosition;
-  public readonly sprite: Phaser.GameObjects.Sprite;
 
   public x: number;
   public y: number;
@@ -65,25 +52,13 @@ export class Player {
   public homeX: number;
   public homeY: number;
 
-  private marker: Phaser.GameObjects.Image | null = null;
-  private arrow: Phaser.GameObjects.Image | null = null;
-  private pose: Pose = 'none';
-  private poseTimer = 0;
-  private diveDir = 0;
-  private animTimer = 0;
-  private runFrame: number = PLAYER_FRAME.run1;
-  private idleTimer = Math.random() * 450;
-  private idleFrame: number = PLAYER_FRAME.idle;
-  private celebrateTime = 0;
+  /** Current pose and how long it lasts (ms); the view animates it. */
+  public pose: Pose = 'none';
+  public poseTimer = 0;
+  /** Dive direction for the 'dive' pose: -1 up, 1 down. */
+  public diveDir = 0;
 
-  constructor(
-    scene: Phaser.Scene,
-    id: number,
-    teamIndex: number,
-    formation: FormationPosition,
-    x: number,
-    y: number,
-  ) {
+  constructor(id: number, teamIndex: number, formation: FormationPosition, x: number, y: number) {
     this.id = id;
     this.teamIndex = teamIndex;
     this.role = formation.role;
@@ -93,11 +68,6 @@ export class Player {
     this.homeX = x;
     this.homeY = y;
     this.facingX = attackDir(teamIndex);
-
-    const textureKey = this.role === 'goalkeeper' ? `player_gk${teamIndex}` : `player_team${teamIndex}`;
-    this.sprite = scene.add.sprite(x, y, textureKey, PLAYER_FRAME.idle);
-    this.sprite.setFlipX(this.facingX < 0);
-    this.syncSprite();
   }
 
   /**
@@ -109,26 +79,6 @@ export class Player {
     this.role = pos.role;
     this.homeX = home.x;
     this.homeY = home.y;
-  }
-
-  // ---------------------------------------------------------------- control
-
-  /** @param marker which human's marker colour (p1 yellow, p2 green). */
-  setSelected(scene: Phaser.Scene, selected: boolean, marker: MarkerId = 'p1'): void {
-    if (selected && !this.marker) {
-      this.marker = scene.add.image(this.x, this.y + 9, `selection_circle_${marker}`).setDepth(4);
-      this.arrow = scene.add.image(this.x, this.y, `direction_indicator_${marker}`).setDepth(4);
-      this.syncSprite();
-    } else if (!selected && this.marker) {
-      this.marker.destroy();
-      this.arrow?.destroy();
-      this.marker = null;
-      this.arrow = null;
-    }
-  }
-
-  get isSelected(): boolean {
-    return this.marker !== null;
   }
 
   get isTackling(): boolean {
@@ -155,7 +105,7 @@ export class Player {
     if (this.hasBall) maxSpeed *= PLAYER.dribbleSpeedFactor;
     maxSpeed *= clamp(speedScale, 0, 1);
 
-    // Analog input (e.g. a future gamepad stick) scales speed too
+    // Analog input (gamepad stick) scales speed too
     const analog = Math.min(1, dir.len);
     const targetVx = moving ? dir.x * maxSpeed * analog : 0;
     const targetVy = moving ? dir.y * maxSpeed * analog : 0;
@@ -226,7 +176,6 @@ export class Player {
     this.pose = pose;
     this.poseTimer = ms;
     this.diveDir = diveDir;
-    if (pose === 'celebrate') this.celebrateTime = 0;
   }
 
   get currentPose(): Pose {
@@ -280,7 +229,6 @@ export class Player {
     this.pose = 'none';
     this.facingX = attackDir(this.teamIndex);
     this.facingY = 0;
-    this.syncSprite();
   }
 
   // ----------------------------------------------------------------- update
@@ -293,10 +241,7 @@ export class Player {
     this.pickupBlockTimer = Math.max(0, this.pickupBlockTimer - ms);
     this.protectTimer = Math.max(0, this.protectTimer - ms);
     this.supportRunTimer = Math.max(0, this.supportRunTimer - ms);
-    if (this.poseTimer > 0) {
-      this.poseTimer -= ms;
-      if (this.poseTimer <= 0) this.pose = 'none';
-    }
+    this.tickPose(ms);
     this.possessionTime = this.hasBall ? this.possessionTime + ms : 0;
 
     if (this.tackleTimer > 0) {
@@ -327,88 +272,21 @@ export class Player {
     } else {
       this.stamina = Math.min(1, this.stamina + PLAYER.staminaRegen * ROLE_TRAITS[this.role].staminaRegen * dt);
     }
-
-    this.animate(ms, speed);
-    this.syncSprite();
   }
 
-  /** Update only the animation/sprite (used while play is stopped). */
+  /** While play is stopped: slow down, keep poses running. */
   updateIdle(dt: number): void {
-    const ms = dt * 1000;
-    if (this.poseTimer > 0) {
-      this.poseTimer -= ms;
-      if (this.poseTimer <= 0) this.pose = 'none';
-    }
+    this.tickPose(dt * 1000);
     this.decelerate(dt);
     this.x += this.vx * dt;
     this.y += this.vy * dt;
     this.constrainToBounds();
-    this.animate(ms, this.getSpeed());
-    this.syncSprite();
   }
 
-  private animate(ms: number, speed: number): void {
-    let frame: number;
-    let offsetY = 0;
-    let flipY = false;
-
-    switch (this.pose) {
-      case 'celebrate':
-        this.celebrateTime += ms;
-        frame = PLAYER_FRAME.celebrate;
-        offsetY = -Math.abs(Math.sin(this.celebrateTime / 120)) * 4;
-        break;
-      case 'header':
-        // Jump with arms up (the celebrate frame), highest in the middle
-        frame = PLAYER_FRAME.celebrate;
-        offsetY = -Math.round(Math.sin(Math.min(1, this.poseTimer / 300) * Math.PI) * 5);
-        break;
-      case 'dive':
-        frame = PLAYER_FRAME.dive;
-        flipY = this.diveDir > 0;
-        break;
-      case 'kick':
-      case 'tackle':
-        frame = PLAYER_FRAME.kick;
-        break;
-      default:
-        if (speed > 20) {
-          this.animTimer += ms;
-          const frameTime = 150 * (PLAYER.walkSpeed / Math.max(speed, 60));
-          if (this.animTimer > frameTime) {
-            this.animTimer = 0;
-            this.runFrame = this.runFrame === PLAYER_FRAME.run1 ? PLAYER_FRAME.run2 : PLAYER_FRAME.run1;
-          }
-          frame = this.runFrame;
-        } else {
-          this.idleTimer += ms;
-          if (this.idleTimer > 450) {
-            this.idleTimer = 0;
-            this.idleFrame = this.idleFrame === PLAYER_FRAME.idle ? PLAYER_FRAME.idle2 : PLAYER_FRAME.idle;
-          }
-          frame = this.idleFrame;
-        }
-    }
-
-    this.sprite.setFrame(frame);
-    this.sprite.setFlipX(this.facingX < 0);
-    this.sprite.setFlipY(flipY);
-    this.spriteOffsetY = offsetY;
-  }
-
-  private spriteOffsetY = 0;
-
-  private syncSprite(): void {
-    const x = Math.round(this.x);
-    const y = Math.round(this.y);
-    this.sprite.setPosition(x, y + this.spriteOffsetY);
-    this.sprite.setDepth(5 + y * 0.001);
-    if (this.marker) {
-      this.marker.setPosition(x, y + 9);
-    }
-    if (this.arrow) {
-      this.arrow.setPosition(x + this.facingX * 17, y + 4 + this.facingY * 13);
-      this.arrow.setRotation(Math.atan2(this.facingY, this.facingX));
+  private tickPose(ms: number): void {
+    if (this.poseTimer > 0) {
+      this.poseTimer -= ms;
+      if (this.poseTimer <= 0) this.pose = 'none';
     }
   }
 
@@ -432,11 +310,5 @@ export class Player {
       return { minX: PITCH_LEFT + 8, maxX: PITCH_LEFT + GOALKEEPER.boxDepth, minY, maxY };
     }
     return { minX: PITCH_RIGHT - GOALKEEPER.boxDepth, maxX: PITCH_RIGHT - 8, minY, maxY };
-  }
-
-  destroy(): void {
-    this.sprite.destroy();
-    this.marker?.destroy();
-    this.arrow?.destroy();
   }
 }

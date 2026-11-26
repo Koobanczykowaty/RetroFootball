@@ -4,8 +4,8 @@
 // try/catch: without storage the game simply doesn't remember.
 // ============================================================
 
-import { parseTournament, Tournament, TournamentKind } from '../logic/Tournament';
-import { TEAMS } from './GameplayConfig';
+import { parseTournament, Tournament, TournamentKind } from '../../core/logic/Tournament';
+import { TEAMS } from '../../core/config/GameplayConfig';
 
 const TOURNAMENT_KEY = 'retrofootball.tournament.v1';
 const TROPHIES_KEY = 'retrofootball.trophies.v1';

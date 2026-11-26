@@ -7,10 +7,10 @@ import { AERIAL, BALL, PITCH, ROLE_TRAITS } from '../config/GameplayConfig';
 import type { Player } from '../entities/Player';
 import { AerialZone, canStrikeNow } from '../logic/Aerial';
 import type { MatchWorld } from '../logic/MatchWorld';
+import type { SoundCue } from '../MatchEvents';
 import {
   PITCH_CY, attackDir, clamp, distance, laneClearance, normalize, opponentGoalX,
 } from '../logic/PitchGeometry';
-import { soundManager } from './SoundManager';
 
 /** Minimum gap between a passing lane and an opponent to count as open. */
 const LANE_OPEN = 18;
@@ -48,7 +48,7 @@ export class ActionSystem {
     this.release(p);
     this.world.ball.kick(dir.x * speed, dir.y * speed);
     this.world.stats.passes[p.teamIndex]++;
-    soundManager.pass();
+    this.sound('pass');
     return null;
   }
 
@@ -76,7 +76,7 @@ export class ActionSystem {
     this.world.ball.kick(d.x * speed, d.y * speed);
     this.world.ball.passTargetId = target.id;
     this.world.stats.passes[p.teamIndex]++;
-    soundManager.pass();
+    this.sound('pass');
   }
 
   // ------------------------------------------------------------------- lob
@@ -97,7 +97,7 @@ export class ActionSystem {
     const lift = BALL.lobLift;
     this.world.ball.kick(dir.x * 260, dir.y * 260, { lift });
     this.world.stats.passes[p.teamIndex]++;
-    soundManager.kick();
+    this.sound('kick');
     return null;
   }
 
@@ -133,7 +133,7 @@ export class ActionSystem {
     this.world.ball.kick(dir.x * speed, dir.y * speed, { lift });
     this.world.ball.passTargetId = receiver ? receiver.id : null;
     this.world.stats.passes[p.teamIndex]++;
-    soundManager.kick();
+    this.sound('kick');
     return receiver;
   }
 
@@ -150,7 +150,7 @@ export class ActionSystem {
     this.world.ball.kick(d.x * speed, d.y * speed, { lift });
     this.world.ball.passTargetId = target.id;
     this.world.stats.passes[p.teamIndex]++;
-    soundManager.kick();
+    this.sound('kick');
   }
 
   // ------------------------------------------------------------------ shoot
@@ -179,7 +179,7 @@ export class ActionSystem {
       const dist = distance(p.x, p.y, goalX, PITCH_CY);
       accuracy = Math.min(1, accuracy + ROLE_TRAITS[p.role].shotAccuracy); // forwards finish better
       const error = (1 - accuracy * 0.85) * halfMouth * (0.6 + power * 0.8) * (0.6 + dist / 400);
-      const ty = PITCH_CY + clamp(aimY, -1, 1) * halfMouth * 0.85 + (Math.random() - 0.5) * 2 * error;
+      const ty = PITCH_CY + clamp(aimY, -1, 1) * halfMouth * 0.85 + (this.world.rng.next() - 0.5) * 2 * error;
       angle = Math.atan2(ty - p.y, goalX - p.x);
     }
 
@@ -191,8 +191,8 @@ export class ActionSystem {
     });
     ball.isShot = true;
     this.world.stats.shots[p.teamIndex]++;
-    if (power >= BALL.powerShotThreshold) soundManager.powerShot();
-    else soundManager.shoot();
+    if (power >= BALL.powerShotThreshold) this.sound('powerShot');
+    else this.sound('shoot');
   }
 
   // ----------------------------------------------------------------- tackle
@@ -237,7 +237,7 @@ export class ActionSystem {
         const acc = Math.min(1, accuracy * (0.5 + 0.5 * quality) + traits.shotAccuracy);
         const dist = distance(p.x, p.y, goalX, PITCH_CY);
         const error = (1 - acc * 0.85) * halfMouth * (0.6 + dist / 400);
-        const ty = PITCH_CY + clamp(aimY, -1, 1) * halfMouth * 0.85 + (Math.random() - 0.5) * 2 * error;
+        const ty = PITCH_CY + clamp(aimY, -1, 1) * halfMouth * 0.85 + (this.world.rng.next() - 0.5) * 2 * error;
         angle = Math.atan2(ty - p.y, goalX - p.x);
       }
       const speed = (header
@@ -268,9 +268,9 @@ export class ActionSystem {
       ball.passTargetId = target ? target.id : null;
       this.world.stats.passes[p.teamIndex]++;
     }
-    if (header) soundManager.header();
-    else if (kind === 'shot') soundManager.shoot();
-    else soundManager.kick();
+    if (header) this.sound('header');
+    else if (kind === 'shot') this.sound('shoot');
+    else this.sound('kick');
     return zone;
   }
 
@@ -281,7 +281,7 @@ export class ActionSystem {
     const toBall = normalize(ball.x - p.x, ball.y - p.y);
     if (toBall.len < 70 && toBall.len > 0) p.startTackle(toBall.x, toBall.y);
     else p.startTackle(p.facingX, p.facingY);
-    soundManager.tackle();
+    this.sound('tackle');
     return true;
   }
 
@@ -315,6 +315,11 @@ export class ActionSystem {
       }
     }
     return best;
+  }
+
+  /** Queue a sound for the client. */
+  private sound(cue: SoundCue): void {
+    this.world.events.push({ type: 'sound', cue });
   }
 
   private canAct(p: Player): boolean {

@@ -131,13 +131,13 @@ export class AISystem {
     const m = this.mind(p);
     if (m.aerialKick === ball.kickId) return false;
     m.aerialKick = ball.kickId;
-    if (Math.random() >= profile.aerialChance) return false;
+    if (this.world.rng.next() >= profile.aerialChance) return false;
 
-    const quality = profile.aerialSkill + Math.random() * (1 - profile.aerialSkill);
+    const quality = profile.aerialSkill + this.world.rng.next() * (1 - profile.aerialSkill);
     const fwd = attackDir(p.teamIndex);
     const nearGoal = distance(p.x, p.y, opponentGoalX(p.teamIndex), PITCH_CY) < profile.shootRange * 1.1;
     const kind = nearGoal ? 'shot' : 'pass';
-    const aimY = (Math.random() - 0.5) * 1.6;
+    const aimY = (this.world.rng.next() - 0.5) * 1.6;
     const zone = this.actions.aerial(p, kind, quality, aimY, nearGoal ? 0 : fwd, 0, profile.shotAccuracy);
     if (!zone) return false;
     if (kind === 'pass') this.onFieldPass?.(p);
@@ -164,7 +164,7 @@ export class AISystem {
         const d = p.distanceTo(carrier.x, carrier.y);
         p.moveToward(tx, ty, d > 40, dt);
         if (!read.fooled && d < PLAYER.tackleRange + 8 && carrier.protectTimer <= 0
-          && Math.random() < profile.tackleRate * dt) {
+          && this.world.rng.next() < profile.tackleRate * dt) {
           this.actions.tackle(p);
         }
       } else {
@@ -191,7 +191,7 @@ export class AISystem {
     // A teammate ran into our spot: re-think soon instead of waiting the full interval
     if (this.teammateTooClose(p)) mind.timer = Math.min(mind.timer, 120);
     if (mind.timer <= 0) {
-      mind.timer = profile.decisionInterval * (0.7 + Math.random() * 0.6);
+      mind.timer = profile.decisionInterval * (0.7 + this.world.rng.next() * 0.6);
       this.chooseShapePosition(p, mind);
     }
 
@@ -262,8 +262,8 @@ export class AISystem {
       }
     }
 
-    x += (Math.random() - 0.5) * 20;
-    y += (Math.random() - 0.5) * 20;
+    x += (this.world.rng.next() - 0.5) * 20;
+    y += (this.world.rng.next() - 0.5) * 20;
     ({ x, y } = this.spreadFromTeammates(p, x, y));
     mind.tx = clamp(x, PITCH_LEFT + 16, PITCH_RIGHT - 16);
     mind.ty = clamp(y, PITCH_TOP + 16, PITCH_BOTTOM - 16);
@@ -339,27 +339,27 @@ export class AISystem {
 
     mind.thinkTimer -= dt * 1000;
     if (p.possessionTime > profile.reactionTime && p.canKick() && mind.thinkTimer <= 0) {
-      mind.thinkTimer = 220 + Math.random() * 160;
+      mind.thinkTimer = 220 + this.world.rng.next() * 160;
 
       // Shoot when in range and at a sensible angle
       if (distGoal < profile.shootRange && Math.abs(p.y - PITCH_CY) < 150) {
         const chance = 0.25 + (1 - distGoal / profile.shootRange) * 0.6;
-        if (Math.random() < chance) {
+        if (this.world.rng.next() < chance) {
           const gk = opponents.find((o) => o.role === 'goalkeeper');
           const side = gk && gk.y < PITCH_CY ? 1 : -1;
-          const aim = side * (0.6 + Math.random() * 0.4);
-          this.actions.shoot(p, 0.65 + Math.random() * 0.35, aim, 0, 0, profile.shotAccuracy);
+          const aim = side * (0.6 + this.world.rng.next() * 0.4);
+          this.actions.shoot(p, 0.65 + this.world.rng.next() * 0.35, aim, 0, 0, profile.shotAccuracy);
           return;
         }
       }
 
       // Pass when pressed
-      if (oppDist < 55 && Math.random() < profile.passChance) {
+      if (oppDist < 55 && this.world.rng.next() < profile.passChance) {
         if (this.tryPass(p, -20)) return;
       }
 
       // Occasional progressive pass to keep the ball moving
-      if (Math.random() < 0.12 && this.tryPass(p, 40)) return;
+      if (this.world.rng.next() < 0.12 && this.tryPass(p, 40)) return;
     }
 
     // Dribble toward goal, swerving around the nearest opponent
@@ -432,7 +432,7 @@ export class AISystem {
         const target = this.bestPassTarget(gk);
         if (target && target.dist < 260 && target.score > 0) this.actions.passTo(gk, target.player);
         else if (target) this.actions.lobTo(gk, target.player);
-        else this.actions.lob(gk, out, (Math.random() - 0.5) * 0.6);
+        else this.actions.lob(gk, out, (this.world.rng.next() - 0.5) * 0.6);
       }
       return;
     }
@@ -516,7 +516,7 @@ export class AISystem {
       const seen = Math.hypot(m.seenVx, m.seenVy);
       const turned = now > 50 && seen > 50
         && (carrier.vx * m.seenVx + carrier.vy * m.seenVy) / (now * seen) < 0.3;
-      if (turned && Math.random() < profile.feintBite) {
+      if (turned && this.world.rng.next() < profile.feintBite) {
         m.fooledMs = profile.feintCommitMs;
         this.feintBites++;
       } else {

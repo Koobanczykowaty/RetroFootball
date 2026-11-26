@@ -4,8 +4,9 @@
 // browser: results are written to <pre id="sim-result"> as JSON.
 // ============================================================
 
-import type { MatchStats } from '../logic/MatchWorld';
-import type { MatchState } from '../systems/MatchSystem';
+import type { Telemetry } from '../../core/MatchEvents';
+import type { MatchStats } from '../../core/logic/MatchWorld';
+import type { MatchState } from '../../core/systems/MatchSystem';
 
 export interface SimMatchResult {
   index: number;
@@ -57,7 +58,8 @@ export function writeSimResult(): void {
   el.textContent = JSON.stringify(g);
 }
 
-export class SimReport {
+/** Test metrics of one simulation match (implements the core's Telemetry). */
+export class SimReport implements Telemetry {
   readonly goals: Array<{ team: number; minute: number }> = [];
   readonly states: MatchState[] = [];
   readonly events: Record<string, number> = {};
@@ -76,6 +78,10 @@ export class SimReport {
   /** Accumulate a value (e.g. a distance) under `name`. */
   add(name: string, value: number): void {
     this.events[name] = (this.events[name] ?? 0) + value;
+  }
+
+  max(name: string, value: number): void {
+    this.events[name] = Math.max(this.events[name] ?? 0, value);
   }
 
   goal(team: number, minute: number): void {

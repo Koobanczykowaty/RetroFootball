@@ -4,8 +4,8 @@
 // ============================================================
 
 import Phaser from 'phaser';
-import { PITCH, GAME_WIDTH, GAME_HEIGHT, type StadiumId } from '../config/GameplayConfig';
-import { GOAL_TOP, PITCH_CX, PITCH_CY } from '../logic/PitchGeometry';
+import { PITCH, GAME_WIDTH, GAME_HEIGHT, type StadiumId } from '../../core/config/GameplayConfig';
+import { GOAL_TOP, PITCH_CX, PITCH_CY } from '../../core/logic/PitchGeometry';
 
 /** Small deterministic PRNG so the crowd looks the same every match. */
 function rng(seed: number): () => number {

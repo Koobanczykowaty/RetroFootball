@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { KIT_PALETTE, TEAMS } from '../src/game/config/GameplayConfig';
+import { KIT_PALETTE, TEAMS } from '../src/core/config/GameplayConfig';
 import { applyKit, baseTeam, cycleTeam, lighten, luminance, teamWithKits } from '../src/game/config/Teams';
 
 describe('team roster', () => {

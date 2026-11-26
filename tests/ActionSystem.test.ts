@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { BALL } from '../src/game/config/GameplayConfig';
-import type { Ball } from '../src/game/entities/Ball';
-import type { Player } from '../src/game/entities/Player';
-import { createStats, MatchWorld } from '../src/game/logic/MatchWorld';
-import { ActionSystem } from '../src/game/systems/ActionSystem';
+import { BALL } from '../src/core/config/GameplayConfig';
+import type { Ball } from '../src/core/entities/Ball';
+import type { Player } from '../src/core/entities/Player';
+import { createStats, MatchWorld } from '../src/core/logic/MatchWorld';
+import { ActionSystem } from '../src/core/systems/ActionSystem';
+import { Rng } from '../src/core/Rng';
 
 /** Minimal stand-ins: ActionSystem only touches these fields/methods. */
 function fakePlayer(id: number, x: number, y: number, role = 'midfielder'): Player {
@@ -40,6 +41,7 @@ function setup(mates: Player[]): { actions: ActionSystem; passer: Player; ball: 
   const team = [passer, ...mates];
   const world: MatchWorld = {
     ball, players: team, teams: [team, []], controlled: [[passer], []], stats: createStats(),
+    rng: new Rng(1), events: [],
   };
   return { actions: new ActionSystem(world), passer, ball };
 }

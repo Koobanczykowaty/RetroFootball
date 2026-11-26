@@ -3,10 +3,10 @@
 // ============================================================
 
 import Phaser from 'phaser';
-import { GAME_WIDTH, type Difficulty } from '../config/GameplayConfig';
+import { GAME_WIDTH, type Difficulty } from '../../core/config/GameplayConfig';
 import { matchTeam } from '../config/Teams';
 import { t } from '../config/i18n';
-import type { MatchData } from '../systems/MatchSystem';
+import type { MatchData } from '../../core/systems/MatchSystem';
 import { UI, hexColor, pixelStroke, textStyle } from './Theme';
 
 export class HUD {

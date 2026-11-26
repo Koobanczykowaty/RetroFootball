@@ -5,7 +5,7 @@
 
 import {
   AUDIO, Difficulty, DIFFICULTIES, FORMATION_IDS, FormationId, GAME_SPEEDS, GameSpeed, MATCH, TEAMS,
-} from './GameplayConfig';
+} from '../../core/config/GameplayConfig';
 import { KIT_FIELDS, KitOverrides } from './Teams';
 
 export type Language = 'pl' | 'en';

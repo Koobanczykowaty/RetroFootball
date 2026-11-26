@@ -7,7 +7,7 @@
 
 import Phaser from 'phaser';
 import { AssetGenerator } from '../assets/AssetGenerator';
-import { GAME_WIDTH, GAME_HEIGHT, KIT_PALETTE, TEAMS } from '../config/GameplayConfig';
+import { GAME_WIDTH, GAME_HEIGHT, KIT_PALETTE, TEAMS } from '../../core/config/GameplayConfig';
 import { saveSettings, settings } from '../config/Settings';
 import { KitField, baseTeam, teamWithKits } from '../config/Teams';
 import { t } from '../config/i18n';

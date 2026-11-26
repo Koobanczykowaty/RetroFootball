@@ -6,10 +6,10 @@
 import { BALL, GOALKEEPER, PLAYER, ROLE_TRAITS } from '../config/GameplayConfig';
 import type { Player } from '../entities/Player';
 import { ballOwner, MatchWorld } from '../logic/MatchWorld';
+import type { SoundCue } from '../MatchEvents';
 import {
   PITCH_LEFT, PITCH_RIGHT, PITCH_TOP, PITCH_BOTTOM, attackDir, clamp, normalize,
 } from '../logic/PitchGeometry';
-import { soundManager } from './SoundManager';
 
 export interface CollisionEvents {
   /** A player gained possession (previousTeam = team that touched it last). */
@@ -53,8 +53,8 @@ export class CollisionSystem {
         let d = Math.hypot(dx, dy);
         if (d >= min) continue;
         if (d < 0.01) {
-          dx = Math.random() - 0.5;
-          dy = Math.random() - 0.5;
+          dx = this.world.rng.next() - 0.5;
+          dy = this.world.rng.next() - 0.5;
           d = Math.hypot(dx, dy);
         }
         const push = (min - d) / 2;
@@ -127,7 +127,7 @@ export class CollisionSystem {
       t.tackleResolved = true;
       // Defenders win the ball a bit more often
       const success = Math.min(0.95, this.tackleSuccess[t.teamIndex] + ROLE_TRAITS[t.role].tackleSuccess);
-      if (carrier.protectTimer > 0 || Math.random() > success) {
+      if (carrier.protectTimer > 0 || this.world.rng.next() > success) {
         // Missed — the tackler loses balance briefly
         t.stun(PLAYER.missStunDuration);
         continue;
@@ -136,16 +136,16 @@ export class CollisionSystem {
       carrier.hasBall = false;
       carrier.stun(PLAYER.stunDuration);
       this.world.stats.tackles[t.teamIndex]++;
-      soundManager.kick();
+      this.sound('kick');
 
-      if (Math.random() < PLAYER.tackleWinBallChance) {
+      if (this.world.rng.next() < PLAYER.tackleWinBallChance) {
         this.givePossession(t);
       } else {
         // Ball pops loose in the tackle direction
         ball.release();
         ball.lastTouchTeam = t.teamIndex;
         const d = normalize(t.facingX, t.facingY);
-        const spread = (Math.random() - 0.5) * 0.8;
+        const spread = (this.world.rng.next() - 0.5) * 0.8;
         const ang = Math.atan2(d.y, d.x) + spread;
         ball.vx = Math.cos(ang) * 150;
         ball.vy = Math.sin(ang) * 150;
@@ -182,14 +182,14 @@ export class CollisionSystem {
       let controlled = speed < BALL.controlSpeed;
       if (!controlled) {
         const chance = ball.passTargetId === p.id ? BALL.receiverControlChance : BALL.controlChance;
-        controlled = Math.random() < chance;
+        controlled = this.world.rng.next() < chance;
       }
       if (controlled) {
         this.givePossession(p);
         return;
       }
       // Failed control — ball deflects off the player
-      const ang = Math.atan2(ball.vy, ball.vx) + (Math.random() - 0.5) * 1.2;
+      const ang = Math.atan2(ball.vy, ball.vx) + (this.world.rng.next() - 0.5) * 1.2;
       const s = speed * 0.55;
       ball.vx = Math.cos(ang) * s;
       ball.vy = Math.sin(ang) * s;
@@ -197,7 +197,7 @@ export class CollisionSystem {
       ball.passTargetId = null;
       ball.isShot = false;
       p.pickupBlockTimer = PLAYER.deflectBlock;
-      soundManager.bounce();
+      this.sound('bounce');
       return;
     }
   }
@@ -216,24 +216,24 @@ export class CollisionSystem {
 
     // Fast shot: save attempt
     const saveChance = this.gkSaveChance[gk.teamIndex] * clamp(1.25 - (speed - GOALKEEPER.catchSpeed) / 500, 0.4, 1.1);
-    if (Math.random() < saveChance) {
+    if (this.world.rng.next() < saveChance) {
       this.world.stats.saves[gk.teamIndex]++;
-      if (speed < GOALKEEPER.catchSpeed * 1.25 && Math.random() < 0.5) {
+      if (speed < GOALKEEPER.catchSpeed * 1.25 && this.world.rng.next() < 0.5) {
         this.givePossession(gk);
         this.events.onSave?.(gk, true);
       } else {
         // Parry: push the ball back out and to the side
         const outX = attackDir(gk.teamIndex);
-        const side = ball.vy !== 0 ? Math.sign(ball.vy) : (Math.random() < 0.5 ? -1 : 1);
-        ball.vx = outX * (90 + Math.random() * 90);
-        ball.vy = side * (80 + Math.random() * 120);
+        const side = ball.vy !== 0 ? Math.sign(ball.vy) : (this.world.rng.next() < 0.5 ? -1 : 1);
+        ball.vx = outX * (90 + this.world.rng.next() * 90);
+        ball.vy = side * (80 + this.world.rng.next() * 120);
         ball.vz = 60;
         ball.lastTouchTeam = gk.teamIndex;
         ball.isShot = false;
         ball.isPowerShot = false;
         gk.pickupBlockTimer = 350;
         gk.setPose('dive', GOALKEEPER.diveDuration, side);
-        soundManager.save();
+        this.sound('save');
         this.events.onSave?.(gk, false);
       }
       return true;
@@ -270,6 +270,11 @@ export class CollisionSystem {
     ball.x = clamp(owner.x + owner.facingX * off, PITCH_LEFT + r, PITCH_RIGHT - r);
     ball.y = clamp(owner.y + 5 + owner.facingY * off * 0.6, PITCH_TOP + r, PITCH_BOTTOM - r);
     ball.z = 0;
+  }
+
+  /** Queue a sound for the client. */
+  private sound(cue: SoundCue): void {
+    this.world.events.push({ type: 'sound', cue });
   }
 
   private trackPossession(dt: number): void {

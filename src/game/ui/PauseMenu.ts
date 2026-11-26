@@ -4,7 +4,7 @@
 // ============================================================
 
 import Phaser from 'phaser';
-import { FORMATION_IDS, FormationId, GAME_WIDTH, GAME_HEIGHT } from '../config/GameplayConfig';
+import { FORMATION_IDS, FormationId, GAME_WIDTH, GAME_HEIGHT } from '../../core/config/GameplayConfig';
 import { t } from '../config/i18n';
 import { Button } from './Button';
 import { CONTROLS_PANEL_HEIGHT, createControlsPanel } from './ControlsPanel';

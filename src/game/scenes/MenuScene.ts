@@ -4,11 +4,11 @@
 // ============================================================
 
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, GAME_VERSION } from '../config/GameplayConfig';
+import { GAME_WIDTH, GAME_HEIGHT, GAME_VERSION } from '../../core/config/GameplayConfig';
 import { t } from '../config/i18n';
 import { hasTournamentInProgress } from '../config/TournamentStore';
 import { soundManager } from '../systems/SoundManager';
-import { PLAYER_FRAME } from '../entities/Player';
+import { PLAYER_FRAME } from '../view/PlayerView';
 import { Button } from '../ui/Button';
 import { MenuNavigator } from '../ui/MenuNavigator';
 import { UI, textStyle, titleStyle } from '../ui/Theme';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MATCH } from '../src/game/config/GameplayConfig';
-import { MatchSystem } from '../src/game/systems/MatchSystem';
+import { MATCH } from '../src/core/config/GameplayConfig';
+import { MatchSystem } from '../src/core/systems/MatchSystem';
 
 /** Advance the match by `ms` in 16 ms steps. */
 function run(m: MatchSystem, ms: number): void {

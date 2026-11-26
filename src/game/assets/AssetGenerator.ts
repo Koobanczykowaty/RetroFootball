@@ -6,7 +6,7 @@
 // ============================================================
 
 import Phaser from 'phaser';
-import { TEAMS, TeamConfig } from '../config/GameplayConfig';
+import { TEAMS, TeamConfig } from '../../core/config/GameplayConfig';
 import { settings } from '../config/Settings';
 import { teamWithKits } from '../config/Teams';
 

@@ -3,7 +3,7 @@
 // ============================================================
 
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from './game/config/GameplayConfig';
+import { GAME_WIDTH, GAME_HEIGHT } from './core/config/GameplayConfig';
 import { applyPageLanguage } from './game/config/i18n';
 import { BootScene } from './game/scenes/BootScene';
 import { MenuScene } from './game/scenes/MenuScene';

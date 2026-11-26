@@ -5,6 +5,8 @@
 
 import type { Ball } from '../entities/Ball';
 import type { Player } from '../entities/Player';
+import type { MatchEvent } from '../MatchEvents';
+import type { Rng } from '../Rng';
 
 export interface MatchStats {
   shots: [number, number];
@@ -23,10 +25,14 @@ export interface MatchWorld {
   /**
    * Players currently controlled by humans, per team (index = team).
    * Empty for a CPU team; one per human (two on one team in co-op).
-   * Maintained by HumanController.setControlled / release.
+   * Maintained by HumanControl.setControlled / release.
    */
   controlled: [Player[], Player[]];
   stats: MatchStats;
+  /** Seeded randomness for everything that affects play. */
+  rng: Rng;
+  /** Events for the client (sounds, banners...); drained every frame. */
+  events: MatchEvent[];
 }
 
 export function createStats(): MatchStats {

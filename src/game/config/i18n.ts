@@ -4,8 +4,8 @@
 // Team names and the RETRO GAŁA logo are not translated.
 // ============================================================
 
-import type { Difficulty, FormationId, GameSpeed, StadiumId } from './GameplayConfig';
-import type { TournamentKind } from '../logic/Tournament';
+import type { Difficulty, FormationId, GameSpeed, StadiumId } from '../../core/config/GameplayConfig';
+import type { TournamentKind } from '../../core/logic/Tournament';
 import { settings, type AssistMode, type Language, type TwoPlayerMode } from './Settings';
 
 export interface Strings {

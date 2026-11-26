@@ -1,83 +1,106 @@
 // ============================================================
-// HumanController — Everything one human player does with his team:
-// reading his input device, steering the controlled player, charged
-// pass / shot / lob, tackles, player switching, keeper control, and
-// the on-pitch hints (power bar, stamina, keeper countdown, arrows).
+// HumanControl — Everything one human player does with his team
+// (core, no rendering): steering the controlled player, charged
+// pass / shot / lob, tackles, player switching, keeper control and
+// headers / volleys. It only sees RawInput, one per frame, so the
+// input can come from a keyboard, a pad, a test bot or the network.
 // One instance per human: one in Quick Match, two in 2-player mode
 // (on opposite teams in versus, on the same team in co-op).
+// The client's HumanHud draws the hints from this state.
 // ============================================================
 
-import Phaser from 'phaser';
-import type { MarkerId } from '../assets/AssetGenerator';
-import { BALL, GOALKEEPER } from '../config/GameplayConfig';
-import { settings } from '../config/Settings';
-import type { SimReport } from '../debug/SimReport';
-import type { Player } from '../entities/Player';
-import { predictAerialContact, timingQuality } from '../logic/Aerial';
-import { ballOwner, MatchWorld } from '../logic/MatchWorld';
-import { attackDir } from '../logic/PitchGeometry';
-import { pickPlayerForBall, pickPlayerInDirection } from '../logic/PlayerSelection';
-import type { ActionSystem } from '../systems/ActionSystem';
-import type { InputSystem } from '../systems/InputSystem';
-import type { MatchState } from '../systems/MatchSystem';
-import { pixelStroke, textStyle } from '../ui/Theme';
+import { BALL, GOALKEEPER } from './config/GameplayConfig';
+import type { Player } from './entities/Player';
+import { predictAerialContact, timingQuality } from './logic/Aerial';
+import { ballOwner, MatchWorld } from './logic/MatchWorld';
+import { attackDir } from './logic/PitchGeometry';
+import { pickPlayerForBall, pickPlayerInDirection } from './logic/PlayerSelection';
+import type { Telemetry } from './MatchEvents';
+import type { ActionSystem } from './systems/ActionSystem';
+import { InputTracker } from './systems/InputTracker';
+import { EMPTY_RAW, RawInput } from './systems/InputTypes';
 
 export type ChargeKind = 'pass' | 'shoot' | 'lob';
+/** Which human: P1 (yellow marker) or P2 (green). */
+export type HumanMarker = 'p1' | 'p2';
+/** Aim assist for a human action. */
+export type AssistMode = 'auto' | 'manual';
 
-/** What a HumanController needs from the match scene. */
+export interface HumanOptions {
+  team: number;
+  marker: HumanMarker;
+  /** Ground passes: 'auto' aims at a teammate, 'manual' goes exactly along the input. */
+  passAssist: AssistMode;
+  /** Lobs: 'manual' lands where the charge says, 'auto' aims at a teammate. */
+  lobAssist: AssistMode;
+}
+
+/** What a HumanControl needs from the match. */
 export interface HumanContext {
-  scene: Phaser.Scene;
   world: MatchWorld;
   actions: ActionSystem;
-  matchState(): MatchState;
-  sim(): SimReport | null;
+  telemetry: Telemetry | null;
   /** The passer keeps joining the attack after a pass. */
   startSupportRun(passer: Player): void;
 }
 
-export class HumanController {
+export interface PendingAerial {
+  kind: 'shot' | 'pass';
+  quality: number;
+  kickId: number;
+  player: Player;
+  deadlineMs: number;
+}
+
+export class HumanControl {
+  readonly team: number;
+  readonly marker: HumanMarker;
   /** What is currently charging (hold pass / shoot / lob). */
   chargeKind: ChargeKind | null = null;
   chargeMs = 0;
   /** Direction held this frame (for the hint arrows). */
-  private heldDir = { x: 0, y: 0 };
+  heldDir = { x: 0, y: 0 };
   /** Header / volley waiting for the ball to arrive (see updateAerial). */
-  private pendingAerial: {
-    kind: 'shot' | 'pass'; quality: number; kickId: number; player: Player; deadlineMs: number;
-  } | null = null;
+  pendingAerial: PendingAerial | null = null;
+  readonly input = new InputTracker();
+  /** The latest raw input, also while play is stopped (for sync). */
+  private raw: RawInput = { ...EMPTY_RAW };
   /** Match time seen by this controller (ms), for the aerial deadline. */
   private clockMs = 0;
-  /** Countdown above our keeper while he holds the ball. */
-  private readonly keeperTimer: Phaser.GameObjects.Text;
   /** The player this human steers (null only before the first kickoff). */
   private current: Player | null = null;
 
-  constructor(
-    private readonly ctx: HumanContext,
-    readonly team: number,
-    readonly input: InputSystem,
-    /** Selection-marker colour: p1 yellow, p2 green. */
-    private readonly marker: MarkerId = 'p1',
-  ) {
-    this.keeperTimer = ctx.scene.add.text(0, 0, '', {
-      ...textStyle(11, '#ffffff', true),
-      stroke: '#000000',
-      strokeThickness: pixelStroke(11),
-    }).setOrigin(0.5, 1).setDepth(61).setVisible(false);
+  constructor(private readonly ctx: HumanContext, readonly options: HumanOptions) {
+    this.team = options.team;
+    this.marker = options.marker;
   }
 
   get controlled(): Player | null {
     return this.current;
   }
 
-  /** Sim event suffix for this human: 'P1' or 'P2'. */
+  /** Telemetry suffix for this human: 'P1' or 'P2'. */
   private get tag(): string {
     return this.marker.toUpperCase();
+  }
+
+  private event(name: string): void {
+    this.ctx.telemetry?.event(name);
   }
 
   /** Is `p` steered by another human (the co-op partner)? */
   private isPartners(p: Player): boolean {
     return p !== this.current && this.ctx.world.controlled[this.team].includes(p);
+  }
+
+  /** This frame's raw input (every frame, also while play is stopped). */
+  setRaw(raw: RawInput): void {
+    this.raw = { ...raw };
+  }
+
+  /** Treat everything currently held as already handled (needs a fresh press). */
+  syncInput(): void {
+    this.input.sync(this.raw);
   }
 
   // ============================================================ per frame
@@ -88,7 +111,7 @@ export class HumanController {
    */
   update(dt: number, inputMs = dt * 1000): void {
     const { actions } = this.ctx;
-    const input = this.input.update(inputMs);
+    const input = this.input.update(this.raw, inputMs);
     this.clockMs += dt * 1000;
     this.heldDir = { x: input.moveX, y: input.moveY };
     // No switching while our player has the ball (W / pad LB do nothing then)
@@ -141,7 +164,7 @@ export class HumanController {
       if (this.updateAerial(p, input.shootPressed, input.passPressed, input.moveY, dirX, dirY)) return;
       // Without the ball the lob button tackles (keyboard A, pad X)
       if (input.lobPressed) {
-        if (actions.tackle(p)) this.ctx.sim()?.event('humanTackle');
+        if (actions.tackle(p)) this.event('humanTackle');
         this.input.consumeLob();
       }
       // Shoot without the ball does nothing; don't let the hold carry over into possession
@@ -191,8 +214,7 @@ export class HumanController {
     const zone = actions.aerial(p, pending.kind, pending.quality, aimY, dirX, dirY, 0.85);
     if (zone) {
       this.pendingAerial = null;
-      const sim = this.ctx.sim();
-      sim?.event(zone === 'header' ? 'humanHeader' : 'humanVolley');
+      this.event(zone === 'header' ? 'humanHeader' : 'humanVolley');
       if (pending.kind === 'pass') {
         this.ctx.startSupportRun(p);
         const receiver = world.teams[this.team].find((q) => q.id === ball.passTargetId);
@@ -216,35 +238,35 @@ export class HumanController {
 
   private firePass(p: Player, charge: number, dirX: number, dirY: number): void {
     this.chargeKind = null;
-    const receiver = this.ctx.actions.pass(p, dirX, dirY, Phaser.Math.Clamp(charge, 0, 1), settings.passAssist === 'auto');
-    this.ctx.sim()?.event('humanPass');
-    this.ctx.sim()?.event(`humanPassTeam${this.team}`);
-    this.ctx.sim()?.event(`humanPass${this.tag}`);
+    const assisted = this.options.passAssist === 'auto';
+    const receiver = this.ctx.actions.pass(p, dirX, dirY, clamp01(charge), assisted);
+    this.event('humanPass');
+    this.event(`humanPassTeam${this.team}`);
+    this.event(`humanPass${this.tag}`);
     this.ctx.startSupportRun(p);
     if (receiver) this.setControlled(receiver);
   }
 
   private fireLob(p: Player, charge: number, dirX: number, dirY: number): void {
     this.chargeKind = null;
-    const power = Phaser.Math.Clamp(charge, 0, 1);
+    const power = clamp01(charge);
     // LOB: AUTO aims at a teammate like the AI's lob (the charge doesn't matter then)
-    const receiver = settings.lobAssist === 'auto'
+    const receiver = this.options.lobAssist === 'auto'
       ? this.ctx.actions.lob(p, dirX, dirY)
       : this.ctx.actions.lobToSpot(p, dirX, dirY, power);
-    const sim = this.ctx.sim();
-    sim?.event('humanLob');
-    sim?.event(power >= 0.99 ? 'humanLobFull' : power < 0.33 ? 'humanLobWeak' : 'humanLobMid');
+    this.event('humanLob');
+    this.event(power >= 0.99 ? 'humanLobFull' : power < 0.33 ? 'humanLobWeak' : 'humanLobMid');
     this.ctx.startSupportRun(p);
     if (receiver) this.setControlled(receiver);
   }
 
   private fireShot(p: Player, charge: number, aimY: number, dirX: number, dirY: number): void {
     this.chargeKind = null;
-    const power = 0.2 + 0.8 * Phaser.Math.Clamp(charge, 0, 1);
+    const power = 0.2 + 0.8 * clamp01(charge);
     this.ctx.actions.shoot(p, power, aimY, dirX, dirY, 0.85);
-    this.ctx.sim()?.event('humanShot');
-    this.ctx.sim()?.event(`humanShotTeam${this.team}`);
-    this.ctx.sim()?.event(`humanShot${this.tag}`);
+    this.event('humanShot');
+    this.event(`humanShotTeam${this.team}`);
+    this.event(`humanShot${this.tag}`);
   }
 
   // ======================================================= player switch
@@ -256,15 +278,15 @@ export class HumanController {
    * ball first). See logic/PlayerSelection.ts.
    */
   switchPlayer(includeCurrent: boolean, dirX = 0, dirY = 0): void {
-    this.ctx.sim()?.event(dirX !== 0 || dirY !== 0 ? 'switchDirectional' : 'switch');
+    this.event(dirX !== 0 || dirY !== 0 ? 'switchDirectional' : 'switch');
     const target = this.switchTarget(includeCurrent, dirX, dirY);
     if (target) this.setControlled(target);
-    // Sim metric: how far the selected player is from the opponent's ball carrier
-    const sim = this.ctx.sim();
+    // Test metric: how far the selected player is from the opponent's ball carrier
+    const t = this.ctx.telemetry;
     const carrier = ballOwner(this.ctx.world);
-    if (sim && target && carrier && carrier.teamIndex !== this.team && carrier.role !== 'goalkeeper') {
-      sim.add('defSwitchDist', Math.round(target.distanceTo(carrier.x, carrier.y)));
-      sim.event('defSwitchN');
+    if (t && target && carrier && carrier.teamIndex !== this.team && carrier.role !== 'goalkeeper') {
+      t.add('defSwitchDist', Math.round(target.distanceTo(carrier.x, carrier.y)));
+      t.event('defSwitchN');
     }
   }
 
@@ -300,7 +322,6 @@ export class HumanController {
     const current = this.controlled;
     if (current === p || this.isPartners(p)) return;
     this.release();
-    p.setSelected(this.ctx.scene, true, this.marker);
     this.current = p;
     this.ctx.world.controlled[this.team].push(p);
     this.chargeKind = null;
@@ -308,13 +329,6 @@ export class HumanController {
 
   /** Let go of the current player (he goes back to the AI). */
   release(): void {
-    const p = this.current;
-    if (!p) return;
-    p.setSelected(this.ctx.scene, false);
-    this.forget();
-  }
-
-  private forget(): void {
     const list = this.ctx.world.controlled[this.team];
     const i = this.current ? list.indexOf(this.current) : -1;
     if (i >= 0) list.splice(i, 1);
@@ -322,8 +336,8 @@ export class HumanController {
   }
 
   /**
-   * Called by the scene whenever any player gains the ball.
-   * @param takesBall this human takes over `p` (the scene decides which human
+   * Called whenever any player gains the ball.
+   * @param takesBall this human takes over `p` (the match decides which human
    *   of the team does: in co-op only one of the two).
    */
   onPossession(p: Player, previousTeam: number | null, takesBall: boolean): void {
@@ -334,8 +348,8 @@ export class HumanController {
       if (p.role === 'goalkeeper') {
         // Keys still held from defending (e.g. lob used for a tackle) must
         // not immediately fire a keeper action: require a fresh press.
-        this.input.sync();
-        this.ctx.sim()?.event('humanKeeper');
+        this.syncInput();
+        this.event('humanKeeper');
       }
     } else if (previousTeam === this.team || this.controlled?.role === 'goalkeeper') {
       // We lost the ball: take the defender best placed to stop the carrier
@@ -346,97 +360,11 @@ export class HumanController {
   /** Kickoff: start on the given player with a clean input state (call release() on every human first). */
   resetForKickoff(startOn: Player): void {
     this.setControlled(startOn);
-    this.input.sync();
+    this.syncInput();
     this.chargeKind = null;
-  }
-
-  // =================================================================== fx
-
-  drawFx(g: Phaser.GameObjects.Graphics): void {
-    this.keeperTimer.setVisible(false);
-    const p = this.controlled;
-    if (!p) return;
-    const x = Math.round(p.x);
-    const y = Math.round(p.y);
-
-    // Countdown to the keeper's automatic kick
-    if (p.role === 'goalkeeper' && p.hasBall) {
-      const left = Math.max(0, GOALKEEPER.humanHoldMax - p.possessionTime);
-      const k = left / GOALKEEPER.humanHoldMax;
-      const color = k > 0.5 ? 0x66ff66 : k > 0.25 ? 0xffdd33 : 0xff4433;
-      // Drawn above the power bar so both stay visible while charging a kick
-      g.fillStyle(0x000000, 0.7);
-      g.fillRect(x - 13, y - 30, 26, 5);
-      g.fillStyle(color, 1);
-      g.fillRect(x - 12, y - 29, Math.round(24 * k), 3);
-      this.keeperTimer
-        .setText((left / 1000).toFixed(1))
-        .setColor(`#${color.toString(16).padStart(6, '0')}`)
-        .setPosition(x, y - 31)
-        .setVisible(true);
-    }
-
-    // Stamina bar under the controlled player
-    if (p.stamina < 0.99) {
-      g.fillStyle(0x000000, 0.6);
-      g.fillRect(x - 9, y + 15, 18, 4);
-      g.fillStyle(p.stamina > 0.3 ? 0x44dd66 : 0xff5544, 1);
-      g.fillRect(x - 8, y + 16, Math.round(16 * p.stamina), 2);
-    }
-
-    // Power bar while charging
-    if (this.chargeKind !== null && p.hasBall) {
-      const k = Phaser.Math.Clamp(this.chargeMs / BALL.maxChargeMs, 0, 1);
-      const color = k < 0.5 ? 0x66ff66 : k < 0.8 ? 0xffdd33 : 0xff4433;
-      g.fillStyle(0x000000, 0.7);
-      g.fillRect(x - 13, y - 22, 26, 6);
-      g.fillStyle(color, 1);
-      g.fillRect(x - 12, y - 21, Math.round(24 * k), 4);
-    }
-
-    if (this.ctx.matchState() === 'playing') {
-      if (p.hasBall) {
-        // Yellow hint: who a pass would go to (follows the held direction;
-        // none with manual passes, which have no receiver)
-        const t = settings.passAssist === 'auto' ? this.ctx.actions.passTarget(p, this.heldDir.x, this.heldDir.y) : null;
-        if (t) drawHintArrow(g, t, 0xffe14d);
-      } else {
-        // Blue hint: who a switch would select
-        const t = this.switchTarget(false, this.heldDir.x, this.heldDir.y);
-        if (t && t !== p) drawHintArrow(g, t, 0x7fd8ff);
-        // Header / volley chance: a small marker above the head (cyan header,
-        // green volley; white once D or S was pressed for it)
-        const ball = this.ctx.world.ball;
-        const contact = ball.isFree && p.role !== 'goalkeeper' ? predictAerialContact(ball, p) : null;
-        if (contact || this.pendingAerial) {
-          const color = this.pendingAerial ? 0xffffff : contact?.zone === 'header' ? 0x5fe0ff : 0x7dff6a;
-          g.fillStyle(0x000000, 0.8);
-          g.fillTriangle(x - 5, y - 26, x + 5, y - 26, x, y - 33);
-          g.fillStyle(color, 1);
-          g.fillTriangle(x - 3, y - 27, x + 3, y - 27, x, y - 31);
-        }
-      }
-    }
-  }
-
-  destroy(): void {
-    this.input.destroy();
-    this.forget();
   }
 }
 
-/** Small down-pointing pixel arrow with a dark outline above a player. */
-function drawHintArrow(g: Phaser.GameObjects.Graphics, target: Player, color: number): void {
-  const tx = Math.round(target.x);
-  const ty = Math.round(target.y) - 17;
-  g.fillStyle(0x0b0f1c, 0.9);
-  g.fillRect(tx - 4, ty - 1, 9, 2);
-  g.fillRect(tx - 3, ty + 1, 7, 2);
-  g.fillRect(tx - 2, ty + 3, 5, 2);
-  g.fillRect(tx - 1, ty + 5, 3, 1);
-  g.fillStyle(color, 1);
-  g.fillRect(tx - 3, ty, 7, 1);
-  g.fillRect(tx - 2, ty + 1, 5, 2);
-  g.fillRect(tx - 1, ty + 3, 3, 1);
-  g.fillRect(tx, ty + 4, 1, 1);
+function clamp01(v: number): number {
+  return Math.max(0, Math.min(1, v));
 }

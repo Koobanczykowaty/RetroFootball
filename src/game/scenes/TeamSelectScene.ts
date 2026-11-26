@@ -6,7 +6,7 @@
 import Phaser from 'phaser';
 import {
   DIFFICULTIES, Difficulty, FORMATION_IDS, FormationId, GAME_WIDTH, GAME_HEIGHT, MATCH,
-} from '../config/GameplayConfig';
+} from '../../core/config/GameplayConfig';
 import { TWO_PLAYER_MODES, TwoPlayerMode, saveSettings, settings } from '../config/Settings';
 import { t } from '../config/i18n';
 import { cycleTeam, teamWithKits } from '../config/Teams';

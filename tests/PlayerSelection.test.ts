@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { pickPlayerForBall, pickPlayerInDirection, SelectablePlayer } from '../src/game/logic/PlayerSelection';
-import { PITCH_CX, PITCH_CY } from '../src/game/logic/PitchGeometry';
+import { pickPlayerForBall, pickPlayerInDirection, SelectablePlayer } from '../src/core/logic/PlayerSelection';
+import { PITCH_CX, PITCH_CY } from '../src/core/logic/PitchGeometry';
 
 function player(x: number, y: number, role = 'defender', teamIndex = 0): SelectablePlayer {
   return { x, y, vx: 0, vy: 0, role, teamIndex };

@@ -4,7 +4,7 @@
 // ============================================================
 
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config/GameplayConfig';
+import { GAME_WIDTH, GAME_HEIGHT } from '../../core/config/GameplayConfig';
 import { t } from '../config/i18n';
 import { Button } from './Button';
 import { MenuNavigator } from './MenuNavigator';
