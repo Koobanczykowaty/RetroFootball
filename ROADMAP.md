@@ -8,10 +8,10 @@ Gra celowo nie ma autów, rzutów rożnych, spalonych ani fauli (piłka odbija s
 
 ## P1 — Dopracowanie rozgrywki (v0.3)
 
-1. **Test gry na dwa pady** na prawdziwym sprzęcie.
+1. ~~**Test gry na dwa pady** na prawdziwym sprzęcie.~~ Zrobione: przetestowane na prawdziwych padach.
 2. ~~**Lepsza czytelność akcji**: krótkie spowolnienie po golu.~~ Zrobione w v0.3.0 (slow-mo z przybliżeniem).
 3. ~~**Główki i woleje**~~ Zrobione: D / S przy piłce w powietrzu, z wyczuciem czasu.
-4. **Własna czcionka pixel art** (wbudowana, np. bitmap font generowany jak sprite'y), aby UI wyglądało tak samo na każdym systemie.
+4. ~~**Własna czcionka pixel art**~~ Zrobione: wbudowana czcionka RetroGala (glify rysowane w kodzie), rozmiary dopasowane do siatki pikseli gry.
 5. ~~**Code-splitting Phasera**~~ Zrobione: Phaser w osobnym pliku (po aktualizacji gry przeglądarka pobiera tylko ~120 kB kodu gry).
 
 ## P2 — Treść i tryby (v0.4–v0.6)

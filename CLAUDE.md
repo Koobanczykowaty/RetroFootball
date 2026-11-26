@@ -96,7 +96,7 @@ Scenes: `BootScene` (generates textures) → `MenuScene` → `TeamSelectScene` (
   - `PadEdges` turns held buttons into one-shot commands (up/down/left/right/confirm/back/pause/mute). `MenuNavigator` polls one on the scene `UPDATE` event while active, syncing on activate so a held A doesn't re-trigger. `MatchScene.update` polls one for Menu (pause) and View (mute).
   - Mapping and edges are pure and unit-tested (`tests/Gamepad.test.ts`). The input types live in `systems/InputTypes.ts` (no Phaser import).
   - The bot sim uses the `window.__RF_FAKE_PAD__` hook to press Menu and B (`padPaused`/`padResumed`).
-  - Not tested with a physical controller by Claude.
+  - Tested by the user on real hardware, including two pads.
 - **No throw-ins, corners, offside or fouls, by design.** The user considers the bouncing boards a core feature (it keeps play fast). Don't propose adding set pieces. The user also considers the current balance OK, so don't retune it unasked.
 - **Desktop browser only.** There are no touch or mobile controls (the user decided this); don't add them.
 - **Controls:** arrows move, Shift sprints, S passes (hold to charge; without the ball it switches player), A lobs (hold to charge; without the ball it tackles), D shoots (hold to charge; without the ball it does nothing), W switches player, but only without the ball: with the ball W / pad LB do nothing (the user asked for this) (Space is no longer a gameplay key), Esc/P pause, M mutes. All charged actions reach full power after `BALL.maxChargeMs` (350 ms). These are defined in `INPUT_MAP`. Menus use arrows, Enter/Space and Esc only, because A/S/D are gameplay keys.
