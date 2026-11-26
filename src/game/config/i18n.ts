@@ -4,9 +4,9 @@
 // Team names and the RETRO GAŁA logo are not translated.
 // ============================================================
 
-import type { Difficulty, FormationId, StadiumId } from './GameplayConfig';
+import type { Difficulty, FormationId, GameSpeed, StadiumId } from './GameplayConfig';
 import type { TournamentKind } from '../logic/Tournament';
-import { settings, type Language, type TwoPlayerMode } from './Settings';
+import { settings, type AssistMode, type Language, type TwoPlayerMode } from './Settings';
 
 export interface Strings {
   /** Browser tab title. */
@@ -133,6 +133,12 @@ export interface Strings {
   goldenGoal: string;
   nextGoalWins: string;
   continueButton: string;
+  // Game settings
+  gameSpeed: string;
+  gameSpeedName: (v: GameSpeed) => string;
+  passAssist: string;
+  lobAssist: string;
+  assistName: (v: AssistMode) => string;
 }
 
 const EN: Strings = {
@@ -252,6 +258,11 @@ const EN: Strings = {
   goldenGoal: 'GOLDEN GOAL',
   nextGoalWins: 'NEXT GOAL WINS',
   continueButton: 'CONTINUE',
+  gameSpeed: 'GAME SPEED',
+  gameSpeedName: (v) => (v === 'slow' ? 'SLOW' : v === 'fast' ? 'FAST' : 'NORMAL'),
+  passAssist: 'PASSES',
+  lobAssist: 'LOB',
+  assistName: (v) => (v === 'auto' ? 'AUTO' : 'MANUAL'),
 };
 
 const PL_DIFFICULTY: Record<Difficulty, string> = { easy: 'ŁATWY', normal: 'NORMALNY', hard: 'TRUDNY' };
@@ -373,6 +384,11 @@ const PL: Strings = {
   goldenGoal: 'ZŁOTY GOL',
   nextGoalWins: 'NASTĘPNY GOL WYGRYWA',
   continueButton: 'DALEJ',
+  gameSpeed: 'PRĘDKOŚĆ GRY',
+  gameSpeedName: (v) => (v === 'slow' ? 'WOLNA' : v === 'fast' ? 'SZYBKA' : 'NORMALNA'),
+  passAssist: 'PODANIA',
+  lobAssist: 'LOB',
+  assistName: (v) => (v === 'auto' ? 'AUTO' : 'RĘCZNE'),
 };
 
 export const STRINGS: Record<Language, Strings> = { pl: PL, en: EN };

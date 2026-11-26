@@ -9,7 +9,8 @@
 
 import Phaser from 'phaser';
 import {
-  AI_PROFILES, AIProfile, FORMATION_IDS, FORMATIONS, FormationId, GAME_HEIGHT, GAME_WIDTH, MATCH, PLAYER,
+  AI_PROFILES, AIProfile, FORMATION_IDS, FORMATIONS, FormationId, GAME_HEIGHT, GAME_SPEED_SCALE, GAME_WIDTH, MATCH,
+  PLAYER,
   ROLE_TRAITS, STADIUMS, StadiumId, TEAMMATE_PROFILE, TEAMS, TeamConfig,
 } from '../config/GameplayConfig';
 import { saveSettings, settings } from '../config/Settings';
@@ -321,12 +322,14 @@ export class MatchScene extends Phaser.Scene {
       else if (cmd === 'mute') soundManager.toggle();
     }
 
-    let dt = Math.min(delta, 50) / 1000;
+    const realMs = Math.min(delta, 50);
+    // Game speed (SETTINGS) scales the world; the match clock and timers stay in real time
+    let dt = (realMs / 1000) * GAME_SPEED_SCALE[settings.gameSpeed];
     // Goal slow motion: the world runs slower and the match timers wait
     // (the celebration starts only after it)
-    let matchMs = dt * 1000;
+    let matchMs = realMs;
     if (this.pendingGoal) {
-      this.slowMoMs -= dt * 1000;
+      this.slowMoMs -= realMs;
       if (this.slowMoMs <= 0) this.endGoalSlowMo();
       else {
         dt *= MATCH.goalSlowMoScale;
@@ -342,7 +345,7 @@ export class MatchScene extends Phaser.Scene {
 
     switch (state) {
       case 'playing':
-        this.simulate(dt);
+        this.simulate(dt, realMs);
         // Still level after extra time: announce the golden goal once
         if (this.match.data.goldenGoal && !this.goldenGoalShown) {
           this.goldenGoalShown = true;
@@ -375,8 +378,9 @@ export class MatchScene extends Phaser.Scene {
     for (const h of this.humans) h.drawFx(this.fx);
   }
 
-  private simulate(dt: number): void {
-    for (const h of this.humans) h.update(dt);
+  /** @param inputMs real frame time for the humans' input (charging keys). */
+  private simulate(dt: number, inputMs: number): void {
+    for (const h of this.humans) h.update(dt, inputMs);
     if (this.sim && this.mode === 'coop') {
       // Test check: the two co-op humans never steer the same player
       const [a, b] = this.humans;

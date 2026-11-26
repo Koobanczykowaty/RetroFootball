@@ -3,7 +3,9 @@
 // Persisted to localStorage when available (falls back to memory).
 // ============================================================
 
-import { AUDIO, Difficulty, DIFFICULTIES, FORMATION_IDS, FormationId, MATCH, TEAMS } from './GameplayConfig';
+import {
+  AUDIO, Difficulty, DIFFICULTIES, FORMATION_IDS, FormationId, GAME_SPEEDS, GameSpeed, MATCH, TEAMS,
+} from './GameplayConfig';
 import { KIT_FIELDS, KitOverrides } from './Teams';
 
 export type Language = 'pl' | 'en';
@@ -22,6 +24,10 @@ export function browserLanguage(): Language {
 /** 2 PLAYERS: 'versus' = P1 against P2, 'coop' = P1 and P2 together against the CPU. */
 export type TwoPlayerMode = 'versus' | 'coop';
 export const TWO_PLAYER_MODES: readonly TwoPlayerMode[] = ['versus', 'coop'];
+
+/** Aim assist for a human action (SETTINGS). */
+export type AssistMode = 'auto' | 'manual';
+export const ASSIST_MODES: readonly AssistMode[] = ['auto', 'manual'];
 
 export interface GameSettings {
   soundEnabled: boolean;
@@ -43,6 +49,12 @@ export interface GameSettings {
   formationP2: FormationId;
   /** 2 PLAYERS screen: against each other, or together on one team against the CPU. */
   twoPlayerMode: TwoPlayerMode;
+  /** Match tempo (GAME_SPEED_SCALE). */
+  gameSpeed: GameSpeed;
+  /** Human ground passes: 'auto' aims at the teammate in the held direction, 'manual' goes exactly along it. */
+  passAssist: AssistMode;
+  /** Human lobs: 'manual' lands where the charge says, 'auto' aims at a teammate like the AI's lob. */
+  lobAssist: AssistMode;
   /** UI language. */
   language: Language;
 }
@@ -61,6 +73,9 @@ const DEFAULTS: GameSettings = {
   formation: '2-3',
   formationP2: '2-3',
   twoPlayerMode: 'versus',
+  gameSpeed: 'normal',
+  passAssist: 'auto',
+  lobAssist: 'manual',
   language: 'en',
 };
 
@@ -102,6 +117,9 @@ function load(): GameSettings {
     if (parsed.formation && FORMATION_IDS.includes(parsed.formation)) s.formation = parsed.formation;
     if (parsed.formationP2 && FORMATION_IDS.includes(parsed.formationP2)) s.formationP2 = parsed.formationP2;
     if (parsed.twoPlayerMode && TWO_PLAYER_MODES.includes(parsed.twoPlayerMode)) s.twoPlayerMode = parsed.twoPlayerMode;
+    if (parsed.gameSpeed && GAME_SPEEDS.includes(parsed.gameSpeed)) s.gameSpeed = parsed.gameSpeed;
+    if (parsed.passAssist && ASSIST_MODES.includes(parsed.passAssist)) s.passAssist = parsed.passAssist;
+    if (parsed.lobAssist && ASSIST_MODES.includes(parsed.lobAssist)) s.lobAssist = parsed.lobAssist;
     if (parsed.language && LANGUAGES.includes(parsed.language)) s.language = parsed.language;
   } catch {
     // Storage unavailable or corrupt — use defaults.

@@ -10,6 +10,7 @@
 import Phaser from 'phaser';
 import type { MarkerId } from '../assets/AssetGenerator';
 import { BALL, GOALKEEPER } from '../config/GameplayConfig';
+import { settings } from '../config/Settings';
 import type { SimReport } from '../debug/SimReport';
 import type { Player } from '../entities/Player';
 import { predictAerialContact, timingQuality } from '../logic/Aerial';
@@ -81,9 +82,13 @@ export class HumanController {
 
   // ============================================================ per frame
 
-  update(dt: number): void {
+  /**
+   * @param dt game time (seconds; scaled by the game speed)
+   * @param inputMs real time for the input (key charge always takes the same real time)
+   */
+  update(dt: number, inputMs = dt * 1000): void {
     const { actions } = this.ctx;
-    const input = this.input.update(dt * 1000);
+    const input = this.input.update(inputMs);
     this.clockMs += dt * 1000;
     this.heldDir = { x: input.moveX, y: input.moveY };
     // No switching while our player has the ball (W / pad LB do nothing then)
@@ -211,7 +216,7 @@ export class HumanController {
 
   private firePass(p: Player, charge: number, dirX: number, dirY: number): void {
     this.chargeKind = null;
-    const receiver = this.ctx.actions.pass(p, dirX, dirY, Phaser.Math.Clamp(charge, 0, 1));
+    const receiver = this.ctx.actions.pass(p, dirX, dirY, Phaser.Math.Clamp(charge, 0, 1), settings.passAssist === 'auto');
     this.ctx.sim()?.event('humanPass');
     this.ctx.sim()?.event(`humanPassTeam${this.team}`);
     this.ctx.sim()?.event(`humanPass${this.tag}`);
@@ -222,7 +227,10 @@ export class HumanController {
   private fireLob(p: Player, charge: number, dirX: number, dirY: number): void {
     this.chargeKind = null;
     const power = Phaser.Math.Clamp(charge, 0, 1);
-    const receiver = this.ctx.actions.lobToSpot(p, dirX, dirY, power);
+    // LOB: AUTO aims at a teammate like the AI's lob (the charge doesn't matter then)
+    const receiver = settings.lobAssist === 'auto'
+      ? this.ctx.actions.lob(p, dirX, dirY)
+      : this.ctx.actions.lobToSpot(p, dirX, dirY, power);
     const sim = this.ctx.sim();
     sim?.event('humanLob');
     sim?.event(power >= 0.99 ? 'humanLobFull' : power < 0.33 ? 'humanLobWeak' : 'humanLobMid');
@@ -388,8 +396,9 @@ export class HumanController {
 
     if (this.ctx.matchState() === 'playing') {
       if (p.hasBall) {
-        // Yellow hint: who a pass would go to (follows the held direction)
-        const t = this.ctx.actions.passTarget(p, this.heldDir.x, this.heldDir.y);
+        // Yellow hint: who a pass would go to (follows the held direction;
+        // none with manual passes, which have no receiver)
+        const t = settings.passAssist === 'auto' ? this.ctx.actions.passTarget(p, this.heldDir.x, this.heldDir.y) : null;
         if (t) drawHintArrow(g, t, 0xffe14d);
       } else {
         // Blue hint: who a switch would select

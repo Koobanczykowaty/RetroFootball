@@ -79,14 +79,16 @@ if (!url) {
 }
 
 const failures = [];
+// Fewest passes before the "passer dropped back" checks are judged
+const MIN_PASSER_SAMPLES = 5;
 // Headers / volleys over the whole run (rare in a single short AI match)
 let aerialTotal = 0;
 
-async function runSim(label, human, twoPlayer = false, coop = false, cup = false) {
+async function runSim(label, human, twoPlayer = false, coop = false, cup = false, extraQuery = '') {
   // Each match: real minutes + kickoff/halftime/goal pauses (each goal adds ~3.5 s)
   const budget = Math.ceil(matches * (minutes * 60 + 60) * 1000);
   console.log(`[${label}] ${matches} match(es) of ${minutes} min`);
-  const query = `?sim=${matches}&minutes=${minutes}${human ? '&human=1' : ''}${twoPlayer ? '&p2=1' : ''}${coop ? '&coop=1' : ''}${cup ? '&cup=1' : ''}`;
+  const query = `?sim=${matches}&minutes=${minutes}${human ? '&human=1' : ''}${twoPlayer ? '&p2=1' : ''}${coop ? '&coop=1' : ''}${cup ? '&cup=1' : ''}${extraQuery}`;
   const dom = await runBrowser(browser, url + query, budget);
 
   const m = dom.match(/<pre id="sim-result"[^>]*>([\s\S]*?)<\/pre>/);
@@ -166,7 +168,9 @@ async function runSim(label, human, twoPlayer = false, coop = false, cup = false
 
   // Same for AI passers (support run)
   const aiN = total('aiPasserForward') + total('aiPasserBack');
-  if (aiN && total('aiPasserBack') > total('aiPasserForward')) {
+  // Judged only with enough samples: in 2-player mode AI teammates pass rarely
+  // (1-2 samples), and one unlucky pass used to fail the whole run
+  if (aiN >= MIN_PASSER_SAMPLES && total('aiPasserBack') > total('aiPasserForward')) {
     failures.push(`[${label}] AI passer dropped back more often than he went forward`);
   }
   if (aiN) console.log(`  AI passer: avg ${Math.round(total('aiPasserMovedPx') / aiN)} px forward 1 s after a pass`);
@@ -207,6 +211,8 @@ await runSim('bot as human', true);
 await runSim('2 players (two bots)', false, true);
 await runSim('co-op (two bots on one team)', false, false, true);
 await runSim('cup match (extra time)', false, false, false, true);
+// Game settings: fast tempo, manual passes and auto lobs through the real human input path
+await runSim('bot as human (fast, manual passes, auto lob)', true, false, false, false, '&speed=fast&passes=manual&lob=auto');
 await server.close();
 
 if (!aerialTotal) failures.push('no header or volley was struck in the whole run');

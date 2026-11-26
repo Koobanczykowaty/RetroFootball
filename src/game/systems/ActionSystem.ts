@@ -33,10 +33,12 @@ export class ActionSystem {
    * Returns the intended receiver, if any.
    * @param power 0..1 from charging (human): scales the speed, 0.5 = normal.
    *   Omitted (AI) = normal speed.
+   * @param assisted false = no target: the ball goes exactly along the
+   *   direction (human with PASSES: MANUAL in SETTINGS).
    */
-  pass(p: Player, dirX: number, dirY: number, power?: number): Player | null {
+  pass(p: Player, dirX: number, dirY: number, power?: number, assisted = true): Player | null {
     if (!this.canAct(p)) return null;
-    const target = this.passTarget(p, dirX, dirY);
+    const target = assisted ? this.passTarget(p, dirX, dirY) : null;
     if (target) {
       this.passTo(p, target, power);
       return target;

@@ -217,6 +217,14 @@ export const MATCH = {
   extraTimeMinutes: 30,
 };
 
+/**
+ * Game speed (SETTINGS): how fast the whole match plays (players, ball, AI).
+ * The match clock is unchanged, so a match lasts as many real minutes.
+ */
+export type GameSpeed = 'slow' | 'normal' | 'fast';
+export const GAME_SPEEDS: readonly GameSpeed[] = ['slow', 'normal', 'fast'];
+export const GAME_SPEED_SCALE: Record<GameSpeed, number> = { slow: 0.8, normal: 1, fast: 1.2 };
+
 // ---- AI ----
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export const DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard'];

@@ -3,8 +3,8 @@
 // ============================================================
 
 import Phaser from 'phaser';
-import { DIFFICULTIES, Difficulty, GAME_WIDTH, GAME_HEIGHT } from '../config/GameplayConfig';
-import { LANGUAGES, Language, saveSettings, settings } from '../config/Settings';
+import { DIFFICULTIES, Difficulty, GAME_SPEEDS, GAME_WIDTH, GAME_HEIGHT, GameSpeed } from '../config/GameplayConfig';
+import { ASSIST_MODES, AssistMode, LANGUAGES, Language, saveSettings, settings } from '../config/Settings';
 import { applyPageLanguage, t } from '../config/i18n';
 import { soundManager } from '../systems/SoundManager';
 import { Button } from '../ui/Button';
@@ -29,10 +29,10 @@ export class SettingsScene extends Phaser.Scene {
     bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
     const s = t();
-    this.add.text(GAME_WIDTH / 2, 60, s.settings, titleStyle(30)).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, 44, s.settings, titleStyle(30)).setOrigin(0.5);
 
     const language = new OptionSelector<Language>(
-      this, GAME_WIDTH / 2, 145, s.language, LANGUAGES, Math.max(0, LANGUAGES.indexOf(settings.language)),
+      this, GAME_WIDTH / 2, 100, s.language, LANGUAGES, Math.max(0, LANGUAGES.indexOf(settings.language)),
       (v) => LANGUAGE_NAMES[v],
       (v) => {
         settings.language = v;
@@ -44,7 +44,7 @@ export class SettingsScene extends Phaser.Scene {
     );
 
     const sound = new OptionSelector<boolean>(
-      this, GAME_WIDTH / 2, 190, s.sound, [true, false], settings.soundEnabled ? 0 : 1,
+      this, GAME_WIDTH / 2, 136, s.sound, [true, false], settings.soundEnabled ? 0 : 1,
       (v) => (v ? s.on : s.off),
       (v) => {
         soundManager.setEnabled(v);
@@ -53,7 +53,7 @@ export class SettingsScene extends Phaser.Scene {
     );
 
     const music = new OptionSelector<boolean>(
-      this, GAME_WIDTH / 2, 235, s.music, [true, false], settings.musicEnabled ? 0 : 1,
+      this, GAME_WIDTH / 2, 172, s.music, [true, false], settings.musicEnabled ? 0 : 1,
       (v) => (v ? s.on : s.off),
       (v) => soundManager.setMusicEnabled(v),
     );
@@ -61,7 +61,7 @@ export class SettingsScene extends Phaser.Scene {
     const volIndex = VOLUMES.reduce((best, v, i) =>
       (Math.abs(v - settings.volume) < Math.abs(VOLUMES[best] - settings.volume) ? i : best), 0);
     const volume = new OptionSelector<number>(
-      this, GAME_WIDTH / 2, 280, s.volume, VOLUMES, volIndex,
+      this, GAME_WIDTH / 2, 208, s.volume, VOLUMES, volIndex,
       (v) => `${Math.round(v * 100)}%`,
       (v) => {
         soundManager.setVolume(v);
@@ -70,7 +70,7 @@ export class SettingsScene extends Phaser.Scene {
     );
 
     const difficulty = new OptionSelector<Difficulty>(
-      this, GAME_WIDTH / 2, 325, s.difficulty, DIFFICULTIES, Math.max(0, DIFFICULTIES.indexOf(settings.difficulty)),
+      this, GAME_WIDTH / 2, 244, s.difficulty, DIFFICULTIES, Math.max(0, DIFFICULTIES.indexOf(settings.difficulty)),
       (v) => s.difficultyName(v),
       (v) => {
         settings.difficulty = v;
@@ -78,7 +78,33 @@ export class SettingsScene extends Phaser.Scene {
       },
     );
 
-    const fullscreen = new Button(this, GAME_WIDTH / 2, 375, this.fsLabel(), () => {
+    // Game settings: tempo and aim assists for the human players
+    const speed = new OptionSelector<GameSpeed>(
+      this, GAME_WIDTH / 2, 280, s.gameSpeed, [...GAME_SPEEDS], Math.max(0, GAME_SPEEDS.indexOf(settings.gameSpeed)),
+      (v) => s.gameSpeedName(v),
+      (v) => {
+        settings.gameSpeed = v;
+        saveSettings();
+      },
+    );
+    const passes = new OptionSelector<AssistMode>(
+      this, GAME_WIDTH / 2, 316, s.passAssist, [...ASSIST_MODES], Math.max(0, ASSIST_MODES.indexOf(settings.passAssist)),
+      (v) => s.assistName(v),
+      (v) => {
+        settings.passAssist = v;
+        saveSettings();
+      },
+    );
+    const lob = new OptionSelector<AssistMode>(
+      this, GAME_WIDTH / 2, 352, s.lobAssist, [...ASSIST_MODES], Math.max(0, ASSIST_MODES.indexOf(settings.lobAssist)),
+      (v) => s.assistName(v),
+      (v) => {
+        settings.lobAssist = v;
+        saveSettings();
+      },
+    );
+
+    const fullscreen = new Button(this, GAME_WIDTH / 2, 396, this.fsLabel(), () => {
       if (this.scale.isFullscreen) this.scale.stopFullscreen();
       else this.scale.startFullscreen();
     }, { width: 420, height: 34, fontSize: 16 });
@@ -90,11 +116,11 @@ export class SettingsScene extends Phaser.Scene {
       this.scale.off(Phaser.Scale.Events.LEAVE_FULLSCREEN, updateFs);
     });
 
-    this.add.text(GAME_WIDTH / 2, 418, s.settingsSaved, textStyle(11, UI.textMuted)).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, 432, s.settingsSaved, textStyle(11, UI.textMuted)).setOrigin(0.5);
 
     const back = () => this.scene.start('MenuScene');
     const backBtn = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT - 60, s.back, back, { width: 160, height: 34, fontSize: 16 });
-    new MenuNavigator(this, [language, sound, music, volume, difficulty, fullscreen, backBtn], back).activate(data?.focus ?? 0);
+    new MenuNavigator(this, [language, sound, music, volume, difficulty, speed, passes, lob, fullscreen, backBtn], back).activate(data?.focus ?? 0);
   }
 
   private fsLabel(): string {

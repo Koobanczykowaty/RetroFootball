@@ -124,6 +124,10 @@ W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura dzia
 - **Quick Match**: wybór swojej drużyny i przeciwnika (strzałkami na kartach), długości meczu (2/4/6 min), poziomu trudności i formacji. Ustawienia są zapamiętywane w przeglądarce.
 - **Drużyny**: Czerwone Orły, Białe Bociany, Złote Żubry, Zielone Smoki, Niebieskie Syreny i Fioletowe Rysie.
 - **Edytor strojów** jest na razie wyłączony (nie ma go w menu). Kod został w grze (`KitEditorScene`), więc można go łatwo przywrócić. Stroje zapisane wcześniej w przeglądarce nadal obowiązują.
+- **Ustawienia gry** (SETTINGS / USTAWIENIA, dotyczą wszystkich graczy-ludzi, AI bez zmian):
+  - **PRĘDKOŚĆ GRY**: WOLNA / NORMALNA / SZYBKA (80% / 100% / 120% tempa zawodników, piłki i AI). Zegar meczu się nie zmienia, więc mecz trwa tyle samo minut, a ładowanie siły strzału trwa tyle samo czasu.
+  - **PODANIA**: AUTO (domyślnie, podanie celuje w kolegę w kierunku strzałek, żółta strzałka pokazuje odbiorcę) albo RĘCZNE (podanie leci dokładnie w kierunku strzałek, bez wskazówki odbiorcy).
+  - **LOB**: RĘCZNE (domyślnie, siła decyduje, gdzie spadnie piłka) albo AUTO (lob celuje w kolegę jak u komputera; siła nie ma wtedy znaczenia).
 - **Poziomy trudności** (ekran QUICK MATCH lub SETTINGS; aktualny poziom widać w meczu w lewym górnym rogu jako `CPU: …`):
   - **EASY**: komputer wolniej reaguje i biega, rzadko i nieskutecznie atakuje wślizgiem, strzela niecelnie, bramkarz często puszcza, obrońcy często nabierają się na zwody;
   - **NORMAL**: wyrównana gra; obrońcy czasem nabierają się na zwody (ostra zmiana kierunku przy dryblingu);
