@@ -5,6 +5,7 @@
 // ============================================================
 
 import type { Difficulty, FormationId, StadiumId } from './GameplayConfig';
+import type { TournamentKind } from '../logic/Tournament';
 import { settings, type Language, type TwoPlayerMode } from './Settings';
 
 export interface Strings {
@@ -106,6 +107,32 @@ export interface Strings {
   hudMuted: string;
   hudCpu: (d: Difficulty) => string;
   hudHalf: (half: number) => string;
+  hudExtraTime: string;
+  // Tournament
+  tournament: string;
+  continueTournament: string;
+  tournamentKind: string;
+  kindName: (k: TournamentKind) => string;
+  slotValue: (v: 'human' | 'cpu' | 'out') => string;
+  startTournament: string;
+  tooFewTeams: string;
+  replacesSaved: string;
+  trophies: (league: number, cup: number) => string;
+  matchday: (n: number, total: number) => string;
+  cupRound: (roundsLeft: number) => string;
+  bye: string;
+  nextMatch: string;
+  watch: string;
+  skip: string;
+  champion: (k: TournamentKind, team: string) => string;
+  newTournament: string;
+  tableHeaders: [string, string, string, string, string, string, string, string];
+  lastResults: string;
+  afterExtraTimeShort: string;
+  extraTime: string;
+  goldenGoal: string;
+  nextGoalWins: string;
+  continueButton: string;
 }
 
 const EN: Strings = {
@@ -200,6 +227,31 @@ const EN: Strings = {
   hudMuted: 'SOUND OFF (M)',
   hudCpu: (d) => `CPU: ${d.toUpperCase()}`,
   hudHalf: (h) => (h === 1 ? '1ST' : '2ND'),
+  hudExtraTime: 'ET',
+  tournament: 'TOURNAMENT',
+  continueTournament: 'CONTINUE',
+  tournamentKind: 'TYPE',
+  kindName: (k) => (k === 'league' ? 'LEAGUE' : 'CUP'),
+  slotValue: (v) => (v === 'human' ? 'PLAYER' : v === 'cpu' ? 'CPU' : 'OUT'),
+  startTournament: 'START',
+  tooFewTeams: 'PICK AT LEAST 3 TEAMS',
+  replacesSaved: 'A NEW TOURNAMENT REPLACES THE SAVED ONE',
+  trophies: (l, c) => `TROPHIES   LEAGUES: ${l}   •   CUPS: ${c}`,
+  matchday: (n, total) => `MATCHDAY ${n}/${total}`,
+  cupRound: (left) => (left <= 1 ? 'FINAL' : left === 2 ? 'SEMI-FINALS' : 'QUARTER-FINALS'),
+  bye: 'BYE',
+  nextMatch: 'NEXT MATCH',
+  watch: 'WATCH',
+  skip: 'SKIP',
+  champion: (k, team) => (k === 'league' ? `CHAMPIONS: ${team}` : `CUP WINNERS: ${team}`),
+  newTournament: 'NEW TOURNAMENT',
+  tableHeaders: ['#', 'TEAM', 'P', 'W', 'D', 'L', 'GOALS', 'PTS'],
+  lastResults: 'RESULTS',
+  afterExtraTimeShort: 'AET',
+  extraTime: 'EXTRA TIME',
+  goldenGoal: 'GOLDEN GOAL',
+  nextGoalWins: 'NEXT GOAL WINS',
+  continueButton: 'CONTINUE',
 };
 
 const PL_DIFFICULTY: Record<Difficulty, string> = { easy: 'ŁATWY', normal: 'NORMALNY', hard: 'TRUDNY' };
@@ -296,6 +348,31 @@ const PL: Strings = {
   hudMuted: 'WYCISZONO (M)',
   hudCpu: (d) => `CPU: ${PL_DIFFICULTY[d]}`,
   hudHalf: (h) => (h === 1 ? '1 POŁ.' : '2 POŁ.'),
+  hudExtraTime: 'DOGR.',
+  tournament: 'TURNIEJ',
+  continueTournament: 'KONTYNUUJ',
+  tournamentKind: 'RODZAJ',
+  kindName: (k) => (k === 'league' ? 'LIGA' : 'PUCHAR'),
+  slotValue: (v) => (v === 'human' ? 'GRACZ' : v === 'cpu' ? 'CPU' : 'NIE GRA'),
+  startTournament: 'ROZPOCZNIJ',
+  tooFewTeams: 'WYBIERZ CO NAJMNIEJ 3 DRUŻYNY',
+  replacesSaved: 'NOWY TURNIEJ ZASTĄPI ZAPISANY',
+  trophies: (l, c) => `TROFEA   LIGI: ${l}   •   PUCHARY: ${c}`,
+  matchday: (n, total) => `KOLEJKA ${n}/${total}`,
+  cupRound: (left) => (left <= 1 ? 'FINAŁ' : left === 2 ? 'PÓŁFINAŁY' : 'ĆWIERĆFINAŁY'),
+  bye: 'WOLNY LOS',
+  nextMatch: 'NASTĘPNY MECZ',
+  watch: 'OGLĄDAJ',
+  skip: 'POMIŃ',
+  champion: (k, team) => (k === 'league' ? `MISTRZ LIGI: ${team}` : `ZDOBYWCA PUCHARU: ${team}`),
+  newTournament: 'NOWY TURNIEJ',
+  tableHeaders: ['#', 'DRUŻYNA', 'M', 'Z', 'R', 'P', 'BRAMKI', 'PKT'],
+  lastResults: 'WYNIKI',
+  afterExtraTimeShort: 'DOGR.',
+  extraTime: 'DOGRYWKA',
+  goldenGoal: 'ZŁOTY GOL',
+  nextGoalWins: 'NASTĘPNY GOL WYGRYWA',
+  continueButton: 'DALEJ',
 };
 
 export const STRINGS: Record<Language, Strings> = { pl: PL, en: EN };

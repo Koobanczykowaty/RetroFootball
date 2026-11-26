@@ -123,7 +123,7 @@ W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura dzia
 - **Język polski / angielski**: menu i napisy w meczu. Domyślnie według języka przeglądarki (polska przeglądarka → polski, inaczej angielski); zmiana w SETTINGS / USTAWIENIA → JĘZYK / LANGUAGE, zapamiętywana. W wersji polskiej przycisk startu meczu i baner rozpoczęcia to „HARATAJMY!”, a karta przeglądarki nazywa się „Retro Gała”.
 - **Quick Match**: wybór swojej drużyny i przeciwnika (strzałkami na kartach), długości meczu (2/4/6 min), poziomu trudności i formacji. Ustawienia są zapamiętywane w przeglądarce.
 - **Drużyny**: Czerwone Orły, Białe Bociany, Złote Żubry, Zielone Smoki, Niebieskie Syreny i Fioletowe Rysie.
-- **Edytor strojów** (STROJE w menu głównym): kolor koszulki, pasa, spodenek, getrów i stroju bramkarza każdej drużyny, z podglądem i przyciskiem PRZYWRÓĆ DOMYŚLNE. Zapisuje się w przeglądarce i działa wszędzie (karty, mecz, kolory w HUD).
+- **Edytor strojów** jest na razie wyłączony (nie ma go w menu). Kod został w grze (`KitEditorScene`), więc można go łatwo przywrócić. Stroje zapisane wcześniej w przeglądarce nadal obowiązują.
 - **Poziomy trudności** (ekran QUICK MATCH lub SETTINGS; aktualny poziom widać w meczu w lewym górnym rogu jako `CPU: …`):
   - **EASY**: komputer wolniej reaguje i biega, rzadko i nieskutecznie atakuje wślizgiem, strzela niecelnie, bramkarz często puszcza, obrońcy często nabierają się na zwody;
   - **NORMAL**: wyrównana gra; obrońcy czasem nabierają się na zwody (ostra zmiana kierunku przy dryblingu);
@@ -137,6 +137,11 @@ W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura dzia
   Ekran 2 PLAYERS pokazuje bieżący przydział. Pady można podłączyć też w trakcie meczu. Każdy wybiera swoją formację, w pauzie oba wiersze formacji da się zmienić. Sterowany zawodnik P1 ma żółty znacznik, P2 zielony (tak samo oznaczenia w HUD). Pauzować może każdy (Esc/P albo Menu na padzie). Na ekranie wyboru widać, czy pad jest podłączony.
 
   Wiersz **TRYB** na ekranie 2 PLAYERS wybiera grę **RYWALE** (P1 przeciwko P2) albo **RAZEM** (co-op: P1 i P2 w jednej drużynie przeciwko komputerowi). W co-op lewa karta to wspólna drużyna, prawa to przeciwnik CPU; wybiera się poziom trudności i jedną wspólną formację (w pauzie zmienia ją każdy z graczy). Każdy gracz steruje swoim zawodnikiem i nie może przejąć zawodnika partnera. Podanie do zawodnika partnera przyjmuje partner. Gdy piłkę zdobędzie inny zawodnik drużyny, przejmuje go gracz, którego zawodnik jest bliżej; bramkarza z piłką przejmuje gracz bliżej własnej bramki. Przy rozpoczęciu P1 staje na środku, P2 na drugim napastniku.
+- **TURNIEJ** (przycisk w menu): **LIGA** albo **PUCHAR**, od 3 do 6 drużyn. Przy każdej drużynie wybierasz **GRACZ**, **CPU** albo **NIE GRA**, więc w jednym turnieju może grać od 0 do 6 osób, na zmianę.
+  - **Liga:** każdy z każdym dwa razy (mecz i rewanż), 3 pkt za wygraną, 1 za remis. O kolejności decydują punkty, potem różnica bramek, potem bramki strzelone.
+  - **Puchar:** pojedyncze mecze do odpadnięcia. Przy 3, 5 i 6 drużynach część drużyn dostaje wolny los w pierwszej rundzie. Remis po 90 minutach oznacza dogrywkę (30 minut meczowych). Jeśli dalej jest remis, gra toczy się do złotego gola.
+  - **Mecze:** człowiek kontra CPU gra się jak szybki mecz. Człowiek kontra człowiek gra się jak 2 GRACZY RYWALE (P1 = gospodarz, klawiatura). Mecz CPU kontra CPU można **OGLĄDAĆ** albo **POMINĄĆ** (wtedy wynik jest losowany).
+  - **Zapis:** turniej zapisuje się po każdym meczu, a w menu pojawia się **KONTYNUUJ**. Naraz zapisany jest jeden turniej; nowy zastępuje stary. Licznik trofeów (wygrane ligi i puchary drużyn ludzi) widać na ekranie TURNIEJ.
 - **Formacje**: **2-3** (ofensywna: 2 obrońców + 3 napastników) albo **3-2** (defensywna: 3 obrońców + 2 napastników). Swoją wybierasz na ekranie QUICK MATCH i możesz ją zmienić w trakcie meczu w menu pauzy. Komputer losuje formację przed każdym meczem.
 - **Rozgrywka 6v6**:
   - ruch w 8 kierunkach z bezwładnością, sprint i stamina;
@@ -211,7 +216,8 @@ Parametry URL przydatne przy tworzeniu gry:
 ## Znane ograniczenia
 
 - Tylko dwie formacje (2-3, 3-2) i dwa stadiony (Narodowy, Blokowisko). Nie ma pogody ani taktyki.
-- Tylko pojedyncze mecze: nie ma turnieju, ligi ani zapisu postępów. Nie ma też gry online.
+- Turniej (liga, puchar) zapisuje się tylko w przeglądarce (localStorage), bez konta. Nie ma gry online.
+- Drużyny nie mają siły ani umiejętności, więc pominięte mecze CPU mają wynik czysto losowy.
 - Tryb co-op (RAZEM) jest sprawdzony w automatycznych symulacjach, ale jeszcze nie na prawdziwych padach.
 - Phaser zajmuje ok. 1,2 MB (ok. 320 KB gzip). Jest w osobnym pliku, więc po aktualizacji gry przeglądarka pobiera ponownie tylko kod gry (ok. 140 KB).
 

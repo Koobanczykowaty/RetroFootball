@@ -67,7 +67,8 @@ export class MatchOverlay {
     this.sub.setVisible(false);
   }
 
-  showFulltime(info: FulltimeInfo, onRematch: () => void, onMenu: () => void): void {
+  /** @param firstLabel label of the first button (default REMATCH; tournaments: CONTINUE). */
+  showFulltime(info: FulltimeInfo, onRematch: () => void, onMenu: () => void, firstLabel = t().rematch): void {
     if (this.panel) return;
     this.hideBanner();
     this.setDim(0.65);
@@ -93,7 +94,7 @@ export class MatchOverlay {
       y += 20;
     }
 
-    const rematch = new Button(s, CX - 105, top + h - 36, t().rematch, onRematch, { width: 180, height: 36, fontSize: 16 });
+    const rematch = new Button(s, CX - 105, top + h - 36, firstLabel, onRematch, { width: 180, height: 36, fontSize: 16 });
     const menu = new Button(s, CX + 105, top + h - 36, t().mainMenu, onMenu, { width: 180, height: 36, fontSize: 16 });
     c.add([rematch, menu]);
     this.panel = c;

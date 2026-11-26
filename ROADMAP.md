@@ -20,8 +20,8 @@ Gra celowo nie ma autów, rzutów rożnych, spalonych ani fauli (piłka odbija s
 2. **Więcej formacji i taktyki** (pressing wysoki / niski) jako dane w konfiguracji. **Odłożone, do decyzji później** (pomysł nie jest odrzucony). Analiza: przy 5 zawodnikach w polu sensownych ustawień jest niewiele, a każda opcja wydłuża przygotowanie meczu i mnoży kombinacje do zbalansowania. Najtańszy eksperyment to jeden przełącznik DEFENSYWNIE / ZRÓWNOWAŻONIE / OFENSYWNIE, ale najpierw warto sprawdzić, czy testerzy zmieniają obecne formacje.
 3. ~~**2 graczy w jednej drużynie** (co-op przeciwko komputerowi).~~ Zrobione: TRYB RAZEM na ekranie 2 GRACZY.
 4. **Statystyki zawodników i umiejętności** (szybkość, strzał, podanie) wpływające na `ActionSystem`.
-5. **Turniej / puchar** (drabinka kilku meczów) i **liga** z tabelą.
-6. **Zapisy postępów** (localStorage, później konto).
+5. ~~**Turniej / puchar** (drabinka kilku meczów) i **liga** z tabelą.~~ Zrobione: TURNIEJ (liga mecz i rewanż, puchar z dogrywką i złotym golem), 3–6 drużyn, każda grana przez człowieka albo CPU.
+6. ~~**Zapisy postępów** (localStorage, później konto).~~ Zrobione w localStorage: turniej z KONTYNUUJ i licznik trofeów. Konto później.
 7. **Nowe stadiony i pogoda** (deszcz spowalnia piłkę, śnieg zmienia kolor murawy; parametry tarcia per stadion).
 8. ~~**Muzyka w menu**~~ Zrobione w v0.3.0: chiptune w menu i w meczu, efekty 8-bit, doping kibiców.
 9. **Ustawienia rozgrywki**: czas, prędkość gry, asysty (auto-celowanie podań).

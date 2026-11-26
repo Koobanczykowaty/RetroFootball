@@ -6,6 +6,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, GAME_VERSION } from '../config/GameplayConfig';
 import { t } from '../config/i18n';
+import { hasTournamentInProgress } from '../config/TournamentStore';
 import { soundManager } from '../systems/SoundManager';
 import { PLAYER_FRAME } from '../entities/Player';
 import { Button } from '../ui/Button';
@@ -79,24 +80,26 @@ export class MenuScene extends Phaser.Scene {
       targets: logo, scaleX: 1.03, scaleY: 1.03, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
 
-    // Buttons
-    const y0 = 214;
-    const gap = 46;
+    // Buttons (CONTINUE only while a saved tournament is unfinished)
     const s = t();
-    const buttons = [
-      new Button(this, GAME_WIDTH / 2, y0, s.play, () => this.scene.start('TeamSelectScene', { mode: '1p' }), {
-        width: 220, height: 40, fontSize: 20,
-      }),
-      new Button(this, GAME_WIDTH / 2, y0 + gap, s.twoPlayers, () => this.scene.start('TeamSelectScene', { mode: '2p' }), {
-        width: 220,
-      }),
-      new Button(this, GAME_WIDTH / 2, y0 + gap * 2, s.kits, () => this.scene.start('KitEditorScene'), { width: 220 }),
-      new Button(this, GAME_WIDTH / 2, y0 + gap * 3, s.controls, () => this.scene.start('ControlsScene'), { width: 220 }),
-      new Button(this, GAME_WIDTH / 2, y0 + gap * 4, s.settings, () => this.scene.start('SettingsScene'), { width: 220 }),
+    const entries: Array<[string, () => void]> = [
+      [s.play, () => this.scene.start('TeamSelectScene', { mode: '1p' })],
+      [s.twoPlayers, () => this.scene.start('TeamSelectScene', { mode: '2p' })],
+      [s.tournament, () => this.scene.start('TournamentSetupScene')],
+      // The kit editor (KitEditorScene) is switched off for now at the user's request
+      [s.controls, () => this.scene.start('ControlsScene')],
+      [s.settings, () => this.scene.start('SettingsScene')],
     ];
+    if (hasTournamentInProgress()) entries.unshift([s.continueTournament, () => this.scene.start('TournamentScene')]);
+    const y0 = 214;
+    const gap = entries.length > 6 ? 40 : 44;
+    const buttons = entries.map(([label, action], i) => new Button(this, GAME_WIDTH / 2, y0 + gap * i, label, action, i === 0
+      ? { width: 220, height: 40, fontSize: 20 }
+      : { width: 220 }));
     new MenuNavigator(this, buttons).activate(0);
 
-    this.add.text(GAME_WIDTH / 2, y0 + gap * 4 + 38, s.menuHint, textStyle(11, UI.textMuted)).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, y0 + gap * (entries.length - 1) + 36, s.menuHint, textStyle(11, UI.textMuted))
+      .setOrigin(0.5);
     this.add.text(GAME_WIDTH - 10, GAME_HEIGHT - 14, `v${GAME_VERSION}`, textStyle(10, '#7788aa')).setOrigin(1, 0.5);
     this.add.text(10, GAME_HEIGHT - 14, s.menuFooter, textStyle(10, '#7788aa')).setOrigin(0, 0.5);
   }

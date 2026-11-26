@@ -100,3 +100,50 @@ describe('MatchSystem', () => {
     expect(m.getFormattedTime()).toBe('45:30');
   });
 });
+
+describe('MatchSystem extra time (cup)', () => {
+  /** Play a 1-minute match until it leaves 'playing' at full time or the given state. */
+  function toFullTime(m: MatchSystem): void {
+    m.startKickoff();
+    for (let k = 0; k < 20000 && !['fulltime', 'extratime'].includes(m.state); k++) m.update(16);
+  }
+
+  it('a league match ends level at full time', () => {
+    const m = new MatchSystem(1, 0, false);
+    toFullTime(m);
+    expect(m.state).toBe('fulltime');
+    expect(m.data.extraTime).toBe(false);
+  });
+
+  it('a cup match level at full time goes to extra time, then a golden goal ends it', () => {
+    const m = new MatchSystem(1, 0, true);
+    toFullTime(m);
+    expect(m.state).toBe('extratime');
+    expect(m.data.extraTime).toBe(true);
+    run(m, MATCH.halftimeDelay + MATCH.kickoffDelay + 50);
+    expect(m.state).toBe('playing');
+    // Play through extra time still level: the golden goal starts, the clock runs on
+    const etMs = (MATCH.extraTimeMinutes / MATCH.fullTimeMinutes) * 60_000;
+    run(m, etMs + 500);
+    expect(m.state).toBe('playing');
+    expect(m.data.goldenGoal).toBe(true);
+    expect(m.data.time).toBeGreaterThan(MATCH.fullTimeMinutes + MATCH.extraTimeMinutes);
+    m.scoreGoal(1);
+    run(m, MATCH.goalCelebrationDuration + 50);
+    expect(m.state).toBe('fulltime');
+    expect(m.getWinner()).toBe(1);
+  });
+
+  it('a goal in extra time is not golden: the match ends when extra time is over', () => {
+    const m = new MatchSystem(1, 0, true);
+    toFullTime(m);
+    run(m, MATCH.halftimeDelay + MATCH.kickoffDelay + 50);
+    m.scoreGoal(0);
+    run(m, MATCH.goalCelebrationDuration + 50);
+    expect(m.state).toBe('kickoff');
+    for (let k = 0; k < 20000 && m.state !== 'fulltime'; k++) m.update(16);
+    expect(m.state).toBe('fulltime');
+    expect(m.data.goldenGoal).toBe(false);
+    expect(m.data.time).toBe(MATCH.fullTimeMinutes + MATCH.extraTimeMinutes);
+  });
+});

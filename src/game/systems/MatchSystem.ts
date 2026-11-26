@@ -10,6 +10,8 @@ export type MatchState =
   | 'playing'
   | 'goal_scored'
   | 'halftime'
+  /** Break before extra time (cup matches drawn at full time). */
+  | 'extratime'
   | 'fulltime'
   | 'paused';
 
@@ -22,6 +24,10 @@ export interface MatchData {
   lastScorer: number;
   /** Team that kicks off next */
   kickoffTeam: number;
+  /** Extra time has started (cup match drawn at full time). */
+  extraTime: boolean;
+  /** Still level after extra time: the next goal wins. */
+  goldenGoal: boolean;
 }
 
 export class MatchSystem {
@@ -34,6 +40,8 @@ export class MatchSystem {
   constructor(
     matchMinutes: number = MATCH.defaultDuration,
     public readonly firstKickoffTeam = 0,
+    /** Cup match: a draw at full time goes to extra time and then a golden goal. */
+    private readonly mustHaveWinner = false,
   ) {
     this.timeScale = MATCH.fullTimeMinutes / (Math.max(0.1, matchMinutes) * 60);
     this.data = {
@@ -43,6 +51,8 @@ export class MatchSystem {
       state: 'kickoff',
       lastScorer: -1,
       kickoffTeam: firstKickoffTeam,
+      extraTime: false,
+      goldenGoal: false,
     };
   }
 
@@ -69,14 +79,39 @@ export class MatchSystem {
           d.half = 2;
           d.state = 'halftime';
           this.stateTimer = MATCH.halftimeDelay;
-        } else if (d.time >= MATCH.fullTimeMinutes) {
+        } else if (!d.extraTime && d.time >= MATCH.fullTimeMinutes) {
           d.time = MATCH.fullTimeMinutes;
-          d.state = 'fulltime';
+          if (this.mustHaveWinner && this.getWinner() === -1) {
+            d.extraTime = true;
+            d.state = 'extratime';
+            this.stateTimer = MATCH.halftimeDelay;
+          } else {
+            d.state = 'fulltime';
+          }
+        } else if (d.extraTime && !d.goldenGoal && d.time >= MATCH.fullTimeMinutes + MATCH.extraTimeMinutes) {
+          // End of extra time: a winner ends the match, a draw goes on until the next goal
+          if (this.getWinner() === -1) d.goldenGoal = true;
+          else {
+            d.time = MATCH.fullTimeMinutes + MATCH.extraTimeMinutes;
+            d.state = 'fulltime';
+          }
         }
         break;
 
       case 'goal_scored':
         if (this.stateTimer <= 0) {
+          if (d.goldenGoal) {
+            d.state = 'fulltime'; // the golden goal decided it
+          } else {
+            d.state = 'kickoff';
+            this.stateTimer = MATCH.kickoffDelay;
+          }
+        }
+        break;
+
+      case 'extratime':
+        if (this.stateTimer <= 0) {
+          d.kickoffTeam = this.firstKickoffTeam;
           d.state = 'kickoff';
           this.stateTimer = MATCH.kickoffDelay;
         }

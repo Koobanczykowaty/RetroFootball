@@ -12,6 +12,8 @@ import { MatchScene } from './game/scenes/MatchScene';
 import { ControlsScene } from './game/scenes/ControlsScene';
 import { SettingsScene } from './game/scenes/SettingsScene';
 import { KitEditorScene } from './game/scenes/KitEditorScene';
+import { TournamentSetupScene } from './game/scenes/TournamentSetupScene';
+import { TournamentScene } from './game/scenes/TournamentScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.CANVAS,
@@ -29,7 +31,10 @@ const config: Phaser.Types.Core.GameConfig = {
     height: GAME_HEIGHT,
     fullscreenTarget: 'game-container',
   },
-  scene: [BootScene, MenuScene, TeamSelectScene, MatchScene, ControlsScene, SettingsScene, KitEditorScene],
+  scene: [
+    BootScene, MenuScene, TeamSelectScene, MatchScene, ControlsScene, SettingsScene, KitEditorScene,
+    TournamentSetupScene, TournamentScene,
+  ],
   // The ?sim test mode runs in headless browsers where requestAnimationFrame may not tick
   fps: {
     target: 60,

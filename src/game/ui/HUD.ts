@@ -87,7 +87,7 @@ export class HUD {
       this.lastScore = score;
     }
     this.timeText.setText(formattedTime);
-    this.halfText.setText(t().hudHalf(data.half));
+    this.halfText.setText(data.extraTime ? t().hudExtraTime : t().hudHalf(data.half));
     this.muteText.setVisible(muted);
   }
 

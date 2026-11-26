@@ -39,6 +39,8 @@ import { PauseMenu } from '../ui/PauseMenu';
 import { BotInput } from '../debug/BotInput';
 import { SimReport, recordSimMatch } from '../debug/SimReport';
 import { HumanContext, HumanController } from './HumanController';
+import { loadTournament, recordAndSave } from '../config/TournamentStore';
+import { recordResult } from '../logic/Tournament';
 
 /** '1p' Quick Match, '2p' P1 against P2, 'coop' P1 and P2 together against the CPU. */
 export type GameMode = '1p' | '2p' | 'coop';
@@ -61,6 +63,22 @@ export interface MatchSceneData {
   simTwoPlayer?: boolean;
   /** In simulation, co-op mode with two bots on team 0 against the CPU. */
   simCoop?: boolean;
+  /** In simulation, play as a cup match (a draw goes to extra time and a golden goal). */
+  simCup?: boolean;
+  /** A tournament match (see TournamentScene); the result is saved at full time. */
+  tournament?: TournamentMatch;
+}
+
+/** A tournament fixture to play: home team on side 0. */
+export interface TournamentMatch {
+  /** Index into Tournament.fixtures. */
+  fixture: number;
+  home: string;
+  away: string;
+  /** Sides played by people: none (watch), one (vs CPU) or both (P1 home, P2 away). */
+  humanSides: number[];
+  /** Cup match: must have a winner. */
+  cup: boolean;
 }
 
 /** Dispatch a synthetic key press on window (used by the simulation test). */
@@ -97,6 +115,8 @@ export class MatchScene extends Phaser.Scene {
   /** Goal waiting for its celebration while the slow motion runs. */
   private pendingGoal: { team: number; ownGoal: boolean } | null = null;
   private slowMoMs = 0;
+  /** The golden-goal banner was shown (cup match level after extra time). */
+  private goldenGoalShown = false;
   private stadium: StadiumId = 'narodowy';
   /** The two teams of this match by side, with the user's kits. */
   private teams!: [TeamConfig, TeamConfig];
@@ -115,7 +135,12 @@ export class MatchScene extends Phaser.Scene {
     this.sceneData = { ...data };
     this.mode = data.sim ? (data.simTwoPlayer ? '2p' : data.simCoop ? 'coop' : '1p') : (data.mode ?? '1p');
     const keyboardTeam = data.playerTeam ?? 0;
-    if (data.sim && data.simTwoPlayer) this.humanTeams = [0, 1];
+    const tour = data.tournament;
+    if (tour) {
+      // One human plays against the CPU like Quick Match; two play each other (P1 = home)
+      this.humanTeams = [...tour.humanSides].sort();
+      this.mode = this.humanTeams.length === 2 ? '2p' : '1p';
+    } else if (data.sim && data.simTwoPlayer) this.humanTeams = [0, 1];
     else if (data.sim && data.simCoop) this.humanTeams = [0, 0];
     else if (data.sim) this.humanTeams = data.simHuman ? [0] : [];
     else if (this.mode === '2p') this.humanTeams = [keyboardTeam, 1 - keyboardTeam];
@@ -127,6 +152,7 @@ export class MatchScene extends Phaser.Scene {
     this.pendingGoal = null;
     this.slowMoMs = 0;
     this.bot = null;
+    this.goldenGoalShown = false;
   }
 
   create(): void {
@@ -139,7 +165,9 @@ export class MatchScene extends Phaser.Scene {
     // The two teams (with the user's kits) and their match sprites, before any player exists
     // (the simulation picks two random teams, so every team gets played)
     let ids = [settings.teamP1, settings.teamP2];
-    if (this.sceneData.sim) {
+    if (this.sceneData.tournament) {
+      ids = [this.sceneData.tournament.home, this.sceneData.tournament.away];
+    } else if (this.sceneData.sim) {
       const a = TEAMS[Math.floor(Math.random() * TEAMS.length)].id;
       ids = [a, cycleTeam(a, 1 + Math.floor(Math.random() * (TEAMS.length - 1)))];
     }
@@ -185,7 +213,8 @@ export class MatchScene extends Phaser.Scene {
     this.profiles = [profileFor(0), profileFor(1)];
 
     const minutes = this.sceneData.sim ? (this.sceneData.simMinutes ?? 1) : settings.matchMinutes;
-    this.match = new MatchSystem(minutes, Math.random() < 0.5 ? 0 : 1);
+    const cup = this.sceneData.tournament?.cup ?? !!this.sceneData.simCup;
+    this.match = new MatchSystem(minutes, Math.random() < 0.5 ? 0 : 1, cup);
     this.actions = new ActionSystem(this.world);
     this.ai = new AISystem(this.world, this.actions);
     this.ai.onFieldPass = (passer) => this.startSupportRun(passer, 'ai');
@@ -314,6 +343,16 @@ export class MatchScene extends Phaser.Scene {
     switch (state) {
       case 'playing':
         this.simulate(dt);
+        // Still level after extra time: announce the golden goal once
+        if (this.match.data.goldenGoal && !this.goldenGoalShown) {
+          this.goldenGoalShown = true;
+          this.sim?.event('goldenGoal');
+          this.overlay.showBanner(t().goldenGoal, t().nextGoalWins);
+          soundManager.whistle();
+          this.time.delayedCall(2200, () => {
+            if (this.match.state === 'playing') this.overlay.hideBanner();
+          });
+        }
         break;
       case 'goal_scored':
         for (const p of this.world.players) p.updateIdle(dt);
@@ -321,6 +360,7 @@ export class MatchScene extends Phaser.Scene {
         break;
       case 'kickoff':
       case 'halftime':
+      case 'extratime':
       case 'fulltime':
         for (const p of this.world.players) p.updateIdle(dt);
         this.collisions.placeCarriedBall();
@@ -475,8 +515,8 @@ export class MatchScene extends Phaser.Scene {
     switch (to) {
       case 'kickoff':
         if (from === 'halftime') this.changeEnds();
-        // Everyone gets their breath back for the restart after a goal or half time
-        if (from === 'goal_scored' || from === 'halftime') {
+        // Everyone gets their breath back for the restart after a goal, half time or before extra time
+        if (from === 'goal_scored' || from === 'halftime' || from === 'extratime') {
           for (const q of this.world.players) q.stamina = 1;
         }
         this.resetPositions();
@@ -491,7 +531,10 @@ export class MatchScene extends Phaser.Scene {
           this.sim.event(inOwnHalf && keeper0Right ? 'swapOk' : 'swapWrong');
         }
         this.overlay.setDim(0);
-        this.overlay.showBanner(t().kickOffBanner, from === 'halftime' ? t().secondHalf : '');
+        this.overlay.showBanner(
+          t().kickOffBanner,
+          from === 'halftime' ? t().secondHalf : from === 'extratime' ? t().extraTime : '',
+        );
         soundManager.whistle();
         break;
       case 'playing':
@@ -504,6 +547,14 @@ export class MatchScene extends Phaser.Scene {
         this.overlay.showBanner(t().halfTime, `${this.teams[0].shortName} ${a} - ${b} ${this.teams[1].shortName}`);
         soundManager.whistleLong();
         this.time.delayedCall(1600, () => soundManager.jingle('halftime'));
+        break;
+      }
+      case 'extratime': {
+        const [a, b] = this.match.data.score;
+        this.sim?.event('extraTime');
+        this.overlay.setDim(0.35);
+        this.overlay.showBanner(t().extraTime, `${this.teams[0].shortName} ${a} - ${b} ${this.teams[1].shortName}`);
+        soundManager.whistleLong();
         break;
       }
       case 'fulltime':
@@ -621,6 +672,7 @@ export class MatchScene extends Phaser.Scene {
     const jingle = winner === -1 ? 'draw' : lost ? 'lose' : 'win';
     this.time.delayedCall(1600, () => soundManager.jingle(jingle));
 
+    if (d.extraTime) resultText = `${resultText} (${t().afterExtraTimeShort})`;
     const totalPoss = s.possessionMs[0] + s.possessionMs[1] || 1;
     const poss0 = Math.round((s.possessionMs[0] / totalPoss) * 100);
     const info: FulltimeInfo = {
@@ -636,7 +688,14 @@ export class MatchScene extends Phaser.Scene {
         [`${s.tackles[0]}`, t().statTackles, `${s.tackles[1]}`],
       ],
     };
-    this.overlay.showFulltime(info, () => this.restartMatch(), () => this.scene.start('MenuScene'));
+    if (this.sceneData.tournament) {
+      // Save the result; the first button goes back to the tournament
+      this.recordTournamentResult(this.sceneData.tournament);
+      this.overlay.showFulltime(info, () => this.scene.start('TournamentScene'), () => this.scene.start('MenuScene'),
+        t().continueButton);
+    } else {
+      this.overlay.showFulltime(info, () => this.restartMatch(), () => this.scene.start('MenuScene'));
+    }
 
     if (this.sim) {
       if (this.ai.feintBites) this.sim.add('feintBites', this.ai.feintBites);
@@ -648,6 +707,17 @@ export class MatchScene extends Phaser.Scene {
         this.time.delayedCall(300, () => this.scene.restart({ ...this.sceneData, simIndex: next }));
       }
     }
+  }
+
+  /** Store this match's result in the saved tournament (home = side 0). */
+  private recordTournamentResult(match: TournamentMatch): void {
+    const tour = loadTournament();
+    if (!tour) return;
+    const f = tour.fixtures[match.fixture];
+    // Only if the saved tournament still has this fixture waiting
+    if (!f || f.away === null || tour.teams[f.home].id !== match.home || tour.teams[f.away].id !== match.away) return;
+    const d = this.match.data;
+    recordAndSave(tour, (x) => recordResult(x, match.fixture, [d.score[0], d.score[1]], d.extraTime));
   }
 
   /** Second half: teams swap ends; formation homes are mirrored accordingly. */

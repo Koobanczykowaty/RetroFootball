@@ -82,11 +82,11 @@ const failures = [];
 // Headers / volleys over the whole run (rare in a single short AI match)
 let aerialTotal = 0;
 
-async function runSim(label, human, twoPlayer = false, coop = false) {
+async function runSim(label, human, twoPlayer = false, coop = false, cup = false) {
   // Each match: real minutes + kickoff/halftime/goal pauses (each goal adds ~3.5 s)
   const budget = Math.ceil(matches * (minutes * 60 + 60) * 1000);
   console.log(`[${label}] ${matches} match(es) of ${minutes} min`);
-  const query = `?sim=${matches}&minutes=${minutes}${human ? '&human=1' : ''}${twoPlayer ? '&p2=1' : ''}${coop ? '&coop=1' : ''}`;
+  const query = `?sim=${matches}&minutes=${minutes}${human ? '&human=1' : ''}${twoPlayer ? '&p2=1' : ''}${coop ? '&coop=1' : ''}${cup ? '&cup=1' : ''}`;
   const dom = await runBrowser(browser, url + query, budget);
 
   const m = dom.match(/<pre id="sim-result"[^>]*>([\s\S]*?)<\/pre>/);
@@ -109,6 +109,8 @@ async function runSim(label, human, twoPlayer = false, coop = false) {
     if (!r.states.includes('halftime')) failures.push(`${tag}: never reached half time`);
     if (!r.events.swapOk || r.events.swapWrong) failures.push(`${tag}: teams did not change ends correctly at half time`);
     if (r.states[r.states.length - 1] !== 'fulltime') failures.push(`${tag}: did not end at full time`);
+    // A cup match always has a winner (extra time, then a golden goal)
+    if (cup && r.score[0] === r.score[1]) failures.push(`${tag}: cup match ended in a draw`);
     if (s.passes[0] + s.passes[1] === 0) failures.push(`${tag}: no passes were made`);
     if (r.events.overspeed) {
       failures.push(`${tag}: players exceeded sprint speed in ${r.events.overspeed} frames (max ${r.events.maxSpeed} px/s)`);
@@ -204,6 +206,7 @@ await runSim('AI vs AI', false);
 await runSim('bot as human', true);
 await runSim('2 players (two bots)', false, true);
 await runSim('co-op (two bots on one team)', false, false, true);
+await runSim('cup match (extra time)', false, false, false, true);
 await server.close();
 
 if (!aerialTotal) failures.push('no header or volley was struck in the whole run');

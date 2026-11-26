@@ -49,6 +49,7 @@ export class BootScene extends Phaser.Scene {
         simHuman: params.get('human') === '1',
         simTwoPlayer: params.get('p2') === '1',
         simCoop: params.get('coop') === '1',
+        simCup: params.get('cup') === '1',
       };
       this.scene.start('MatchScene', data);
       return;

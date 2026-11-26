@@ -210,6 +210,11 @@ export const MATCH = {
   goalSlowMoZoom: 1.6,
   kickoffDelay: 1200,
   halftimeDelay: 2500,
+  /**
+   * Cup matches drawn at full time: extra time of this many game minutes
+   * (same clock speed as the match), then a golden goal (next goal wins).
+   */
+  extraTimeMinutes: 30,
 };
 
 // ---- AI ----
