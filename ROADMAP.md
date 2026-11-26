@@ -44,7 +44,7 @@ Docelowa struktura (jedno repozytorium, kilka pakietów):
 Model sieciowy, jeden dla LAN i online: jedna maszyna (gospodarz) liczy mecz, gracze wysyłają tylko wejście i dostają stan; własny zawodnik jest przewidywany lokalnie, żeby nie czuć opóźnienia. W LAN gospodarzem jest aplikacja desktop jednego z graczy (gry w sieci domowej wykrywają się same przez UDP; przeglądarka tego nie potrafi, więc LAN jest tylko na desktopie). Online gospodarzem jest serwer w chmurze.
 
 Etapy:
-1. **Rdzeń symulacji**: wydzielenie logiki meczu (zawodnicy, piłka, AI, kolizje, zegar) od renderowania, seedowany RNG. Gra wygląda tak samo; symulacje CI pilnują, że nic się nie zepsuło. Fundament pod wszystko dalej (patrz niżej).
+1. **Rdzeń symulacji**: wydzielenie logiki meczu (zawodnicy, piłka, AI, kolizje, zegar) od renderowania, seedowany RNG. Gra wygląda tak samo; symulacje CI pilnują, że nic się nie zepsuło. Fundament pod wszystko dalej (patrz niżej). **Zrobione na gałęzi `core`, czeka na akceptację:** rdzeń w `src/core` (bez Phasera, sterowanie człowieka też w rdzeniu), seedowany RNG, test determinizmu (cały mecz liczony w Node bez przeglądarki). Do dokończenia w kolejnych etapach: stan zmiany stron per mecz (serwer z kilkoma meczami naraz) i stały krok czasu (sieć, powtórki).
 2. **Aplikacja desktop** (Electron), jeszcze bez sieci. Electron, bo ma wbudowany Node (serwer LAN i wykrywanie gier w tym samym języku); Tauri jest lżejszy, ale sieć trzeba by pisać w Ruście.
 3. **Multiplayer LAN** na desktopie: gospodarz u jednego z graczy, automatyczne wykrywanie gier w sieci. Najprostsza sieć do przetestowania (mały ping, bez serwera).
 4. **Multiplayer online**: serwer w chmurze, pokoje prywatne i matchmaking; przeglądarka i desktop łączą się z tym samym serwerem.

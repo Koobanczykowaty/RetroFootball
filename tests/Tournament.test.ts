@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createTournament, cupFirstRound, fixtureWinner, humanNumbers, leagueFixtures, nextFixtureIndex, parseTournament,
   recordResult, simulateResult, standings, Tournament, TournamentTeam,
-} from '../src/game/logic/Tournament';
+} from '../src/core/logic/Tournament';
 
 /** Deterministic pseudo-random numbers for repeatable tests. */
 function seeded(seed = 1): () => number {

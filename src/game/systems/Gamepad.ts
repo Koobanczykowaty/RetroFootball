@@ -15,7 +15,7 @@
 // they can be unit-tested without a browser.
 // ============================================================
 
-import { EMPTY_RAW, InputSource, RawInput } from './InputTypes';
+import { EMPTY_RAW, InputSource, RawInput } from '../../core/systems/InputTypes';
 
 /** Indices of the W3C "standard" gamepad layout (Xbox names). */
 export const PAD = {

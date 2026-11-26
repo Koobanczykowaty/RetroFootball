@@ -6,7 +6,7 @@
 import Phaser from 'phaser';
 import { AssetGenerator } from '../assets/AssetGenerator';
 import { loadPixelFont } from '../assets/PixelFont';
-import { DIFFICULTIES, Difficulty, GAME_SPEEDS, GameSpeed } from '../config/GameplayConfig';
+import { DIFFICULTIES, Difficulty, GAME_SPEEDS, GameSpeed } from '../../core/config/GameplayConfig';
 import { ASSIST_MODES, AssistMode, settings } from '../config/Settings';
 import { initSimGlobal } from '../debug/SimReport';
 import { runUiFlowTest } from '../debug/UiFlowTest';

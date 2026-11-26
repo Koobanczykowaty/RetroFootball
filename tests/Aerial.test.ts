@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AERIAL, BALL } from '../src/game/config/GameplayConfig';
-import { aerialZone, canStrikeNow, predictAerialContact, timingQuality } from '../src/game/logic/Aerial';
+import { AERIAL, BALL } from '../src/core/config/GameplayConfig';
+import { aerialZone, canStrikeNow, predictAerialContact, timingQuality } from '../src/core/logic/Aerial';
 
 describe('aerial zones', () => {
   it('feet below the volley height, then volley, header, and over the head', () => {

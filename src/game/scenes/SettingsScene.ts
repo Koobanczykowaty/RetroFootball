@@ -3,7 +3,7 @@
 // ============================================================
 
 import Phaser from 'phaser';
-import { DIFFICULTIES, Difficulty, GAME_SPEEDS, GAME_WIDTH, GAME_HEIGHT, GameSpeed } from '../config/GameplayConfig';
+import { DIFFICULTIES, Difficulty, GAME_SPEEDS, GAME_WIDTH, GAME_HEIGHT, GameSpeed } from '../../core/config/GameplayConfig';
 import { ASSIST_MODES, AssistMode, LANGUAGES, Language, saveSettings, settings } from '../config/Settings';
 import { applyPageLanguage, t } from '../config/i18n';
 import { soundManager } from '../systems/SoundManager';

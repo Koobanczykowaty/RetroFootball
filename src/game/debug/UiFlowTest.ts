@@ -7,7 +7,7 @@
 
 import Phaser from 'phaser';
 import { saveTournament } from '../config/TournamentStore';
-import { createTournament, nextFixtureIndex } from '../logic/Tournament';
+import { createTournament, nextFixtureIndex } from '../../core/logic/Tournament';
 import { writeSimResult } from './SimReport';
 
 /** Menu → 2 PLAYERS → back → PLAY → back → 2 PLAYERS → match → menu → PLAY → match → controls, settings, kits → co-op setup → co-op match. */

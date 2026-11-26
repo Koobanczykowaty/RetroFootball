@@ -1,47 +1,42 @@
 // ============================================================
-// MatchScene — Orchestrates a match: builds the world, runs the
-// per-frame pipeline (human input → AI → movement → collisions →
-// ball → goal check) and reacts to match-state transitions.
-// Gameplay rules live in the systems; human control lives in
-// HumanController (one per human: Quick Match = 1, 2 PLAYERS = 2, on
-// opposite teams in versus or on the same team in co-op).
+// MatchScene — The client of one match. The match itself runs in the
+// core (core/MatchSimulation: no Phaser). This scene sets the match
+// up (teams, kits, stadium, formations, humans and their devices),
+// feeds the simulation each frame with the elapsed time and every
+// human's raw input, draws the world (PlayerView, BallView, HumanHud,
+// HUD) and turns the simulation's events into sounds, banners,
+// camera effects and the full-time panel. Pause menu, tournament
+// results and the scripted simulation tests live here too.
 // ============================================================
 
 import Phaser from 'phaser';
 import {
-  AI_PROFILES, AIProfile, FORMATION_IDS, FORMATIONS, FormationId, GAME_HEIGHT, GAME_SPEED_SCALE, GAME_WIDTH, MATCH,
-  PLAYER,
-  ROLE_TRAITS, STADIUMS, StadiumId, TEAMMATE_PROFILE, TEAMS, TeamConfig,
-} from '../config/GameplayConfig';
+  AI_PROFILES, FORMATION_IDS, FORMATIONS, FormationId, GAME_HEIGHT, GAME_SPEED_SCALE, GAME_WIDTH, MATCH, STADIUMS, StadiumId,
+  TEAMMATE_PROFILE, TEAMS, TeamConfig,
+} from '../../core/config/GameplayConfig';
+import type { MatchEvent } from '../../core/MatchEvents';
+import { MatchSimulation } from '../../core/MatchSimulation';
+import { recordResult } from '../../core/logic/Tournament';
+import type { MatchState } from '../../core/systems/MatchSystem';
+import type { InputSource, RawInput } from '../../core/systems/InputTypes';
+import { AssetGenerator } from '../assets/AssetGenerator';
+import { BotInput } from '../debug/BotInput';
+import { SimReport, recordSimMatch } from '../debug/SimReport';
 import { saveSettings, settings } from '../config/Settings';
 import { cycleTeam, setMatchTeams, teamWithKits } from '../config/Teams';
-import { AssetGenerator } from '../assets/AssetGenerator';
 import { t } from '../config/i18n';
-import { Ball } from '../entities/Ball';
+import { loadTournament, recordAndSave } from '../config/TournamentStore';
 import { Pitch } from '../entities/Pitch';
-import { Player } from '../entities/Player';
-import { createStats, MatchWorld } from '../logic/MatchWorld';
-import {
-  PITCH_CX, PITCH_CY, attackDir, formationPosition, kickoffPositions, kickoffTakerIndex, ownGoalX, setSidesSwapped,
-  teamDefendingSide,
-} from '../logic/PitchGeometry';
-import { ActionSystem } from '../systems/ActionSystem';
-import { AISystem } from '../systems/AISystem';
-import { CollisionSystem } from '../systems/CollisionSystem';
 import { GamepadInput, PAD, PadEdges, PadState, connectedPads, padForPlayer } from '../systems/Gamepad';
 import { InputSystem, KeyboardInput } from '../systems/InputSystem';
-import type { InputSource } from '../systems/InputTypes';
-import { MatchState, MatchSystem } from '../systems/MatchSystem';
 import { soundManager } from '../systems/SoundManager';
 import { HUD } from '../ui/HUD';
 import { FulltimeInfo, MatchOverlay } from '../ui/MatchOverlay';
 import { createEventDeduper } from '../ui/MenuNavigator';
 import { PauseMenu } from '../ui/PauseMenu';
-import { BotInput } from '../debug/BotInput';
-import { SimReport, recordSimMatch } from '../debug/SimReport';
-import { HumanContext, HumanController } from './HumanController';
-import { loadTournament, recordAndSave } from '../config/TournamentStore';
-import { recordResult } from '../logic/Tournament';
+import { BallView } from '../view/BallView';
+import { HumanHud } from '../view/HumanHud';
+import { PlayerView } from '../view/PlayerView';
 
 /** '1p' Quick Match, '2p' P1 against P2, 'coop' P1 and P2 together against the CPU. */
 export type GameMode = '1p' | '2p' | 'coop';
@@ -66,6 +61,8 @@ export interface MatchSceneData {
   simCoop?: boolean;
   /** In simulation, play as a cup match (a draw goes to extra time and a golden goal). */
   simCup?: boolean;
+  /** Fixed seed for the match (testing); otherwise a random one. */
+  seed?: number;
   /** A tournament match (see TournamentScene); the result is saved at full time. */
   tournament?: TournamentMatch;
 }
@@ -82,6 +79,11 @@ export interface TournamentMatch {
   cup: boolean;
 }
 
+/** A fresh random seed for a new match (the core itself never uses Math.random). */
+function randomSeed(): number {
+  return Math.floor(Math.random() * 0x100000000) >>> 0;
+}
+
 /** Dispatch a synthetic key press on window (used by the simulation test). */
 function pressKey(code: string, keyCode: number): void {
   for (const type of ['keydown', 'keyup']) {
@@ -93,12 +95,10 @@ function pressKey(code: string, keyCode: number): void {
 }
 
 export class MatchScene extends Phaser.Scene {
-  private world!: MatchWorld;
-  private ball!: Ball;
-  private match!: MatchSystem;
-  private actions!: ActionSystem;
-  private collisions!: CollisionSystem;
-  private ai!: AISystem;
+  private simulation!: MatchSimulation;
+  private playerViews: PlayerView[] = [];
+  private ballView!: BallView;
+  private huds: HumanHud[] = [];
   private hud!: HUD;
   private overlay!: MatchOverlay;
   private pauseMenu!: PauseMenu;
@@ -108,16 +108,10 @@ export class MatchScene extends Phaser.Scene {
   private mode: GameMode = '1p';
   /** Teams controlled by humans, in player order (P1 first; the same team twice in co-op). */
   private humanTeams: number[] = [];
-  private humans: HumanController[] = [];
-  private profiles!: [AIProfile, AIProfile];
-  private lastState: MatchState = 'kickoff';
+  /** Each human's input devices, in player order. */
+  private devices: InputSystem[] = [];
   private resumedAt = 0;
   private wasPowerShot = false;
-  /** Goal waiting for its celebration while the slow motion runs. */
-  private pendingGoal: { team: number; ownGoal: boolean } | null = null;
-  private slowMoMs = 0;
-  /** The golden-goal banner was shown (cup match level after extra time). */
-  private goldenGoalShown = false;
   private stadium: StadiumId = 'narodowy';
   /** The two teams of this match by side, with the user's kits. */
   private teams!: [TeamConfig, TeamConfig];
@@ -125,8 +119,6 @@ export class MatchScene extends Phaser.Scene {
   private bot: BotInput | null = null;
   /** Controller Menu/View presses (pause, mute) — any controller. */
   private readonly padEdges = new PadEdges();
-  /** Formation of each team in this match. */
-  private formations: [FormationId, FormationId] = ['2-3', '2-3'];
 
   constructor() {
     super({ key: 'MatchScene' });
@@ -147,13 +139,15 @@ export class MatchScene extends Phaser.Scene {
     else if (this.mode === '2p') this.humanTeams = [keyboardTeam, 1 - keyboardTeam];
     else if (this.mode === 'coop') this.humanTeams = [keyboardTeam, keyboardTeam];
     else this.humanTeams = [keyboardTeam];
-    this.humans = [];
-    this.lastState = 'kickoff';
+    this.devices = [];
+    this.huds = [];
+    this.playerViews = [];
     this.wasPowerShot = false;
-    this.pendingGoal = null;
-    this.slowMoMs = 0;
     this.bot = null;
-    this.goldenGoalShown = false;
+  }
+
+  private get world() {
+    return this.simulation.world;
   }
 
   create(): void {
@@ -161,8 +155,6 @@ export class MatchScene extends Phaser.Scene {
     this.tweens.resumeAll();
     // The goal zoom must not show anything outside the game area
     this.cameras.main.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
-    // First half: team 0 attacks right (also resets after a restart mid-match)
-    setSidesSwapped(false);
     // The two teams (with the user's kits) and their match sprites, before any player exists
     // (the simulation picks two random teams, so every team gets played)
     let ids = [settings.teamP1, settings.teamP2];
@@ -181,106 +173,87 @@ export class MatchScene extends Phaser.Scene {
       ? (forced as StadiumId)
       : STADIUMS[Math.floor(Math.random() * STADIUMS.length)];
     new Pitch(this, this.stadium);
-    this.ball = new Ball(this, PITCH_CX, PITCH_CY, this.stadium === 'blokowisko' ? 'ball_rag' : 'ball');
 
     // Humans use their chosen formations; a CPU team picks one at random each match
-    const randomFormation = () => FORMATION_IDS[Math.floor(Math.random() * FORMATION_IDS.length)];
     // (co-op: one shared formation, settings.formation)
+    const randomFormation = () => FORMATION_IDS[Math.floor(Math.random() * FORMATION_IDS.length)];
     const formationFor = (team: number): FormationId => {
       const playerIndex = this.humanTeams.indexOf(team);
       if (playerIndex === 0) return settings.formation;
       if (playerIndex === 1) return settings.formationP2;
       return randomFormation();
     };
-    this.formations = [formationFor(0), formationFor(1)];
-
-    const teams: [Player[], Player[]] = [[], []];
-    for (let t = 0; t < 2; t++) {
-      FORMATIONS[this.formations[t]].forEach((pos, i) => {
-        const home = formationPosition(t, pos);
-        teams[t].push(new Player(this, t * 10 + i, t, pos, home.x, home.y));
-      });
-    }
-    this.world = {
-      ball: this.ball,
-      players: [...teams[0], ...teams[1]],
-      teams,
-      controlled: [[], []],
-      stats: createStats(),
-    };
-
     const difficulty = AI_PROFILES[settings.difficulty];
     const profileFor = (team: number) => (this.humanTeams.includes(team) ? TEAMMATE_PROFILE : difficulty);
-    this.profiles = [profileFor(0), profileFor(1)];
 
-    const minutes = this.sceneData.sim ? (this.sceneData.simMinutes ?? 1) : settings.matchMinutes;
-    const cup = this.sceneData.tournament?.cup ?? !!this.sceneData.simCup;
-    this.match = new MatchSystem(minutes, Math.random() < 0.5 ? 0 : 1, cup);
-    this.actions = new ActionSystem(this.world);
-    this.ai = new AISystem(this.world, this.actions);
-    this.ai.onFieldPass = (passer) => this.startSupportRun(passer, 'ai');
-    this.collisions = new CollisionSystem(this.world, {
-      onPossession: (p, prev) => this.onPossession(p, prev),
-      onSave: (gk) => {
-        this.world.stats.onTarget[1 - gk.teamIndex]++;
-        this.sim?.event('save');
-      },
-      onTackle: () => this.sim?.event('tackle'),
+    if (this.sceneData.sim) this.sim = new SimReport(this.sceneData.simIndex ?? 0);
+
+    // The match itself (core)
+    this.simulation = new MatchSimulation({
+      seed: this.sceneData.seed ?? randomSeed(),
+      minutes: this.sceneData.sim ? (this.sceneData.simMinutes ?? 1) : settings.matchMinutes,
+      mustHaveWinner: this.sceneData.tournament?.cup ?? !!this.sceneData.simCup,
+      formations: [formationFor(0), formationFor(1)],
+      profiles: [profileFor(0), profileFor(1)],
+      humans: this.humanTeams.map((team, i) => ({
+        team,
+        marker: i === 1 ? 'p2' : 'p1',
+        passAssist: settings.passAssist,
+        lobAssist: settings.lobAssist,
+      })),
+      speedScale: GAME_SPEED_SCALE[settings.gameSpeed],
+      telemetry: this.sim,
     });
-    this.collisions.gkSaveChance = [this.profiles[0].gkSaveChance, this.profiles[1].gkSaveChance];
-    this.collisions.tackleSuccess = [this.profiles[0].tackleSuccess, this.profiles[1].tackleSuccess];
 
-    // Humans and their input devices
-    const ctx: HumanContext = {
-      scene: this,
-      world: this.world,
-      actions: this.actions,
-      matchState: () => this.match.state,
-      sim: () => this.sim,
-      startSupportRun: (p) => this.startSupportRun(p, 'human'),
-    };
+    // Views
+    this.playerViews = this.world.players.map((p) => new PlayerView(this, p));
+    this.ballView = new BallView(this, this.world.ball, this.stadium === 'blokowisko' ? 'ball_rag' : 'ball');
+
+    // Each human's input devices
     const inputFrom = (...sources: InputSource[]) => {
       const input = new InputSystem();
       for (const s of sources) input.addSource(s);
       return input;
     };
-    this.humans = this.humanTeams.map((team, i) => {
-      let input: InputSystem;
+    this.devices = this.humanTeams.map((team, i) => {
       if (this.sceneData.simTwoPlayer || this.sceneData.simCoop) {
-        // Test: one bot per human, each through its own HumanController
-        input = inputFrom(new BotInput(() => this.world, undefined, team, () => this.humans[i]?.controlled ?? null));
-      } else if (this.mode === '2p' || this.mode === 'coop') {
+        // Test: one bot per human, each through its own HumanControl
+        return inputFrom(new BotInput(() => this.world, undefined, team,
+          () => this.simulation.humans[i]?.controlled ?? null));
+      }
+      if (this.mode === '2p' || this.mode === 'coop') {
         // P1 = keyboard (+ pad 1 when two pads are connected), P2 = pad 2 (or pad 1
         // when only one is connected). Re-evaluated every frame, so plugging a pad
         // in mid-match works.
-        input = i === 0
+        return i === 0
           ? inputFrom(new KeyboardInput(this), new GamepadInput(() => padForPlayer(connectedPads(), 1)))
           : inputFrom(new GamepadInput(() => padForPlayer(connectedPads(), 2)));
-      } else {
-        input = inputFrom(new KeyboardInput(this), new GamepadInput());
-        if (this.sceneData.simHuman) {
-          this.bot = new BotInput(() => this.world, () => this.sim?.event('keeperHeldShoot'));
-          input.addSource(this.bot);
-        }
       }
-      return new HumanController(ctx, team, input, i === 1 ? 'p2' : 'p1');
+      const input = inputFrom(new KeyboardInput(this), new GamepadInput());
+      if (this.sceneData.simHuman) {
+        this.bot = new BotInput(() => this.world, () => this.sim?.event('keeperHeldShoot'));
+        input.addSource(this.bot);
+      }
+      return input;
     });
+    this.huds = this.simulation.humans.map((h) => new HumanHud(this, this.simulation, h));
     this.padEdges.sync();
 
     // UI
-    const tags = this.humans.map((h, i) => ({ team: h.team, label: `P${i + 1}` }));
-    this.hud = new HUD(this, tags, this.mode !== '2p' && this.humans.length > 0 ? settings.difficulty : undefined);
+    const tags = this.simulation.humans.map((h, i) => ({ team: h.team, label: `P${i + 1}` }));
+    this.hud = new HUD(this, tags, this.mode !== '2p' && this.humanTeams.length > 0 ? settings.difficulty : undefined);
     this.overlay = new MatchOverlay(this);
+    const humans = this.simulation.humans;
     this.pauseMenu = new PauseMenu(this, {
       onResume: () => this.resume(),
       onRestart: () => this.restartMatch(),
       onMainMenu: () => this.scene.start('MenuScene'),
       // Co-op: one row for the shared formation (either player can change it)
-      formations: (this.mode === 'coop' ? this.humans.slice(0, 1) : this.humans).map((h, i) => ({
+      formations: (this.mode === 'coop' ? humans.slice(0, 1) : humans).map((h, i) => ({
         label: this.mode === '2p' ? t().playerFormation(i + 1) : t().formation,
-        value: this.formations[h.team],
+        value: this.simulation.formations[h.team],
         onChange: (id: FormationId) => {
-          this.changeFormation(h.team, id);
+          this.simulation.changeFormation(h.team, id);
           // Also used for the next matches
           if (i === 0) settings.formation = id;
           else settings.formationP2 = id;
@@ -297,13 +270,9 @@ export class MatchScene extends Phaser.Scene {
     this.game.events.on(Phaser.Core.Events.BLUR, this.onBlur, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.onShutdown, this);
 
-    if (this.sceneData.sim) {
-      this.sim = new SimReport(this.sceneData.simIndex ?? 0);
-      if (this.sceneData.simHuman) this.scheduleScriptedTests();
-    }
+    if (this.sceneData.simHuman) this.scheduleScriptedTests();
 
-    this.resetPositions();
-    this.match.startKickoff();
+    this.syncMarkers();
     this.overlay.showBanner(t().kickOffBanner, t().stadiumName(this.stadium));
     this.sim?.event(`stadium_${this.stadium}`);
     this.sim?.event(`teams_${this.teams[0].id}_${this.teams[1].id}`);
@@ -322,217 +291,74 @@ export class MatchScene extends Phaser.Scene {
       else if (cmd === 'mute') soundManager.toggle();
     }
 
-    const realMs = Math.min(delta, 50);
-    // Game speed (SETTINGS) scales the world; the match clock and timers stay in real time
-    let dt = (realMs / 1000) * GAME_SPEED_SCALE[settings.gameSpeed];
-    // Goal slow motion: the world runs slower and the match timers wait
-    // (the celebration starts only after it)
-    let matchMs = realMs;
-    if (this.pendingGoal) {
-      this.slowMoMs -= realMs;
-      if (this.slowMoMs <= 0) this.endGoalSlowMo();
-      else {
-        dt *= MATCH.goalSlowMoScale;
-        matchMs = 0;
-      }
-    }
-    const state = this.match.update(matchMs);
-    if (state !== this.lastState) {
-      const from = this.lastState;
-      this.lastState = state;
-      this.onStateChange(from, state);
-    }
-
-    switch (state) {
-      case 'playing':
-        this.simulate(dt, realMs);
-        // Still level after extra time: announce the golden goal once
-        if (this.match.data.goldenGoal && !this.goldenGoalShown) {
-          this.goldenGoalShown = true;
-          this.sim?.event('goldenGoal');
-          this.overlay.showBanner(t().goldenGoal, t().nextGoalWins);
-          soundManager.whistle();
-          this.time.delayedCall(2200, () => {
-            if (this.match.state === 'playing') this.overlay.hideBanner();
-          });
-        }
-        break;
-      case 'goal_scored':
-        for (const p of this.world.players) p.updateIdle(dt);
-        this.ball.update(dt);
-        break;
-      case 'kickoff':
-      case 'halftime':
-      case 'extratime':
-      case 'fulltime':
-        for (const p of this.world.players) p.updateIdle(dt);
-        this.collisions.placeCarriedBall();
-        this.ball.render();
-        break;
-      case 'paused':
-        break;
-    }
-
-    this.hud.update(this.match.data, this.match.getFormattedTime(), !soundManager.enabled);
-    this.fx.clear();
-    for (const h of this.humans) h.drawFx(this.fx);
-  }
-
-  /** @param inputMs real frame time for the humans' input (charging keys). */
-  private simulate(dt: number, inputMs: number): void {
-    for (const h of this.humans) h.update(dt, inputMs);
-    if (this.sim && this.mode === 'coop') {
-      // Test check: the two co-op humans never steer the same player
-      const [a, b] = this.humans;
-      if (a.controlled && a.controlled === b.controlled) this.sim.event('coopSamePlayer');
-    }
-
-    for (let t = 0; t < 2; t++) {
-      this.ai.updateTeam(t, dt, this.profiles[t], this.world.controlled[t]);
-    }
-    for (const p of this.world.players) p.update(dt);
-    this.collisions.update(dt);
-    this.ball.update(dt, (strength) => {
-      if (strength > 0.2) soundManager.bounce();
-    });
+    this.simulation.step(Math.min(delta, 50), this.readInputs());
+    this.processEvents();
 
     // Power shot feedback
-    if (this.ball.isPowerShot && !this.wasPowerShot) this.cameras.main.shake(120, 0.003);
-    this.wasPowerShot = this.ball.isPowerShot;
+    const ball = this.world.ball;
+    if (ball.isPowerShot && !this.wasPowerShot) this.cameras.main.shake(120, 0.003);
+    this.wasPowerShot = ball.isPowerShot;
 
-    const side = this.ball.checkGoal();
-    // The team defending that goal concedes (sides change at half time)
-    if (side >= 0) this.onGoal(1 - teamDefendingSide(side));
-
-    if (this.sim) {
-      this.sampleSimMetrics(dt);
-      // Test check: nobody may move faster than his sprint speed outside a tackle
-      // dash (stunned players may still carry a decaying dash from a missed tackle)
-      for (const p of this.world.players) {
-        if (p.isTackling || p.isStunned) continue;
-        const limit = PLAYER.sprintSpeed * Math.max(1, p.speedFactor) * ROLE_TRAITS[p.role].speed * 1.1 + 5;
-        if (p.getSpeed() > limit) {
-          this.sim.event('overspeed');
-          this.sim.events.maxSpeed = Math.max(this.sim.events.maxSpeed ?? 0, Math.round(p.getSpeed()));
-        }
-      }
-    }
+    // Draw
+    const dt = this.simulation.lastDt;
+    this.syncMarkers();
+    for (const v of this.playerViews) v.update(dt * 1000);
+    this.ballView.update(dt);
+    const m = this.simulation.match;
+    this.hud.update(m.data, m.getFormattedTime(), !soundManager.enabled);
+    this.fx.clear();
+    for (const h of this.huds) h.draw(this.fx);
   }
 
-  private simSampleMs = 0;
-
-  /** Test metrics (sim only), sampled every 0.5 s: team spacing and player contacts. */
-  private sampleSimMetrics(dt: number): void {
-    this.simSampleMs += dt * 1000;
-    if (this.simSampleMs < 500) return;
-    this.simSampleMs = 0;
-    const sim = this.sim!;
-    for (const team of this.world.teams) {
-      const field = team.filter((q) => q.role !== 'goalkeeper');
-      // Defensive cover: are all of this team's defenders in the opponent's half?
-      const dir = attackDir(team[0].teamIndex);
-      const defenders = field.filter((q) => q.role === 'defender');
-      if (defenders.length > 0 && defenders.every((q) => (q.x - PITCH_CX) * dir > 20)) sim.event('backLineEmpty');
-      for (const a of field) {
-        let nearest = Infinity;
-        for (const b of field) if (a !== b) nearest = Math.min(nearest, a.distanceTo(b.x, b.y));
-        sim.add('spacingSum', Math.round(nearest));
-        sim.event('spacingN');
-        if (nearest < 40) sim.event('clumpPlayers');
-      }
-    }
-    const ps = this.world.players;
-    for (let i = 0; i < ps.length; i++) {
-      for (let j = i + 1; j < ps.length; j++) {
-        if (ps[i].distanceTo(ps[j].x, ps[j].y) < PLAYER.separationDistance + 0.5) sim.event('contactPairs');
-      }
-    }
+  /** What every human holds right now, in player order. */
+  private readInputs(): RawInput[] {
+    return this.devices.map((d) => d.read());
   }
 
-  /**
-   * After a pass, the passer keeps joining the attack (see AISystem.supportRun).
-   * Used for human passes and for AI passes (via AISystem.onFieldPass).
-   */
-  private startSupportRun(passer: Player, by: 'human' | 'ai'): void {
-    if (passer.hasBall || passer.role === 'goalkeeper') return; // pass didn't happen / keeper
-    passer.supportRunTimer = PLAYER.supportRunMax;
-    // Only one defender joins the attack at a time: the others go back to the back line
-    if (passer.role === 'defender') {
-      for (const q of this.world.teams[passer.teamIndex]) {
-        if (q !== passer && q.role === 'defender') q.supportRunTimer = 0;
-      }
-    }
-    if (this.sim) {
-      // Test metric: 1 s later, has the passer moved forward (while his team still has the ball)?
-      const x0 = passer.x;
-      const team = passer.teamIndex;
-      const prefix = by === 'ai' ? 'aiPasser' : 'passer';
-      this.time.delayedCall(1000, () => {
-        const b = this.ball;
-        const stillOurs = b.ownerTeam === team || (b.isFree && b.lastTouchTeam === team);
-        if (!stillOurs || this.match.state !== 'playing') return;
-        const moved = (passer.x - x0) * attackDir(team);
-        this.sim?.event(moved >= 0 ? `${prefix}Forward` : `${prefix}Back`);
-        this.sim?.add(`${prefix}MovedPx`, Math.round(moved));
-      });
-    }
+  /** Selection markers follow whoever each human steers. */
+  private syncMarkers(): void {
+    const marks = new Map<number, 'p1' | 'p2'>();
+    for (const h of this.simulation.humans) if (h.controlled) marks.set(h.controlled.id, h.marker);
+    for (const v of this.playerViews) v.setMarker(marks.get(v.player.id) ?? null);
   }
 
-  private onPossession(p: Player, previousTeam: number | null): void {
-    this.sim?.event('possession');
-    const taker = this.ballTaker(p);
-    for (const h of this.humans) h.onPossession(p, previousTeam, h === taker);
+  // =========================================================== events
+
+  private processEvents(): void {
+    for (const e of this.simulation.drainEvents()) this.onEvent(e);
   }
 
-  /**
-   * Which human takes over a player of his team who just gained the ball.
-   * With one human on that team it is him. In co-op: whoever already steers
-   * that player; for the keeper the human whose player is nearer our goal;
-   * otherwise the human whose player is nearer the new carrier.
-   */
-  private ballTaker(p: Player): HumanController | null {
-    const mine = this.humans.filter((h) => h.team === p.teamIndex);
-    if (mine.length <= 1) return mine[0] ?? null;
-    const steering = mine.find((h) => h.controlled === p);
-    if (steering) return steering;
-    const ref = p.role === 'goalkeeper' ? { x: ownGoalX(p.teamIndex), y: PITCH_CY } : p;
-    let best: HumanController | null = null;
-    let bestD = Infinity;
-    for (const h of mine) {
-      const d = h.controlled ? h.controlled.distanceTo(ref.x, ref.y) : Infinity;
-      if (d < bestD) {
-        bestD = d;
-        best = h;
-      }
+  private onEvent(e: MatchEvent): void {
+    switch (e.type) {
+      case 'sound':
+        soundManager[e.cue]();
+        break;
+      case 'state':
+        this.onStateChange(e.from, e.to);
+        break;
+      case 'goal':
+        this.onGoal(e.x, e.y);
+        break;
+      case 'celebrate':
+        this.celebrate(e.team, e.ownGoal, e.x, e.y, e.instant);
+        break;
+      case 'goldenGoal':
+        this.overlay.showBanner(t().goldenGoal, t().nextGoalWins);
+        soundManager.whistle();
+        this.time.delayedCall(2200, () => {
+          if (this.simulation.state === 'playing') this.overlay.hideBanner();
+        });
+        break;
     }
-    if (this.sim && p.role === 'goalkeeper') this.sim.event(`coopKeeper${best === mine[0] ? 'P1' : 'P2'}`);
-    return best ?? mine[0];
   }
-
-  // ========================================================== match flow
 
   private onStateChange(from: MatchState, to: MatchState): void {
-    // Pausing/resuming is not a real transition
-    if (from === 'paused' || to === 'paused') return;
-    this.sim?.state(to);
-
     switch (to) {
       case 'kickoff':
-        if (from === 'halftime') this.changeEnds();
-        // Everyone gets their breath back for the restart after a goal, half time or before extra time
-        if (from === 'goal_scored' || from === 'halftime' || from === 'extratime') {
-          for (const q of this.world.players) q.stamina = 1;
-        }
-        this.resetPositions();
+        this.ballView.clearTrail();
         // Test check: the goal slow-motion zoom has ended before the restart
         if (this.sim && from === 'goal_scored') {
-          this.sim.event(this.cameras.main.zoom === 1 && this.hudVisible() ? 'goalSlowMoOk' : 'goalZoomStuck');
-        }
-        if (from === 'halftime' && this.sim) {
-          // Test check: everyone lines up in their (new) own half, team 0's keeper on the right
-          const inOwnHalf = this.world.players.every((q) => (q.x - PITCH_CX) * attackDir(q.teamIndex) <= 0);
-          const keeper0Right = this.world.teams[0][0].x > PITCH_CX;
-          this.sim.event(inOwnHalf && keeper0Right ? 'swapOk' : 'swapWrong');
+          this.sim.event(this.cameras.main.zoom === 1 && this.hud.visible ? 'goalSlowMoOk' : 'goalZoomStuck');
         }
         this.overlay.setDim(0);
         this.overlay.showBanner(
@@ -546,7 +372,7 @@ export class MatchScene extends Phaser.Scene {
         this.overlay.setDim(0);
         break;
       case 'halftime': {
-        const [a, b] = this.match.data.score;
+        const [a, b] = this.simulation.match.data.score;
         this.overlay.setDim(0.35);
         this.overlay.showBanner(t().halfTime, `${this.teams[0].shortName} ${a} - ${b} ${this.teams[1].shortName}`);
         soundManager.whistleLong();
@@ -554,8 +380,7 @@ export class MatchScene extends Phaser.Scene {
         break;
       }
       case 'extratime': {
-        const [a, b] = this.match.data.score;
-        this.sim?.event('extraTime');
+        const [a, b] = this.simulation.match.data.score;
         this.overlay.setDim(0.35);
         this.overlay.showBanner(t().extraTime, `${this.teams[0].shortName} ${a} - ${b} ${this.teams[1].shortName}`);
         soundManager.whistleLong();
@@ -564,48 +389,27 @@ export class MatchScene extends Phaser.Scene {
       case 'fulltime':
         this.onFulltime();
         break;
+      default:
+        break;
     }
   }
 
-  private onGoal(scoringTeam: number): void {
-    const ownGoal = this.ball.lastTouchTeam !== null && this.ball.lastTouchTeam !== scoringTeam;
-    this.match.scoreGoal(scoringTeam);
-    this.lastState = 'goal_scored';
-    this.sim?.goal(scoringTeam, this.match.data.time);
-    if (!ownGoal) this.world.stats.onTarget[scoringTeam]++;
-    else if (this.humanTeams.includes(1 - scoringTeam)) {
-      const kicker = this.world.players.find((q) => q.id === this.ball.lastKickerId);
-      if (kicker?.role === 'goalkeeper') this.sim?.event('humanKeeperOwnGoal');
-    }
-
+  /**
+   * Goal: slow motion with the camera zoomed on the ball first; the banner,
+   * confetti and celebration follow in celebrate(). The HUD would be zoomed
+   * with the world, so it is hidden meanwhile.
+   */
+  private onGoal(x: number, y: number): void {
     soundManager.goal();
-    for (const h of this.humans) h.chargeKind = null;
-
-    // Slow motion with the camera zoomed on the goal first; the banner,
-    // confetti and celebration follow in celebrateGoal(). The HUD would be
-    // zoomed with the world, so it is hidden meanwhile.
-    this.pendingGoal = { team: scoringTeam, ownGoal };
-    this.slowMoMs = MATCH.goalSlowMoMs;
     this.hud.setVisible(false);
     const cam = this.cameras.main;
     cam.flash(120, 255, 255, 255);
     cam.zoomTo(MATCH.goalSlowMoZoom, 300, 'Sine.easeOut');
-    cam.pan(this.ball.x, this.ball.y, 300, 'Sine.easeOut');
+    cam.pan(x, y, 300, 'Sine.easeOut');
   }
 
-  private hudVisible(): boolean {
-    return this.hud.visible;
-  }
-
-  /**
-   * Ends the goal slow motion and starts the celebration.
-   * @param instant snap the camera back (when pausing) instead of easing
-   */
-  private endGoalSlowMo(instant = false): void {
-    const goal = this.pendingGoal;
-    if (!goal) return;
-    this.pendingGoal = null;
-    this.slowMoMs = 0;
+  /** @param instant snap the camera back (when pausing) instead of easing */
+  private celebrate(team: number, ownGoal: boolean, x: number, y: number, instant: boolean): void {
     const cam = this.cameras.main;
     if (instant) {
       cam.panEffect.reset();
@@ -618,13 +422,11 @@ export class MatchScene extends Phaser.Scene {
     }
     this.hud.setVisible(true);
 
-    const team = goal.team;
     this.overlay.setDim(0.2);
-    this.overlay.showGoal(goal.ownGoal ? t().ownGoal(this.teams[team].name) : this.teams[team].name);
+    this.overlay.showGoal(ownGoal ? t().ownGoal(this.teams[team].name) : this.teams[team].name);
     if (!instant) cam.shake(300, 0.008);
     soundManager.jingle('goal');
-    for (const p of this.world.teams[team]) p.setPose('celebrate', MATCH.goalCelebrationDuration);
-    this.burstConfetti(this.ball.x, this.ball.y, this.teams[team].uiColor);
+    this.burstConfetti(x, y, this.teams[team].uiColor);
   }
 
   private burstConfetti(x: number, y: number, teamColor: number): void {
@@ -644,10 +446,11 @@ export class MatchScene extends Phaser.Scene {
 
   private onFulltime(): void {
     soundManager.whistleLong();
-    for (const h of this.humans) h.chargeKind = null;
-    const d = this.match.data;
+    const m = this.simulation.match;
+    const d = m.data;
     const s = this.world.stats;
-    const winner = this.match.getWinner();
+    const winner = m.getWinner();
+    const humans = this.simulation.humans;
 
     let resultText: string;
     let resultColor = '#ffffff';
@@ -657,9 +460,9 @@ export class MatchScene extends Phaser.Scene {
         resultText = t().playerWins(this.humanTeams.indexOf(winner) + 1, this.teams[winner].name);
         resultColor = '#66ff88';
       }
-    } else if (this.humans.length > 0) {
+    } else if (humans.length > 0) {
       if (winner === -1) resultText = t().draw;
-      else if (winner === this.humans[0].team) {
+      else if (winner === humans[0].team) {
         resultText = t().youWin;
         resultColor = '#66ff88';
       } else {
@@ -672,7 +475,7 @@ export class MatchScene extends Phaser.Scene {
 
     // Music stops; after the whistles a jingle for the result
     soundManager.stopMusic();
-    const lost = this.mode !== '2p' && this.humans.length > 0 && winner !== -1 && winner !== this.humans[0].team;
+    const lost = this.mode !== '2p' && humans.length > 0 && winner !== -1 && winner !== humans[0].team;
     const jingle = winner === -1 ? 'draw' : lost ? 'lose' : 'win';
     this.time.delayedCall(1600, () => soundManager.jingle(jingle));
 
@@ -702,8 +505,9 @@ export class MatchScene extends Phaser.Scene {
     }
 
     if (this.sim) {
-      if (this.ai.feintBites) this.sim.add('feintBites', this.ai.feintBites);
-      if (this.ai.aerialStrikes) this.sim.add('aiAerial', this.ai.aerialStrikes);
+      const ai = this.simulation.ai;
+      if (ai.feintBites) this.sim.add('feintBites', ai.feintBites);
+      if (ai.aerialStrikes) this.sim.add('aiAerial', ai.aerialStrikes);
       const more = recordSimMatch(this.sim, d.score, s);
       const total = this.sceneData.simMatches ?? 1;
       const next = (this.sceneData.simIndex ?? 0) + 1;
@@ -720,66 +524,8 @@ export class MatchScene extends Phaser.Scene {
     const f = tour.fixtures[match.fixture];
     // Only if the saved tournament still has this fixture waiting
     if (!f || f.away === null || tour.teams[f.home].id !== match.home || tour.teams[f.away].id !== match.away) return;
-    const d = this.match.data;
+    const d = this.simulation.match.data;
     recordAndSave(tour, (x) => recordResult(x, match.fixture, [d.score[0], d.score[1]], d.extraTime));
-  }
-
-  /** Second half: teams swap ends; formation homes are mirrored accordingly. */
-  private changeEnds(): void {
-    setSidesSwapped(true);
-    for (const p of this.world.players) {
-      const home = formationPosition(p.teamIndex, p.formation);
-      p.homeX = home.x;
-      p.homeY = home.y;
-    }
-    this.sim?.event('sidesSwapped');
-  }
-
-  /**
-   * Switch a team to another formation mid-match: each player keeps his index
-   * and takes over that slot's role and home position.
-   */
-  private changeFormation(team: number, id: FormationId): void {
-    if (this.formations[team] === id) return;
-    this.formations[team] = id;
-    const slots = FORMATIONS[id];
-    this.world.teams[team].forEach((p, i) => p.setFormationSlot(slots[i], formationPosition(team, slots[i])));
-    this.ai.reset(); // re-think shape positions right away
-    this.sim?.event('formationChanged');
-  }
-
-  private resetPositions(): void {
-    const kickoffTeam = this.match.data.kickoffTeam;
-    for (let t = 0; t < 2; t++) {
-      const positions = kickoffPositions(t, t === kickoffTeam, FORMATIONS[this.formations[t]]);
-      this.world.teams[t].forEach((p, i) => p.placeAt(positions[i].x, positions[i].y));
-    }
-
-    this.ball.reset(PITCH_CX, PITCH_CY);
-    const taker = this.world.teams[kickoffTeam][kickoffTakerIndex(FORMATIONS[this.formations[kickoffTeam]])];
-    if (taker) {
-      taker.gainPossession(800);
-      this.ball.setOwner(taker.id, kickoffTeam);
-      this.collisions.placeCarriedBall();
-    }
-    this.ai.reset();
-
-    // Each human starts on his team's kickoff taker / most central forward;
-    // in co-op the second human takes the forward nearest to him
-    for (const h of this.humans) h.release();
-    for (const h of this.humans) h.resetForKickoff(this.kickoffStartFor(h.team));
-  }
-
-  /** Free (not human-steered) player a human starts a kickoff on. */
-  private kickoffStartFor(team: number): Player {
-    const mates = this.world.teams[team];
-    const central = mates[kickoffTakerIndex(FORMATIONS[this.formations[team]])];
-    const taken = this.world.controlled[team];
-    if (!taken.includes(central)) return central;
-    const free = mates.filter((q) => q.role !== 'goalkeeper' && !taken.includes(q));
-    const rank = (q: Player) => (q.role === 'forward' ? 0 : 10000) + q.distanceTo(central.x, central.y);
-    free.sort((a, b) => rank(a) - rank(b));
-    return free[0] ?? central;
   }
 
   // ================================================================ pause
@@ -792,7 +538,7 @@ export class MatchScene extends Phaser.Scene {
   private onEscKey(event?: KeyboardEvent): void {
     if (event && !this.escOnce(event)) return;
     // While paused the pause menu handles ESC itself
-    if (!this.match.isPaused()) this.pause(event);
+    if (!this.simulation.isPaused()) this.pause(event);
   }
 
   private onPauseKey(event?: KeyboardEvent): void {
@@ -807,34 +553,31 @@ export class MatchScene extends Phaser.Scene {
 
   private onBlur(): void {
     // Auto-pause when the window loses focus
-    if (this.humans.length > 0 && !this.sceneData.sim && this.scene.isActive()) this.pause();
+    if (this.humanTeams.length > 0 && !this.sceneData.sim && this.scene.isActive()) this.pause();
   }
 
   private togglePause(event?: KeyboardEvent): void {
-    if (this.match.isPaused()) this.resume();
+    if (this.simulation.isPaused()) this.resume();
     else this.pause(event);
   }
 
   /** @param openedBy key event that triggered the pause (the menu ignores it). */
   private pause(openedBy?: KeyboardEvent): void {
-    const st = this.match.state;
-    if (st === 'fulltime' || st === 'paused') return;
     // Ignore the same key event that just closed the menu
     if (performance.now() - this.resumedAt < 150) return;
-    this.endGoalSlowMo(true); // the pause menu must not be zoomed
-    this.match.pause();
-    this.lastState = 'paused';
+    if (!this.simulation.pause()) return;
+    // A goal slow motion is cut short: the pause menu must not be zoomed
+    this.processEvents();
     this.pauseMenu.show(openedBy);
     this.tweens.pauseAll();
   }
 
   private resume(): void {
-    if (!this.match.isPaused()) return;
-    this.match.resume();
-    this.lastState = this.match.state;
+    if (!this.simulation.isPaused()) return;
+    // Keys held while the menu was open need a fresh press
+    this.simulation.resume(this.readInputs());
     this.pauseMenu.hide();
     this.tweens.resumeAll();
-    for (const h of this.humans) h.input.sync();
     this.resumedAt = performance.now();
   }
 
@@ -846,26 +589,26 @@ export class MatchScene extends Phaser.Scene {
 
   /** Bot-as-human sim only: scripted checks of pause, formation change, keeper and pad. */
   private scheduleScriptedTests(): void {
-    const human = this.humans[0];
+    const human = this.simulation.humans[0];
     // Pause with real ESC key events, change formation in the pause menu
     // (↓ to FORMATION, → to switch), then ESC again to resume.
     this.time.delayedCall(4000, () => {
       pressKey('Escape', 27);
       this.time.delayedCall(500, () => {
-        if (this.match.isPaused()) this.sim?.event('paused');
+        if (this.simulation.isPaused()) this.sim?.event('paused');
         const team = human.team;
-        const before = this.formations[team];
+        const before = this.simulation.formations[team];
         pressKey('ArrowDown', 40);
         pressKey('ArrowRight', 39);
         // Phaser handles queued key events on the next frame
         this.time.delayedCall(150, () => {
-          const after = this.formations[team];
+          const after = this.simulation.formations[team];
           const slots = FORMATIONS[after];
           const rolesOk = this.world.teams[team].every((p, i) => p.role === slots[i].role);
           this.sim?.event(after !== before && rolesOk ? 'formationChangeOk' : 'formationChangeWrong');
           pressKey('Escape', 27);
           this.time.delayedCall(300, () => {
-            if (!this.match.isPaused()) this.sim?.event('resumed');
+            if (!this.simulation.isPaused()) this.sim?.event('resumed');
             else this.resume();
           });
         });
@@ -878,17 +621,17 @@ export class MatchScene extends Phaser.Scene {
   /**
    * Our forward gets the ball and starts charging a shot (shoot held); mid-charge
    * our keeper takes the ball. Because the key is still held, the keeper must NOT
-   * kick (the hold is swallowed by InputSystem.sync when control passes to him).
+   * kick (the hold is swallowed by the input sync when control passes to him).
    */
   private keeperHeldKeyTest(attempt: number): void {
     const bot = this.bot;
-    const human = this.humans[0];
+    const human = this.simulation.humans[0];
     if (!bot || !human || attempt > 6) return;
     const retry = () => {
       bot.override = null;
       this.time.delayedCall(1000, () => this.keeperHeldKeyTest(attempt + 1));
     };
-    if (this.match.state !== 'playing') return retry();
+    if (this.simulation.state !== 'playing') return retry();
 
     const team = this.world.teams[human.team];
     const forward = team.find((q) => q.role === 'forward');
@@ -897,13 +640,13 @@ export class MatchScene extends Phaser.Scene {
 
     bot.override = 'release'; // make sure the next shoot press is a fresh one
     this.time.delayedCall(100, () => {
-      if (this.match.state !== 'playing') return retry();
-      this.collisions.givePossession(forward);
+      if (this.simulation.state !== 'playing') return retry();
+      this.simulation.collisions.givePossession(forward);
       bot.override = 'holdShoot';
       this.time.delayedCall(250, () => {
         const charging = human.chargeKind === 'shoot' && forward.hasBall;
-        if (!charging || this.match.state !== 'playing') return retry();
-        this.collisions.givePossession(keeper);
+        if (!charging || this.simulation.state !== 'playing') return retry();
+        this.simulation.collisions.givePossession(keeper);
         this.time.delayedCall(1000, () => {
           // Still holding the ball = the held key was ignored; otherwise he kicked it
           this.sim?.event(keeper.hasBall ? 'keeperHeldKeyOk' : 'keeperHeldKeyFired');
@@ -916,7 +659,7 @@ export class MatchScene extends Phaser.Scene {
   /** A fake Xbox controller presses Menu (must pause), then B (pause menu "back" must resume). */
   private padPauseTest(attempt: number): void {
     if (attempt > 6) return;
-    if (this.match.state !== 'playing') {
+    if (this.simulation.state !== 'playing') {
       this.time.delayedCall(1000, () => this.padPauseTest(attempt + 1));
       return;
     }
@@ -934,9 +677,9 @@ export class MatchScene extends Phaser.Scene {
     };
     w.__RF_FAKE_PAD__ = fakePad([]);
     this.time.delayedCall(50, () => press(PAD.MENU, () => {
-      if (this.match.isPaused()) this.sim?.event('padPaused');
+      if (this.simulation.isPaused()) this.sim?.event('padPaused');
       press(PAD.B, () => {
-        if (!this.match.isPaused()) this.sim?.event('padResumed');
+        if (!this.simulation.isPaused()) this.sim?.event('padResumed');
         else this.resume();
         delete w.__RF_FAKE_PAD__;
       });
@@ -951,8 +694,10 @@ export class MatchScene extends Phaser.Scene {
     kb?.off('keydown-P', this.onPauseKey, this);
     kb?.off('keydown-M', this.onMuteKey, this);
     this.game.events.off(Phaser.Core.Events.BLUR, this.onBlur, this);
-    for (const h of this.humans) h.destroy();
-    this.humans = [];
+    for (const d of this.devices) d.destroy();
+    this.devices = [];
+    for (const h of this.huds) h.destroy();
+    this.huds = [];
     this.sim = null;
     soundManager.stopCrowd();
   }

@@ -5,10 +5,10 @@
 // tackles, player switching) gets exercised automatically.
 // ============================================================
 
-import { predictAerialContact } from '../logic/Aerial';
-import type { Player } from '../entities/Player';
-import type { MatchWorld } from '../logic/MatchWorld';
-import { PITCH_CY, attackDir, distance, normalize, opponentGoalX } from '../logic/PitchGeometry';
+import { predictAerialContact } from '../../core/logic/Aerial';
+import type { Player } from '../../core/entities/Player';
+import type { MatchWorld } from '../../core/logic/MatchWorld';
+import { PITCH_CY, attackDir, distance, normalize, opponentGoalX } from '../../core/logic/PitchGeometry';
 import { EMPTY_RAW, InputSource, RawInput } from '../systems/InputSystem';
 
 export class BotInput implements InputSource {

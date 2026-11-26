@@ -1,9 +1,9 @@
 // ============================================================
-// Ball Entity — Arcade physics and state for the football.
+// Ball — Arcade physics and state for the football (core, no
+// rendering: the client's BallView draws it).
 // x/y are ground coordinates; z is height above the pitch (lobs).
 // ============================================================
 
-import Phaser from 'phaser';
 import { BALL, PITCH } from '../config/GameplayConfig';
 import {
   GOAL_TOP, GOAL_BOTTOM, PITCH_LEFT, PITCH_RIGHT, PITCH_TOP, PITCH_BOTTOM,
@@ -18,14 +18,7 @@ export interface KickOptions {
 
 export type BounceCallback = (strength: number) => void;
 
-const TRAIL_LENGTH = 7;
-
 export class Ball {
-  public readonly sprite: Phaser.GameObjects.Sprite;
-  public readonly shadow: Phaser.GameObjects.Image;
-  private readonly trail: Phaser.GameObjects.Graphics;
-  private trailPoints: Array<{ x: number; y: number }> = [];
-
   public x: number;
   public y: number;
   public z = 0;
@@ -48,15 +41,9 @@ export class Ball {
   /** Increments on every kick: identifies one flight of the ball. */
   public kickId = 0;
 
-  private rollDistance = 0;
-
-  /** @param texture 'ball', or 'ball_rag' on the housing-estate pitch */
-  constructor(scene: Phaser.Scene, x: number, y: number, texture = 'ball') {
+  constructor(x: number, y: number) {
     this.x = x;
     this.y = y;
-    this.trail = scene.add.graphics().setDepth(9);
-    this.shadow = scene.add.image(x, y + 3, 'ball_shadow').setDepth(3);
-    this.sprite = scene.add.sprite(x, y, texture, 0).setDepth(6);
   }
 
   reset(x: number, y: number): void {
@@ -73,8 +60,6 @@ export class Ball {
     this.passTargetId = null;
     this.isPowerShot = false;
     this.isShot = false;
-    this.trailPoints = [];
-    this.render();
   }
 
   get isFree(): boolean {
@@ -118,10 +103,7 @@ export class Ball {
   }
 
   update(dt: number, onBounce?: BounceCallback): void {
-    if (this.ownerId !== null) {
-      this.render();
-      return;
-    }
+    if (this.ownerId !== null) return;
 
     this.kickAgeMs += dt * 1000;
     this.x += this.vx * dt;
@@ -155,8 +137,6 @@ export class Ball {
     if (speed < BALL.trailSpeed * 0.7) this.isPowerShot = false;
 
     this.handleBoundaryCollisions(onBounce);
-    this.rollDistance += speed * dt;
-    this.render();
   }
 
   private inGoalMouth(): boolean {
@@ -220,46 +200,5 @@ export class Ball {
     if (this.x < PITCH_LEFT - BALL.radius) return 0;
     if (this.x > PITCH_RIGHT + BALL.radius) return 1;
     return -1;
-  }
-
-  render(): void {
-    const speed = this.ownerId === null ? this.getSpeed() : 0;
-    const x = Math.round(this.x);
-    const y = Math.round(this.y);
-
-    this.sprite.setPosition(x, Math.round(this.y - this.z));
-    // Low ball is y-sorted with players; high ball is drawn above them
-    this.sprite.setDepth(this.z > 6 ? 10 : 5 + y * 0.001 + 0.0005);
-
-    let frame: number;
-    if (speed > BALL.trailSpeed) frame = 2;
-    else frame = Math.floor(this.rollDistance / 6) % 2;
-    this.sprite.setFrame(frame);
-
-    const shadowScale = 1 - Math.min(this.z / 80, 0.5);
-    this.shadow.setPosition(x, y + 3).setScale(shadowScale).setAlpha(0.9 - Math.min(this.z / 60, 0.5));
-
-    // Trail for power shots / very fast balls
-    if (this.ownerId === null && (this.isPowerShot || speed > BALL.trailSpeed)) {
-      this.trailPoints.push({ x: this.x, y: this.y - this.z });
-      if (this.trailPoints.length > TRAIL_LENGTH) this.trailPoints.shift();
-    } else if (this.trailPoints.length > 0) {
-      this.trailPoints.shift();
-    }
-    this.trail.clear();
-    const n = this.trailPoints.length;
-    for (let i = 0; i < n - 1; i++) {
-      const p = this.trailPoints[i];
-      const t = (i + 1) / n;
-      this.trail.fillStyle(this.isPowerShot ? 0xffdd55 : 0xffffff, 0.45 * t);
-      const s = Math.max(1, Math.round(4 * t));
-      this.trail.fillRect(Math.round(p.x - s / 2), Math.round(p.y - s / 2), s, s);
-    }
-  }
-
-  destroy(): void {
-    this.sprite.destroy();
-    this.shadow.destroy();
-    this.trail.destroy();
   }
 }

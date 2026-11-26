@@ -6,11 +6,11 @@
 // ============================================================
 
 import Phaser from 'phaser';
-import { DIFFICULTIES, Difficulty, GAME_HEIGHT, GAME_WIDTH, MATCH, TEAMS } from '../config/GameplayConfig';
+import { DIFFICULTIES, Difficulty, GAME_HEIGHT, GAME_WIDTH, MATCH, TEAMS } from '../../core/config/GameplayConfig';
 import { saveSettings, settings } from '../config/Settings';
 import { t } from '../config/i18n';
 import { hasTournamentInProgress, loadTrophies, saveTournament } from '../config/TournamentStore';
-import { createTournament, MIN_TEAMS, TournamentKind } from '../logic/Tournament';
+import { createTournament, MIN_TEAMS, TournamentKind } from '../../core/logic/Tournament';
 import { soundManager } from '../systems/SoundManager';
 import { Button } from '../ui/Button';
 import { MenuNavigator } from '../ui/MenuNavigator';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AI_PROFILES, ROLE_TRAITS, TEAMMATE_PROFILE } from '../src/game/config/GameplayConfig';
+import { AI_PROFILES, ROLE_TRAITS, TEAMMATE_PROFILE } from '../src/core/config/GameplayConfig';
 
 describe('AI profiles', () => {
   it('hard and the human\'s teammates read every feint', () => {

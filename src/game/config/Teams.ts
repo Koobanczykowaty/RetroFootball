@@ -4,7 +4,7 @@
 // Pure module (no Phaser): unit-testable.
 // ============================================================
 
-import { TEAMS, TeamConfig } from './GameplayConfig';
+import { TEAMS, TeamConfig } from '../../core/config/GameplayConfig';
 
 /** Kit colours the user can change in the kit editor. */
 export const KIT_FIELDS = ['primaryColor', 'secondaryColor', 'shortsColor', 'sockColor', 'goalkeeperColor'] as const;

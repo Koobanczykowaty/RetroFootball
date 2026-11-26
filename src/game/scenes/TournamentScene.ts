@@ -7,7 +7,7 @@
 // ============================================================
 
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH } from '../config/GameplayConfig';
+import { GAME_HEIGHT, GAME_WIDTH } from '../../core/config/GameplayConfig';
 import { t } from '../config/i18n';
 import { teamWithKits } from '../config/Teams';
 import { settings } from '../config/Settings';
@@ -15,7 +15,7 @@ import { loadTournament, recordAndSave } from '../config/TournamentStore';
 import {
   Fixture, fixtureWinner, humanNumbers, nextFixtureIndex, recordResult, roundsLeft, simulateResult, standings,
   Tournament,
-} from '../logic/Tournament';
+} from '../../core/logic/Tournament';
 import { soundManager } from '../systems/SoundManager';
 import { Button } from '../ui/Button';
 import { MenuNavigator } from '../ui/MenuNavigator';

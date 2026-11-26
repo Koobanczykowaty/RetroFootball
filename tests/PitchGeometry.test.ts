@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { FORMATION_IDS, FORMATIONS, FormationId, PITCH, TEAM_SIZE } from '../src/game/config/GameplayConfig';
+import { FORMATION_IDS, FORMATIONS, FormationId, PITCH, TEAM_SIZE } from '../src/core/config/GameplayConfig';
 import {
   GOAL_BOTTOM, GOAL_TOP, PITCH_CX, PITCH_CY, PITCH_LEFT, PITCH_RIGHT,
   attackDir, distToSegment, kickoffPositions, laneClearance, opponentGoalX, ownGoalX, predictLineCrossing,
   setSidesSwapped, teamDefendingSide, predictBallCrossing, PITCH_TOP, kickoffTakerIndex,
-} from '../src/game/logic/PitchGeometry';
+} from '../src/core/logic/PitchGeometry';
 
 describe('PitchGeometry', () => {
   it('team 0 attacks right, team 1 attacks left', () => {
