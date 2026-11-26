@@ -8,7 +8,7 @@
 import Phaser from 'phaser';
 import { writeSimResult } from './SimReport';
 
-/** Menu → 2 PLAYERS → back → PLAY → back → 2 PLAYERS → match → menu → PLAY → match → controls, settings, kits. */
+/** Menu → 2 PLAYERS → back → PLAY → back → 2 PLAYERS → match → menu → PLAY → match → controls, settings, kits → co-op setup → co-op match. */
 const STEPS: Array<[string, object?]> = [
   ['MenuScene'],
   ['TeamSelectScene', { mode: '2p' }],
@@ -25,6 +25,8 @@ const STEPS: Array<[string, object?]> = [
   ['KitEditorScene', { team: 'zubry' }],
   ['TeamSelectScene', { mode: '1p' }],
   ['KitEditorScene'],
+  ['TeamSelectScene', { mode: 'coop' }],
+  ['MatchScene', { mode: 'coop', playerTeam: 0 }],
   ['MenuScene'],
 ];
 

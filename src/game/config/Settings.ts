@@ -19,6 +19,10 @@ export function browserLanguage(): Language {
   }
 }
 
+/** 2 PLAYERS: 'versus' = P1 against P2, 'coop' = P1 and P2 together against the CPU. */
+export type TwoPlayerMode = 'versus' | 'coop';
+export const TWO_PLAYER_MODES: readonly TwoPlayerMode[] = ['versus', 'coop'];
+
 export interface GameSettings {
   soundEnabled: boolean;
   /** Chiptune music in menus and (quietly) in matches. */
@@ -37,6 +41,8 @@ export interface GameSettings {
   formation: FormationId;
   /** Player 2's (controller) formation in 2-player mode. */
   formationP2: FormationId;
+  /** 2 PLAYERS screen: against each other, or together on one team against the CPU. */
+  twoPlayerMode: TwoPlayerMode;
   /** UI language. */
   language: Language;
 }
@@ -54,6 +60,7 @@ const DEFAULTS: GameSettings = {
   kits: {},
   formation: '2-3',
   formationP2: '2-3',
+  twoPlayerMode: 'versus',
   language: 'en',
 };
 
@@ -94,6 +101,7 @@ function load(): GameSettings {
     s.kits = loadKits(parsed.kits);
     if (parsed.formation && FORMATION_IDS.includes(parsed.formation)) s.formation = parsed.formation;
     if (parsed.formationP2 && FORMATION_IDS.includes(parsed.formationP2)) s.formationP2 = parsed.formationP2;
+    if (parsed.twoPlayerMode && TWO_PLAYER_MODES.includes(parsed.twoPlayerMode)) s.twoPlayerMode = parsed.twoPlayerMode;
     if (parsed.language && LANGUAGES.includes(parsed.language)) s.language = parsed.language;
   } catch {
     // Storage unavailable or corrupt — use defaults.

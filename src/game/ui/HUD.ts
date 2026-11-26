@@ -43,8 +43,11 @@ export class HUD {
       .setOrigin(1, 0);
     this.container.add([t0, t1]);
 
+    const tagsOnTeam = [0, 0];
     for (const { team, label } of playerTags) {
-      const tagX = team === 0 ? cx - 148 : cx + 148;
+      // Co-op: two tags under the same team name, side by side
+      const offset = 18 * tagsOnTeam[team]++;
+      const tagX = team === 0 ? cx - 148 + offset : cx + 148 - offset;
       // P1 yellow, P2 green: same colours as their selection markers on the pitch
       const color = label === 'P2' ? '#6dff7a' : UI.textHighlight;
       const tag = scene.add.text(tagX, 26, label, textStyle(8, color, true)).setOrigin(team === 0 ? 0 : 1, 0);

@@ -44,7 +44,8 @@ Debug URL params (see `BootScene`):
 - `&difficulty=easy|normal|hard` sets the CPU level for the run.
 - `&stadium=narodowy|blokowisko` forces the stadium (normally random every match).
 - `&p2=1` runs 2-player mode with a bot on each team.
-- `?scene=<Key>[&mode=2p]` opens a scene directly.
+- `&coop=1` runs co-op mode with two bots on team 0.
+- `?scene=<Key>[&mode=2p|coop]` opens a scene directly.
 
 Sim mode forces Phaser's `setTimeout` loop because rAF doesn't tick under headless virtual time.
 
@@ -91,6 +92,12 @@ Scenes: `BootScene` (generates textures) → `MenuScene` → `TeamSelectScene` (
   - 2 PLAYERS (`mode: '2p'`, menu button): P1 picks the team (`settings.playerTeam`) and P2 plays the other. Devices come from `Gamepad.padForPlayer`, which is re-evaluated every frame and unit-tested: with one pad, P1 = keyboard and P2 = pad 1; with two pads, P1 = keyboard + pad 1 and P2 = pad 2. Menus and pause (`PadEdges`) react to any connected pad (`connectedPads`). Formations are `settings.formation` / `formationP2`, and the pause menu has a formation row per human. Both human teams use `TEAMMATE_PROFILE` for their AI teammates.
   - Marker colours: p1 yellow, p2 green (`AssetGenerator.MARKER_COLORS`). **The renderer is Canvas, so `setTint` does nothing.** Coloured variants must be separate textures.
   - The sim `&p2=1` runs 2p mode with one `BotInput` per team (`BotInput` takes a team) and checks that both humans pass and shoot.
+- **Co-op** (`mode: 'coop'`, the MODE row VERSUS/CO-OP on the 2 PLAYERS screen, `settings.twoPlayerMode`): P1 and P2 on the same team (`humanTeams = [t, t]`) against the CPU, with the difficulty and one shared `settings.formation` (one pause-menu row). Devices are the same as in 2p. The user chose these rules:
+  - `MatchWorld.controlled` is a **list per team**. Each `HumanController` keeps its own player (`controlled`), and `setControlled` refuses the partner's player, so a pass to the partner's player is received by the partner and the passer keeps his own.
+  - `MatchScene.ballTaker` picks which human takes over a teammate who gains the ball: whoever already steers him; for the keeper, the human whose player is nearer our goal; otherwise the human whose player is nearer the carrier.
+  - Kickoff: `release()` all humans, then `kickoffStartFor`: P1 on the central forward, P2 on the nearest other forward.
+  - Changing MODE restarts `TeamSelectScene` (cards and rows differ). The HUD shows both tags side by side.
+  - The sim `&coop=1` runs two bots on team 0 (each `BotInput` follows its own human's player) and fails if `humanPassP1/P2` or `humanShotP1/P2` never happen or on `coopSamePlayer`.
 - **Xbox controller** (`systems/Gamepad.ts`, browser Gamepad API, "standard" layout):
   - Gameplay mapping: stick/D-pad move, RT sprint, A pass, B shoot, X lob/tackle, LB switch. `GamepadInput` is just another `InputSource` (alongside `KeyboardInput`), so charging and every mechanic work unchanged.
   - `PadEdges` turns held buttons into one-shot commands (up/down/left/right/confirm/back/pause/mute). `MenuNavigator` polls one on the scene `UPDATE` event while active, syncing on activate so a held A doesn't re-trigger. `MatchScene.update` polls one for Menu (pause) and View (mute).

@@ -135,6 +135,8 @@ W menu gry: gałka / D-pad wybór, A zatwierdź, B wstecz. Pad i klawiatura dzia
   - dwa pady: P1 = klawiatura **albo** pad 1, P2 = pad 2.
 
   Ekran 2 PLAYERS pokazuje bieżący przydział. Pady można podłączyć też w trakcie meczu. Każdy wybiera swoją formację, w pauzie oba wiersze formacji da się zmienić. Sterowany zawodnik P1 ma żółty znacznik, P2 zielony (tak samo oznaczenia w HUD). Pauzować może każdy (Esc/P albo Menu na padzie). Na ekranie wyboru widać, czy pad jest podłączony.
+
+  Wiersz **TRYB** na ekranie 2 PLAYERS wybiera grę **RYWALE** (P1 przeciwko P2) albo **RAZEM** (co-op: P1 i P2 w jednej drużynie przeciwko komputerowi). W co-op lewa karta to wspólna drużyna, prawa to przeciwnik CPU; wybiera się poziom trudności i jedną wspólną formację (w pauzie zmienia ją każdy z graczy). Każdy gracz steruje swoim zawodnikiem i nie może przejąć zawodnika partnera. Podanie do zawodnika partnera przyjmuje partner. Gdy piłkę zdobędzie inny zawodnik drużyny, przejmuje go gracz, którego zawodnik jest bliżej; bramkarza z piłką przejmuje gracz bliżej własnej bramki. Przy rozpoczęciu P1 staje na środku, P2 na drugim napastniku.
 - **Formacje**: **2-3** (ofensywna: 2 obrońców + 3 napastników) albo **3-2** (defensywna: 3 obrońców + 2 napastników). Swoją wybierasz na ekranie QUICK MATCH i możesz ją zmienić w trakcie meczu w menu pauzy. Komputer losuje formację przed każdym meczem.
 - **Rozgrywka 6v6**:
   - ruch w 8 kierunkach z bezwładnością, sprint i stamina;
@@ -208,10 +210,10 @@ Parametry URL przydatne przy tworzeniu gry:
 
 ## Znane ograniczenia
 
-- Dwie drużyny, dwie formacje (2-3, 3-2), jeden stadion. Brak główek i strzałów z powietrza.
-- Gra na dwa pady w trybie 2 PLAYERS nie była jeszcze sprawdzona na fizycznym sprzęcie (jeden pad działa).
-- Teksty używają systemowej czcionki monospace, więc ich wygląd zależy od systemu.
-- Plik JS ma ok. 1,5 MB (ok. 360 KB gzip), głównie przez Phaser. Vite wyświetla ostrzeżenie o rozmiarze chunka.
+- Tylko dwie formacje (2-3, 3-2) i dwa stadiony (Narodowy, Blokowisko). Nie ma pogody ani taktyki.
+- Tylko pojedyncze mecze: nie ma turnieju, ligi ani zapisu postępów. Nie ma też gry online.
+- Tryb co-op (RAZEM) jest sprawdzony w automatycznych symulacjach, ale jeszcze nie na prawdziwych padach.
+- Phaser zajmuje ok. 1,2 MB (ok. 320 KB gzip). Jest w osobnym pliku, więc po aktualizacji gry przeglądarka pobiera ponownie tylko kod gry (ok. 140 KB).
 
 ## Dalszy rozwój
 

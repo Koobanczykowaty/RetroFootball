@@ -60,16 +60,17 @@ export class AISystem {
   }
 
   /**
-   * Update all players of `team` except `controlled` (the human's player).
+   * Update all players of `team` except `controlled` (the humans' players:
+   * none for a CPU team, two in co-op).
    */
-  updateTeam(team: number, dt: number, profile: AIProfile, controlled: Player | null): void {
+  updateTeam(team: number, dt: number, profile: AIProfile, controlled: readonly Player[]): void {
     if (team === 0) this.clockMs += dt * 1000;
     const mates = this.world.teams[team];
     const chaser = this.pickChaser(team, controlled);
 
     for (const p of mates) {
       p.speedFactor = profile.speedFactor;
-      if (p === controlled) continue;
+      if (controlled.includes(p)) continue;
 
       if (p.role === 'goalkeeper') this.updateGoalkeeper(p, dt, profile);
       else if (this.tryAerial(p, profile)) continue;
@@ -81,7 +82,7 @@ export class AISystem {
   // ------------------------------------------------------------- chaser
 
   /** One player per team goes for the ball; the rest hold shape. */
-  private pickChaser(team: number, controlled: Player | null): Player | null {
+  private pickChaser(team: number, controlled: readonly Player[]): Player | null {
     const ball = this.world.ball;
     if (ball.ownerTeam === team) {
       this.chasers[team] = null;
@@ -93,7 +94,7 @@ export class AISystem {
     const receiver = mates.find((p) => p.id === ball.passTargetId);
     if (receiver && ball.isFree) {
       this.chasers[team] = receiver;
-      return receiver === controlled ? null : receiver;
+      return controlled.includes(receiver) ? null : receiver;
     }
 
     let best: Player | null = null;
@@ -112,8 +113,8 @@ export class AISystem {
       if (current.distanceTo(ball.x, ball.y) < bestD + 25) best = current;
     }
     this.chasers[team] = best;
-    // If the human's player is the closest, no AI teammate chases
-    return best === controlled ? null : best;
+    // If a human's player is the closest, no AI teammate chases
+    return best && controlled.includes(best) ? null : best;
   }
 
   // ------------------------------------------------------ headers / volleys
@@ -281,7 +282,7 @@ export class AISystem {
     for (let pass = 0; pass < 2; pass++) {
       for (const o of others) {
         const m = this.minds.get(o.id);
-        const holdsShape = m && !o.hasBall && o !== this.world.controlled[team] && o !== this.chasers[team];
+        const holdsShape = m && !o.hasBall && !this.world.controlled[team].includes(o) && o !== this.chasers[team];
         const ox = holdsShape ? m.tx : o.x;
         const oy = holdsShape ? m.ty : o.y;
         let dx = x - ox;

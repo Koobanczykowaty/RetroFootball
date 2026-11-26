@@ -5,7 +5,7 @@
 // ============================================================
 
 import type { Difficulty, FormationId, StadiumId } from './GameplayConfig';
-import { settings, type Language } from './Settings';
+import { settings, type Language, type TwoPlayerMode } from './Settings';
 
 export interface Strings {
   /** Browser tab title. */
@@ -35,6 +35,9 @@ export interface Strings {
   difficulty: string;
   formation: string;
   playerFormation: (n: number) => string;
+  twoPlayerMode: string;
+  twoPlayerModeValue: (m: TwoPlayerMode) => string;
+  coopTeam: string;
   formationValue: (f: FormationId) => string;
   difficultyName: (d: Difficulty) => string;
   padsTwo: string;
@@ -130,6 +133,9 @@ const EN: Strings = {
   difficulty: 'DIFFICULTY',
   formation: 'FORMATION',
   playerFormation: (n) => `P${n} FORMATION`,
+  twoPlayerMode: 'MODE',
+  twoPlayerModeValue: (m) => (m === 'coop' ? 'CO-OP' : 'VERSUS'),
+  coopTeam: 'P1 + P2',
   formationValue: (f) => (f === '2-3' ? '2-3 ATT' : '3-2 DEF'),
   difficultyName: (d) => d.toUpperCase(),
   padsTwo: 'P1: KEYBOARD + PAD 1   •   P2: PAD 2',
@@ -223,6 +229,9 @@ const PL: Strings = {
   difficulty: 'TRUDNOŚĆ',
   formation: 'FORMACJA',
   playerFormation: (n) => `FORMACJA P${n}`,
+  twoPlayerMode: 'TRYB',
+  twoPlayerModeValue: (m) => (m === 'coop' ? 'RAZEM' : 'RYWALE'),
+  coopTeam: 'P1 + P2',
   formationValue: (f) => (f === '2-3' ? '2-3 ATAK' : '3-2 OBRONA'),
   difficultyName: (d) => PL_DIFFICULTY[d],
   padsTwo: 'P1: KLAWIATURA + PAD 1   •   P2: PAD 2',

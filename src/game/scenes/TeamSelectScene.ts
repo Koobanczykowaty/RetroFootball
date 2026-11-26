@@ -7,7 +7,7 @@ import Phaser from 'phaser';
 import {
   DIFFICULTIES, Difficulty, FORMATION_IDS, FormationId, GAME_WIDTH, GAME_HEIGHT, MATCH,
 } from '../config/GameplayConfig';
-import { saveSettings, settings } from '../config/Settings';
+import { TWO_PLAYER_MODES, TwoPlayerMode, saveSettings, settings } from '../config/Settings';
 import { t } from '../config/i18n';
 import { cycleTeam, teamWithKits } from '../config/Teams';
 import { soundManager } from '../systems/SoundManager';
@@ -114,23 +114,33 @@ const formationLabel = (v: FormationId) => t().formationValue(v);
 
 /**
  * Match setup. Quick Match (1p): team, length, difficulty, formation.
- * 2 PLAYERS (2p): the keyboard player picks his team (the controller player
- * gets the other), match length and both formations.
+ * 2 PLAYERS (2p): a MODE row picks versus or co-op (settings.twoPlayerMode).
+ * Versus: P1's team (left) against P2's (right), match length and both
+ * formations. Co-op: P1 and P2 share the left team against the CPU on the
+ * right, with match length, difficulty and the shared formation.
  */
 export class TeamSelectScene extends Phaser.Scene {
-  private mode: GameMode = '1p';
+  /** '1p' Quick Match or '2p' 2 PLAYERS (versus or co-op, see settings.twoPlayerMode). */
+  private mode: '1p' | '2p' = '1p';
+  /** Row focused when the scene opens (kept when the MODE row restarts the scene). */
+  private focusIndex: number | null = null;
 
   constructor() {
     super({ key: 'TeamSelectScene' });
   }
 
-  init(data: { mode?: GameMode }): void {
-    this.mode = data?.mode ?? '1p';
+  init(data: { mode?: GameMode; focus?: number }): void {
+    if (data?.mode === 'coop') settings.twoPlayerMode = 'coop';
+    this.mode = data?.mode === '2p' || data?.mode === 'coop' ? '2p' : '1p';
+    this.focusIndex = data?.focus ?? null;
   }
 
   create(): void {
     soundManager.playMusic('menu');
     const twoPlayer = this.mode === '2p';
+    const coop = twoPlayer && settings.twoPlayerMode === 'coop';
+    // Versus: the right card is player 2; otherwise it is the CPU opponent
+    const versus = twoPlayer && !coop;
     const bg = this.add.graphics();
     bg.fillStyle(UI.background, 1);
     bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -139,7 +149,7 @@ export class TeamSelectScene extends Phaser.Scene {
 
     // Team cards: left = player 1 (side 0), right = opponent / player 2 (side 1)
     const cardP1 = new TeamCard(
-      this, GAME_WIDTH / 2 - 150, settings.teamP1, twoPlayer ? t().player1 : t().yourTeam, 0xffcc00,
+      this, GAME_WIDTH / 2 - 150, settings.teamP1, coop ? t().coopTeam : twoPlayer ? t().player1 : t().yourTeam, 0xffcc00,
       () => settings.teamP2,
       (id) => {
         settings.teamP1 = id;
@@ -147,7 +157,7 @@ export class TeamSelectScene extends Phaser.Scene {
       },
     );
     const cardP2 = new TeamCard(
-      this, GAME_WIDTH / 2 + 150, settings.teamP2, twoPlayer ? t().player2 : t().opponent, twoPlayer ? 0x6dff7a : 0x9aa8bb,
+      this, GAME_WIDTH / 2 + 150, settings.teamP2, versus ? t().player2 : t().opponent, versus ? 0x6dff7a : 0x9aa8bb,
       () => settings.teamP1,
       (id) => {
         settings.teamP2 = id;
@@ -156,8 +166,27 @@ export class TeamSelectScene extends Phaser.Scene {
     );
     this.add.text(GAME_WIDTH / 2, CARD_Y, 'VS', titleStyle(28)).setOrigin(0.5);
 
+    // Row positions: Quick Match has 3 rows, 2 PLAYERS 4 (MODE first)
+    const rowY = twoPlayer ? [282, 318, 354, 390] : [288, 328, 368];
+    const startY = twoPlayer ? 436 : 425;
+    const backY = twoPlayer ? 484 : 478;
+    const extra: Focusable[] = [];
+    if (twoPlayer) {
+      extra.push(new OptionSelector<TwoPlayerMode>(
+        this, GAME_WIDTH / 2, rowY.shift()!, t().twoPlayerMode,
+        [...TWO_PLAYER_MODES], Math.max(0, TWO_PLAYER_MODES.indexOf(settings.twoPlayerMode)),
+        (v) => t().twoPlayerModeValue(v),
+        (v) => {
+          settings.twoPlayerMode = v;
+          saveSettings();
+          // Cards and rows differ between the modes: rebuild, keep the focus on MODE
+          this.scene.restart({ mode: '2p', focus: 2 });
+        },
+      ));
+    }
+
     const length = new OptionSelector<number>(
-      this, GAME_WIDTH / 2, 288, t().matchLength,
+      this, GAME_WIDTH / 2, rowY[0], t().matchLength,
       MATCH.durationOptions, Math.max(0, MATCH.durationOptions.indexOf(settings.matchMinutes)),
       (v) => `${v} MIN`,
       (v) => {
@@ -167,9 +196,9 @@ export class TeamSelectScene extends Phaser.Scene {
     );
 
     let rows: Focusable[];
-    if (twoPlayer) {
+    if (versus) {
       const p1 = new OptionSelector<FormationId>(
-        this, GAME_WIDTH / 2, 328, t().playerFormation(1),
+        this, GAME_WIDTH / 2, rowY[1], t().playerFormation(1),
         FORMATION_IDS, Math.max(0, FORMATION_IDS.indexOf(settings.formation)), formationLabel,
         (v) => {
           settings.formation = v;
@@ -177,7 +206,7 @@ export class TeamSelectScene extends Phaser.Scene {
         },
       );
       const p2 = new OptionSelector<FormationId>(
-        this, GAME_WIDTH / 2, 368, t().playerFormation(2),
+        this, GAME_WIDTH / 2, rowY[2], t().playerFormation(2),
         FORMATION_IDS, Math.max(0, FORMATION_IDS.indexOf(settings.formationP2)), formationLabel,
         (v) => {
           settings.formationP2 = v;
@@ -185,7 +214,28 @@ export class TeamSelectScene extends Phaser.Scene {
         },
       );
       rows = [p1, p2];
+    } else {
+      const difficulty = new OptionSelector<Difficulty>(
+        this, GAME_WIDTH / 2, rowY[1], t().difficulty,
+        DIFFICULTIES, Math.max(0, DIFFICULTIES.indexOf(settings.difficulty)),
+        (v) => t().difficultyName(v),
+        (v) => {
+          settings.difficulty = v;
+          saveSettings();
+        },
+      );
+      const formation = new OptionSelector<FormationId>(
+        this, GAME_WIDTH / 2, rowY[2], t().formation,
+        FORMATION_IDS, Math.max(0, FORMATION_IDS.indexOf(settings.formation)), formationLabel,
+        (v) => {
+          settings.formation = v;
+          saveSettings();
+        },
+      );
+      rows = [difficulty, formation];
+    }
 
+    if (twoPlayer) {
       // Which device each player uses with the controllers connected right now
       const status = this.add.text(GAME_WIDTH / 2, 258, '', textStyle(11, UI.textMuted, true)).setOrigin(0.5);
       const refresh = () => {
@@ -204,43 +254,26 @@ export class TeamSelectScene extends Phaser.Scene {
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
         this.events.off(Phaser.Scenes.Events.UPDATE, refresh);
       });
-    } else {
-      const difficulty = new OptionSelector<Difficulty>(
-        this, GAME_WIDTH / 2, 328, t().difficulty,
-        DIFFICULTIES, Math.max(0, DIFFICULTIES.indexOf(settings.difficulty)),
-        (v) => t().difficultyName(v),
-        (v) => {
-          settings.difficulty = v;
-          saveSettings();
-        },
-      );
-      const formation = new OptionSelector<FormationId>(
-        this, GAME_WIDTH / 2, 368, t().formation,
-        FORMATION_IDS, Math.max(0, FORMATION_IDS.indexOf(settings.formation)), formationLabel,
-        (v) => {
-          settings.formation = v;
-          saveSettings();
-        },
-      );
-      rows = [difficulty, formation];
     }
 
-    const start = new Button(this, GAME_WIDTH / 2, 425, t().kickOffButton, () => this.startMatch(), {
+    const start = new Button(this, GAME_WIDTH / 2, startY, t().kickOffButton, () => this.startMatch(), {
       width: 240, height: 44, fontSize: 20, color: 0x2a8a4a, focusColor: 0x3fb066,
     });
-    const back = new Button(this, GAME_WIDTH / 2, 478, t().back, () => this.scene.start('MenuScene'), {
+    const back = new Button(this, GAME_WIDTH / 2, backY, t().back, () => this.scene.start('MenuScene'), {
       width: 140, height: 30, fontSize: 16,
     });
 
-    new MenuNavigator(this, [cardP1, cardP2, length, ...rows, start, back], () => this.scene.start('MenuScene'))
-      .activate(5); // KICK OFF
+    const items = [cardP1, cardP2, ...extra, length, ...rows, start, back];
+    new MenuNavigator(this, items, () => this.scene.start('MenuScene'))
+      .activate(this.focusIndex ?? items.indexOf(start)); // KICK OFF
 
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, t().setupHint, textStyle(11, UI.textMuted))
       .setOrigin(0.5);
   }
 
   private startMatch(): void {
-    const data: MatchSceneData = { mode: this.mode };
+    const mode: GameMode = this.mode === '2p' && settings.twoPlayerMode === 'coop' ? 'coop' : this.mode;
+    const data: MatchSceneData = { mode };
     this.scene.start('MatchScene', data);
   }
 }

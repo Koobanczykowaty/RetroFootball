@@ -82,11 +82,11 @@ const failures = [];
 // Headers / volleys over the whole run (rare in a single short AI match)
 let aerialTotal = 0;
 
-async function runSim(label, human, twoPlayer = false) {
+async function runSim(label, human, twoPlayer = false, coop = false) {
   // Each match: real minutes + kickoff/halftime/goal pauses (each goal adds ~3.5 s)
   const budget = Math.ceil(matches * (minutes * 60 + 60) * 1000);
   console.log(`[${label}] ${matches} match(es) of ${minutes} min`);
-  const query = `?sim=${matches}&minutes=${minutes}${human ? '&human=1' : ''}${twoPlayer ? '&p2=1' : ''}`;
+  const query = `?sim=${matches}&minutes=${minutes}${human ? '&human=1' : ''}${twoPlayer ? '&p2=1' : ''}${coop ? '&coop=1' : ''}`;
   const dom = await runBrowser(browser, url + query, budget);
 
   const m = dom.match(/<pre id="sim-result"[^>]*>([\s\S]*?)<\/pre>/);
@@ -148,6 +148,15 @@ async function runSim(label, human, twoPlayer = false) {
       if (!total(e)) failures.push(`[${label}] "${e}" never happened`);
     }
   }
+  if (coop) {
+    // Both humans on team 0 must actually play, and never steer the same player
+    for (const e of ['humanPassP1', 'humanPassP2', 'humanShotP1', 'humanShotP2']) {
+      if (!total(e)) failures.push(`[${label}] "${e}" never happened`);
+    }
+    if (total('coopSamePlayer')) {
+      failures.push(`[${label}] both humans steered the same player in ${total('coopSamePlayer')} frame(s)`);
+    }
+  }
   // Headers / volleys must happen somewhere in the run (AI or human)
   const aerials = total('aiAerial') + total('humanHeader') + total('humanVolley');
   aerialTotal += aerials;
@@ -194,6 +203,7 @@ await runUiFlow();
 await runSim('AI vs AI', false);
 await runSim('bot as human', true);
 await runSim('2 players (two bots)', false, true);
+await runSim('co-op (two bots on one team)', false, false, true);
 await server.close();
 
 if (!aerialTotal) failures.push('no header or volley was struck in the whole run');

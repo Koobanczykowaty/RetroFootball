@@ -21,10 +21,11 @@ export interface MatchWorld {
   players: Player[];
   teams: [Player[], Player[]];
   /**
-   * Player currently controlled by a human, per team (index = team).
-   * null for a CPU team. Both are set in 2-player mode.
+   * Players currently controlled by humans, per team (index = team).
+   * Empty for a CPU team; one per human (two on one team in co-op).
+   * Maintained by HumanController.setControlled / release.
    */
-  controlled: [Player | null, Player | null];
+  controlled: [Player[], Player[]];
   stats: MatchStats;
 }
 

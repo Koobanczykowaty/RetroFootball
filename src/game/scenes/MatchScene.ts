@@ -3,7 +3,8 @@
 // per-frame pipeline (human input → AI → movement → collisions →
 // ball → goal check) and reacts to match-state transitions.
 // Gameplay rules live in the systems; human control lives in
-// HumanController (one per human: Quick Match = 1, 2 PLAYERS = 2).
+// HumanController (one per human: Quick Match = 1, 2 PLAYERS = 2, on
+// opposite teams in versus or on the same team in co-op).
 // ============================================================
 
 import Phaser from 'phaser';
@@ -20,7 +21,7 @@ import { Pitch } from '../entities/Pitch';
 import { Player } from '../entities/Player';
 import { createStats, MatchWorld } from '../logic/MatchWorld';
 import {
-  PITCH_CX, PITCH_CY, attackDir, formationPosition, kickoffPositions, kickoffTakerIndex, setSidesSwapped,
+  PITCH_CX, PITCH_CY, attackDir, formationPosition, kickoffPositions, kickoffTakerIndex, ownGoalX, setSidesSwapped,
   teamDefendingSide,
 } from '../logic/PitchGeometry';
 import { ActionSystem } from '../systems/ActionSystem';
@@ -39,7 +40,8 @@ import { BotInput } from '../debug/BotInput';
 import { SimReport, recordSimMatch } from '../debug/SimReport';
 import { HumanContext, HumanController } from './HumanController';
 
-export type GameMode = '1p' | '2p';
+/** '1p' Quick Match, '2p' P1 against P2, 'coop' P1 and P2 together against the CPU. */
+export type GameMode = '1p' | '2p' | 'coop';
 
 export interface MatchSceneData {
   /**
@@ -57,6 +59,8 @@ export interface MatchSceneData {
   simHuman?: boolean;
   /** In simulation, 2-player mode with a bot playing each team as P1 and P2. */
   simTwoPlayer?: boolean;
+  /** In simulation, co-op mode with two bots on team 0 against the CPU. */
+  simCoop?: boolean;
 }
 
 /** Dispatch a synthetic key press on window (used by the simulation test). */
@@ -83,7 +87,7 @@ export class MatchScene extends Phaser.Scene {
 
   private sceneData: MatchSceneData = {};
   private mode: GameMode = '1p';
-  /** Teams controlled by humans, in player order (P1 first). */
+  /** Teams controlled by humans, in player order (P1 first; the same team twice in co-op). */
   private humanTeams: number[] = [];
   private humans: HumanController[] = [];
   private profiles!: [AIProfile, AIProfile];
@@ -109,11 +113,13 @@ export class MatchScene extends Phaser.Scene {
 
   init(data: MatchSceneData): void {
     this.sceneData = { ...data };
-    this.mode = data.sim ? (data.simTwoPlayer ? '2p' : '1p') : (data.mode ?? '1p');
+    this.mode = data.sim ? (data.simTwoPlayer ? '2p' : data.simCoop ? 'coop' : '1p') : (data.mode ?? '1p');
     const keyboardTeam = data.playerTeam ?? 0;
     if (data.sim && data.simTwoPlayer) this.humanTeams = [0, 1];
+    else if (data.sim && data.simCoop) this.humanTeams = [0, 0];
     else if (data.sim) this.humanTeams = data.simHuman ? [0] : [];
     else if (this.mode === '2p') this.humanTeams = [keyboardTeam, 1 - keyboardTeam];
+    else if (this.mode === 'coop') this.humanTeams = [keyboardTeam, keyboardTeam];
     else this.humanTeams = [keyboardTeam];
     this.humans = [];
     this.lastState = 'kickoff';
@@ -150,6 +156,7 @@ export class MatchScene extends Phaser.Scene {
 
     // Humans use their chosen formations; a CPU team picks one at random each match
     const randomFormation = () => FORMATION_IDS[Math.floor(Math.random() * FORMATION_IDS.length)];
+    // (co-op: one shared formation, settings.formation)
     const formationFor = (team: number): FormationId => {
       const playerIndex = this.humanTeams.indexOf(team);
       if (playerIndex === 0) return settings.formation;
@@ -169,7 +176,7 @@ export class MatchScene extends Phaser.Scene {
       ball: this.ball,
       players: [...teams[0], ...teams[1]],
       teams,
-      controlled: [null, null],
+      controlled: [[], []],
       stats: createStats(),
     };
 
@@ -209,10 +216,10 @@ export class MatchScene extends Phaser.Scene {
     };
     this.humans = this.humanTeams.map((team, i) => {
       let input: InputSystem;
-      if (this.sceneData.simTwoPlayer) {
-        // Test: one bot per team, each through its own HumanController
-        input = inputFrom(new BotInput(() => this.world, undefined, team));
-      } else if (this.mode === '2p') {
+      if (this.sceneData.simTwoPlayer || this.sceneData.simCoop) {
+        // Test: one bot per human, each through its own HumanController
+        input = inputFrom(new BotInput(() => this.world, undefined, team, () => this.humans[i]?.controlled ?? null));
+      } else if (this.mode === '2p' || this.mode === 'coop') {
         // P1 = keyboard (+ pad 1 when two pads are connected), P2 = pad 2 (or pad 1
         // when only one is connected). Re-evaluated every frame, so plugging a pad
         // in mid-match works.
@@ -232,13 +239,14 @@ export class MatchScene extends Phaser.Scene {
 
     // UI
     const tags = this.humans.map((h, i) => ({ team: h.team, label: `P${i + 1}` }));
-    this.hud = new HUD(this, tags, this.mode === '1p' && this.humans.length > 0 ? settings.difficulty : undefined);
+    this.hud = new HUD(this, tags, this.mode !== '2p' && this.humans.length > 0 ? settings.difficulty : undefined);
     this.overlay = new MatchOverlay(this);
     this.pauseMenu = new PauseMenu(this, {
       onResume: () => this.resume(),
       onRestart: () => this.restartMatch(),
       onMainMenu: () => this.scene.start('MenuScene'),
-      formations: this.humans.map((h, i) => ({
+      // Co-op: one row for the shared formation (either player can change it)
+      formations: (this.mode === 'coop' ? this.humans.slice(0, 1) : this.humans).map((h, i) => ({
         label: this.mode === '2p' ? t().playerFormation(i + 1) : t().formation,
         value: this.formations[h.team],
         onChange: (id: FormationId) => {
@@ -329,6 +337,11 @@ export class MatchScene extends Phaser.Scene {
 
   private simulate(dt: number): void {
     for (const h of this.humans) h.update(dt);
+    if (this.sim && this.mode === 'coop') {
+      // Test check: the two co-op humans never steer the same player
+      const [a, b] = this.humans;
+      if (a.controlled && a.controlled === b.controlled) this.sim.event('coopSamePlayer');
+    }
 
     for (let t = 0; t < 2; t++) {
       this.ai.updateTeam(t, dt, this.profiles[t], this.world.controlled[t]);
@@ -423,7 +436,33 @@ export class MatchScene extends Phaser.Scene {
 
   private onPossession(p: Player, previousTeam: number | null): void {
     this.sim?.event('possession');
-    for (const h of this.humans) h.onPossession(p, previousTeam);
+    const taker = this.ballTaker(p);
+    for (const h of this.humans) h.onPossession(p, previousTeam, h === taker);
+  }
+
+  /**
+   * Which human takes over a player of his team who just gained the ball.
+   * With one human on that team it is him. In co-op: whoever already steers
+   * that player; for the keeper the human whose player is nearer our goal;
+   * otherwise the human whose player is nearer the new carrier.
+   */
+  private ballTaker(p: Player): HumanController | null {
+    const mine = this.humans.filter((h) => h.team === p.teamIndex);
+    if (mine.length <= 1) return mine[0] ?? null;
+    const steering = mine.find((h) => h.controlled === p);
+    if (steering) return steering;
+    const ref = p.role === 'goalkeeper' ? { x: ownGoalX(p.teamIndex), y: PITCH_CY } : p;
+    let best: HumanController | null = null;
+    let bestD = Infinity;
+    for (const h of mine) {
+      const d = h.controlled ? h.controlled.distanceTo(ref.x, ref.y) : Infinity;
+      if (d < bestD) {
+        bestD = d;
+        best = h;
+      }
+    }
+    if (this.sim && p.role === 'goalkeeper') this.sim.event(`coopKeeper${best === mine[0] ? 'P1' : 'P2'}`);
+    return best ?? mine[0];
   }
 
   // ========================================================== match flow
@@ -578,7 +617,7 @@ export class MatchScene extends Phaser.Scene {
 
     // Music stops; after the whistles a jingle for the result
     soundManager.stopMusic();
-    const lost = this.mode === '1p' && this.humans.length > 0 && winner !== -1 && winner !== this.humans[0].team;
+    const lost = this.mode !== '2p' && this.humans.length > 0 && winner !== -1 && winner !== this.humans[0].team;
     const jingle = winner === -1 ? 'draw' : lost ? 'lose' : 'win';
     this.time.delayedCall(1600, () => soundManager.jingle(jingle));
 
@@ -651,11 +690,22 @@ export class MatchScene extends Phaser.Scene {
     }
     this.ai.reset();
 
-    // Each human starts on his team's kickoff taker / most central forward
-    for (const h of this.humans) {
-      const idx = kickoffTakerIndex(FORMATIONS[this.formations[h.team]]);
-      h.resetForKickoff(this.world.teams[h.team][idx]);
-    }
+    // Each human starts on his team's kickoff taker / most central forward;
+    // in co-op the second human takes the forward nearest to him
+    for (const h of this.humans) h.release();
+    for (const h of this.humans) h.resetForKickoff(this.kickoffStartFor(h.team));
+  }
+
+  /** Free (not human-steered) player a human starts a kickoff on. */
+  private kickoffStartFor(team: number): Player {
+    const mates = this.world.teams[team];
+    const central = mates[kickoffTakerIndex(FORMATIONS[this.formations[team]])];
+    const taken = this.world.controlled[team];
+    if (!taken.includes(central)) return central;
+    const free = mates.filter((q) => q.role !== 'goalkeeper' && !taken.includes(q));
+    const rank = (q: Player) => (q.role === 'forward' ? 0 : 10000) + q.distanceTo(central.x, central.y);
+    free.sort((a, b) => rank(a) - rank(b));
+    return free[0] ?? central;
   }
 
   // ================================================================ pause

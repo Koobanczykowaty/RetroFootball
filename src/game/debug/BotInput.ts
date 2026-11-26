@@ -6,6 +6,7 @@
 // ============================================================
 
 import { predictAerialContact } from '../logic/Aerial';
+import type { Player } from '../entities/Player';
 import type { MatchWorld } from '../logic/MatchWorld';
 import { PITCH_CY, attackDir, distance, normalize, opponentGoalX } from '../logic/PitchGeometry';
 import { EMPTY_RAW, InputSource, RawInput } from '../systems/InputSystem';
@@ -26,6 +27,8 @@ export class BotInput implements InputSource {
     private readonly onHeldAtCatch?: () => void,
     /** Team this bot plays (two bots play each other in the 2-player sim). */
     private readonly team = 0,
+    /** The player this bot's human steers (two bots share a team in the co-op sim). */
+    private readonly getControlled?: () => Player | null,
   ) {}
 
   /**
@@ -51,7 +54,7 @@ export class BotInput implements InputSource {
   private decide(): RawInput {
     const r: RawInput = { ...EMPTY_RAW };
     const w = this.getWorld();
-    const p = w?.controlled[this.team];
+    const p = this.getControlled ? this.getControlled() : w?.controlled[this.team][0];
     if (!w || !p) return r;
     this.frame++;
     const ball = w.ball;

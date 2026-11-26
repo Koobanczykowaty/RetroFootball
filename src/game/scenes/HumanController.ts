@@ -3,7 +3,8 @@
 // reading his input device, steering the controlled player, charged
 // pass / shot / lob, tackles, player switching, keeper control, and
 // the on-pitch hints (power bar, stamina, keeper countdown, arrows).
-// One instance per human: one in Quick Match, two in 2-player mode.
+// One instance per human: one in Quick Match, two in 2-player mode
+// (on opposite teams in versus, on the same team in co-op).
 // ============================================================
 
 import Phaser from 'phaser';
@@ -47,6 +48,8 @@ export class HumanController {
   private clockMs = 0;
   /** Countdown above our keeper while he holds the ball. */
   private readonly keeperTimer: Phaser.GameObjects.Text;
+  /** The player this human steers (null only before the first kickoff). */
+  private current: Player | null = null;
 
   constructor(
     private readonly ctx: HumanContext,
@@ -63,7 +66,17 @@ export class HumanController {
   }
 
   get controlled(): Player | null {
-    return this.ctx.world.controlled[this.team];
+    return this.current;
+  }
+
+  /** Sim event suffix for this human: 'P1' or 'P2'. */
+  private get tag(): string {
+    return this.marker.toUpperCase();
+  }
+
+  /** Is `p` steered by another human (the co-op partner)? */
+  private isPartners(p: Player): boolean {
+    return p !== this.current && this.ctx.world.controlled[this.team].includes(p);
   }
 
   // ============================================================ per frame
@@ -201,6 +214,7 @@ export class HumanController {
     const receiver = this.ctx.actions.pass(p, dirX, dirY, Phaser.Math.Clamp(charge, 0, 1));
     this.ctx.sim()?.event('humanPass');
     this.ctx.sim()?.event(`humanPassTeam${this.team}`);
+    this.ctx.sim()?.event(`humanPass${this.tag}`);
     this.ctx.startSupportRun(p);
     if (receiver) this.setControlled(receiver);
   }
@@ -222,6 +236,7 @@ export class HumanController {
     this.ctx.actions.shoot(p, power, aimY, dirX, dirY, 0.85);
     this.ctx.sim()?.event('humanShot');
     this.ctx.sim()?.event(`humanShotTeam${this.team}`);
+    this.ctx.sim()?.event(`humanShot${this.tag}`);
   }
 
   // ======================================================= player switch
@@ -250,7 +265,8 @@ export class HumanController {
     const { world } = this.ctx;
     const ball = world.ball;
     const current = this.controlled;
-    const mates = world.teams[this.team];
+    // Never the co-op partner's player
+    const mates = world.teams[this.team].filter((q) => !this.isPartners(q));
 
     // Explicit direction wins
     if (current && (dirX !== 0 || dirY !== 0)) {
@@ -268,18 +284,43 @@ export class HumanController {
     return pickPlayerForBall(mates, this.team, ball, opponentCarrier, exclude);
   }
 
+  /**
+   * Take control of `p`. Does nothing if the co-op partner steers him (e.g. a
+   * pass to the partner's player: the partner receives, we keep ours).
+   */
   setControlled(p: Player): void {
     const current = this.controlled;
-    if (current === p) return;
-    current?.setSelected(this.ctx.scene, false);
+    if (current === p || this.isPartners(p)) return;
+    this.release();
     p.setSelected(this.ctx.scene, true, this.marker);
-    this.ctx.world.controlled[this.team] = p;
+    this.current = p;
+    this.ctx.world.controlled[this.team].push(p);
     this.chargeKind = null;
   }
 
-  /** Called by the scene whenever any player gains the ball. */
-  onPossession(p: Player, previousTeam: number | null): void {
+  /** Let go of the current player (he goes back to the AI). */
+  release(): void {
+    const p = this.current;
+    if (!p) return;
+    p.setSelected(this.ctx.scene, false);
+    this.forget();
+  }
+
+  private forget(): void {
+    const list = this.ctx.world.controlled[this.team];
+    const i = this.current ? list.indexOf(this.current) : -1;
+    if (i >= 0) list.splice(i, 1);
+    this.current = null;
+  }
+
+  /**
+   * Called by the scene whenever any player gains the ball.
+   * @param takesBall this human takes over `p` (the scene decides which human
+   *   of the team does: in co-op only one of the two).
+   */
+  onPossession(p: Player, previousTeam: number | null, takesBall: boolean): void {
     if (p.teamIndex === this.team) {
+      if (!takesBall) return;
       // Includes our goalkeeper: the human decides where he plays the ball
       this.setControlled(p);
       if (p.role === 'goalkeeper') {
@@ -294,7 +335,7 @@ export class HumanController {
     }
   }
 
-  /** Kickoff: start on the given player with a clean input state. */
+  /** Kickoff: start on the given player with a clean input state (call release() on every human first). */
   resetForKickoff(startOn: Player): void {
     this.setControlled(startOn);
     this.input.sync();
@@ -371,7 +412,7 @@ export class HumanController {
 
   destroy(): void {
     this.input.destroy();
-    this.ctx.world.controlled[this.team] = null;
+    this.forget();
   }
 }
 
